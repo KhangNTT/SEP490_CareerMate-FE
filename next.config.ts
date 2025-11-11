@@ -49,6 +49,12 @@ const nextConfig: NextConfig = {
         port: "",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "firebasestorage.googleapis.com",
+        pathname: "/**",
+      },
+
     ],
     // Image optimization settings
     formats: ["image/webp", "image/avif"],

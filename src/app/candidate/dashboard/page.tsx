@@ -5,10 +5,30 @@ import CVSidebar from "@/components/layout/CVSidebar";
 import Link from "next/link";
 import { FileText, Briefcase, Mail } from "lucide-react";
 import { useLayout } from "@/contexts/LayoutContext";
+import { useAuthStore } from "@/store/use-auth-store";
+import api from "@/lib/api";
+import Image from "next/image";
+
+interface ProfileData {
+  candidateId: number;
+  dob: string;
+  title: string;
+  fullName: string;
+  phone: string;
+  address: string;
+  image: string;
+  gender: string;
+  link: string;
+}
 
 export default function CandidateDashboard() {
   const { headerHeight } = useLayout();
+  const { user } = useAuthStore();
   const [headerH, setHeaderH] = useState(headerHeight || 0);
+  
+  // Profile data state
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -20,6 +40,36 @@ export default function CandidateDashboard() {
       }
     }
   }, [headerHeight]);
+
+  // Fetch profile data
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await api.get("/api/candidates/profiles/current");
+        
+        if (response.data?.result) {
+          setProfileData(response.data.result);
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProfileData();
+  }, []);
+
+  // Get initials for avatar fallback
+  const getInitials = (name: string) => {
+    if (!name) return "??";
+    const names = name.split(" ");
+    if (names.length >= 2) {
+      return (names[0][0] + names[names.length - 1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
 
   return (
     <div className="bg-gray-50">
@@ -40,32 +90,70 @@ export default function CandidateDashboard() {
           <section className="space-y-6 min-w-0 lg:mt-[var(--sticky-offset)] transition-all duration-300">
             {/* Welcome Header */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center overflow-hidden">
-                    <span className="text-2xl font-semibold text-gray-600">
-                      LA
-                    </span>
-                  </div>
-                  <div>
-                    <h1 className="text-2xl font-semibold text-gray-900 mb-1">
-                      
-                    </h1>
-                    <p className="text-sm text-gray-600 mb-1">
-                      💼 Back-end Developer
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      ✉️ anhlqde180272@fpt.edu.vn
-                    </p>
-                    <Link
-                      href="/candidate/cm-profile"
-                      className="text-sm text-blue-600 hover:text-blue-700 font-medium mt-1 inline-block"
-                    >
-                      Update your profile →
-                    </Link>
+              {isLoading ? (
+                // Skeleton loading
+                <div className="flex items-start gap-6 animate-pulse">
+                  <div className="w-24 h-24 bg-gray-200 rounded-full flex-shrink-0"></div>
+                  <div className="flex-1">
+                    <div className="h-8 bg-gray-200 rounded w-1/3 mb-3"></div>
+                    <div className="h-5 bg-gray-200 rounded w-1/2 mb-2"></div>
+                    <div className="h-5 bg-gray-200 rounded w-2/3 mb-3"></div>
+                    <div className="h-5 bg-gray-200 rounded w-1/3"></div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-6">
+                    {/* Avatar - Larger */}
+                    <div className="w-24 h-24 bg-gray-300 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {profileData?.image ? (
+                        <Image
+                          src={profileData.image}
+                          alt={profileData.fullName || "Avatar"}
+                          width={96}
+                          height={96}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-3xl font-bold text-gray-600">
+                          {getInitials(profileData?.fullName || user?.name || "User")}
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* User Info */}
+                    <div>
+                      {/* Full Name - Larger and Bold */}
+                      <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                        {profileData?.fullName || user?.name || "Welcome"}
+                      </h1>
+                      
+                      {/* Title/Position */}
+                      <p className="text-base text-gray-700 mb-2 flex items-center gap-2">
+                        <span>💼</span>
+                        <span className="font-medium">
+                          {profileData?.title || "Update your title"}
+                        </span>
+                      </p>
+                      
+                      {/* Email from token */}
+                      <p className="text-base text-gray-600 mb-3 flex items-center gap-2">
+                        <span>✉️</span>
+                        <span>{user?.email || "No email"}</span>
+                      </p>
+                      
+                      {/* Update Profile Link */}
+                      <Link
+                        href="/candidate/cm-profile"
+                        className="text-sm text-blue-600 hover:text-blue-700 font-medium inline-flex items-center gap-1"
+                      >
+                        <span>Update your profile</span>
+                        <span>→</span>
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Your Attached CV */}
