@@ -73,18 +73,17 @@ export function ClientHomePage() {
         }
       `}</style>
 
-      <main className="mt-16">
+      
         {/* Added margin-top equal to header height */}
         {/* Hero Section */}
         <section className="bg-gradient-to-br from-gray-900 via-white-900 to-indigo-900 text-white py-20 pb-32">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-              Find Your Dream Job
+              Welcome to CareerMate
             </h1>
-            <p className="text-xl md:text-2xl mb-12 text-blue-100 max-w-3xl mx-auto">
-              AI-powered job matching for IT professionals. Discover
-              opportunities that match your skills and career goals.
-            </p>
+            <h2 className="text-xl md:text-3xl mb-12 text-blue-100 max-w-3xl mx-auto">
+              The bridge between opportunity and success.
+            </h2>
 
             {/* Search Bar */}
             <div className="max-w-4xl mx-auto">
@@ -135,7 +134,7 @@ export function ClientHomePage() {
                     </div>
                   </div>
                   <button className="px-8 py-4 font-semibold shadow-lg hover:shadow-xl bg-gradient-to-r from-[#3a4660] to-gray-400 text-white rounded-md hover:bg-gradient-to-r hover:from-[#3a4660] hover:to-[#3a4660] transition-colors">
-                    Search Jobs
+                    Search
                   </button>
                 </div>
 
@@ -147,17 +146,18 @@ export function ClientHomePage() {
                     Suggestions for you:
                   </span>
                   <span className="px-4 py-2 bg-white/20 rounded-full text-sm text-white/90 hover:bg-white/30 transition-colors cursor-pointer">
-                    Remote
+                    Software Engineer
                   </span>
                   <span className="px-4 py-2 bg-white/20 rounded-full text-sm text-white/90 hover:bg-white/30 transition-colors cursor-pointer">
-                    Full-time
+                    IT Comtor
                   </span>
                   <span className="px-4 py-2 bg-white/20 rounded-full text-sm text-white/90 hover:bg-white/30 transition-colors cursor-pointer">
-                    Senior Level
+                    Companies
                   </span>
                   <span className="px-4 py-2 bg-white/20 rounded-full text-sm text-white/90 hover:bg-white/30 transition-colors cursor-pointer">
-                    AI/ML
+                    Skills
                   </span>
+                  
                 </div>
               </div>
             </div>
@@ -256,7 +256,7 @@ export function ClientHomePage() {
             <FeedbackButton />
           </div>
         </section>
-      </main>
+      
     </div>
   );
 }

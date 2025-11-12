@@ -225,7 +225,7 @@ src/
   location: string;
   experience: string;
   appliedDate: string;
-  status: 'pending' | 'reviewing' | 'approved' | 'rejected';
+  status: 'PENDING' | 'reviewing' | 'approved' | 'rejected';
   cv: string;
 }
 ```

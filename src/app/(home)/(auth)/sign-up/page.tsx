@@ -1,17 +1,22 @@
-import SignUpForm from "@/modules/client/auth/ui/components/sign-up-form"
-import AuthGuard from "@/components/auth/auth-guard";
+"use client";
 
-export const metadata = {
-  title: "Sign Up - CareerMate",
-  description: "Create a new CareerMate account",
-}
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
-const SignUpPage = () => {
+export default function SignUpPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    // Redirect to user-confirmpage to choose role first
+    router.replace("/user-confirmpage");
+  }, [router]);
+
   return (
-
-    <SignUpForm />
-
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+        <p className="text-gray-600">Redirecting to role selection...</p>
+      </div>
+    </div>
   );
 }
-
-export default SignUpPage;

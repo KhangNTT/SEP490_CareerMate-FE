@@ -65,7 +65,12 @@ function extractRoles(decoded: DecodedJWT | null): string[] {
 }
 
 function isAdminByRoles(roles: string[]) {
-  const adminSet = new Set(["ADMIN", "ROLE_ADMIN", "SUPERADMIN", "ROLE_SUPERADMIN"]);
+  const adminSet = new Set([
+    "ADMIN",
+    "ROLE_ADMIN",
+    "SUPERADMIN",
+    "ROLE_SUPERADMIN",
+  ]);
   return roles.some((r) => adminSet.has(r));
 }
 
@@ -77,6 +82,7 @@ interface AuthState {
   tokenExpiresAt: number | null;
   user: any | null;
   role: string | null;
+  candidateId: number | null; // ✅ Add candidateId from profile API
 
   // Actions
   setLoading: (v: boolean) => void;
@@ -88,9 +94,14 @@ interface AuthState {
     user?: any | null;
   }) => void;
   clearAuth: () => void;
+  setCandidateId: (candidateId: number | null) => void; // ✅ Add setter for candidateId
+  fetchCandidateProfile: () => Promise<void>; // ✅ Add method to fetch profile
 
   // API
-  login: (email: string, password: string) => Promise<{ success: boolean; isAdmin: boolean }>;
+  login: (
+    email: string,
+    password: string
+  ) => Promise<{ success: boolean; isAdmin: boolean }>;
   refresh: () => Promise<string | null>;
   introspect: (token: string) => Promise<{ valid: boolean; exp: number }>;
   logout: () => Promise<void>;
@@ -98,7 +109,10 @@ interface AuthState {
 }
 
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
-function startRefreshTimer(get: () => AuthState, refresh: () => Promise<string | null>) {
+function startRefreshTimer(
+  get: () => AuthState,
+  refresh: () => Promise<string | null>
+) {
   // Clear old timer
   if (refreshTimer) clearTimeout(refreshTimer);
   const { tokenExpiresAt } = get();
@@ -124,14 +138,26 @@ function startRefreshTimer(get: () => AuthState, refresh: () => Promise<string |
 // ===== Helper: đọc localStorage ban đầu (client) =====
 function getInitialAuthState() {
   if (typeof window === "undefined") {
-    return { accessToken: null, isAuthenticated: false, tokenExpiresAt: null, user: null, role: null };
+    return {
+      accessToken: null,
+      isAuthenticated: false,
+      tokenExpiresAt: null,
+      user: null,
+      role: null,
+    };
   }
   try {
     const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
     const tokenExpiresAtStr = localStorage.getItem(TOKEN_EXPIRES_AT_KEY);
 
     if (!accessToken || !tokenExpiresAtStr) {
-      return { accessToken: null, isAuthenticated: false, tokenExpiresAt: null, user: null, role: null };
+      return {
+        accessToken: null,
+        isAuthenticated: false,
+        tokenExpiresAt: null,
+        user: null,
+        role: null,
+      };
     }
     const tokenExpiresAt = Number(tokenExpiresAtStr);
     const isAuthenticated = tokenExpiresAt > Date.now();
@@ -139,13 +165,19 @@ function getInitialAuthState() {
     if (!isAuthenticated) {
       localStorage.removeItem(ACCESS_TOKEN_KEY);
       localStorage.removeItem(TOKEN_EXPIRES_AT_KEY);
-      return { accessToken: null, isAuthenticated: false, tokenExpiresAt: null, user: null, role: null };
+      return {
+        accessToken: null,
+        isAuthenticated: false,
+        tokenExpiresAt: null,
+        user: null,
+        role: null,
+      };
     }
 
     // Decode user info & role từ JWT thay vì lưu localStorage (an toàn hơn)
     let userInfo: any = null;
     let role: string | null = null;
-    
+
     if (accessToken) {
       const decoded = decodeJwt(accessToken);
       if (decoded) {
@@ -154,8 +186,9 @@ function getInitialAuthState() {
           id: decoded.sub ?? null,
           email: decoded.email ?? null,
           name: decoded.name ?? decoded.email ?? null,
+          username: decoded.username ?? null,
         };
-        
+
         // Extract role from JWT
         const roles = extractRoles(decoded);
         role = roles[0] ?? null;
@@ -170,7 +203,13 @@ function getInitialAuthState() {
       role: role,
     };
   } catch {
-    return { accessToken: null, isAuthenticated: false, tokenExpiresAt: null, user: null, role: null };
+    return {
+      accessToken: null,
+      isAuthenticated: false,
+      tokenExpiresAt: null,
+      user: null,
+      role: null,
+    };
   }
 }
 
@@ -184,11 +223,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   tokenExpiresAt: initial.tokenExpiresAt,
   user: initial.user,
   role: initial.role,
+  candidateId: null, // ✅ Initialize candidateId
 
   // -------- Actions cơ bản để hook gọi --------
   setLoading: (v) => set({ isLoading: v }),
 
-  setAuthFromTokens: ({ accessToken, tokenExpiresAt, isAuthenticated, role, user }) => {
+  setAuthFromTokens: ({
+    accessToken,
+    tokenExpiresAt,
+    isAuthenticated,
+    role,
+    user,
+  }) => {
     // Cập nhật localStorage - CHỈ LƯU token và expiry
     // KHÔNG LƯU role - decode từ JWT khi cần
     if (typeof window !== "undefined") {
@@ -241,7 +287,49 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       isAuthenticated: false,
       role: null,
       user: null,
+      candidateId: null, // ✅ Clear candidateId on logout
     });
+  },
+
+  // ✅ Set candidateId
+  setCandidateId: (candidateId) => {
+    set({ candidateId });
+  },
+
+  // ✅ Fetch user profile from API to get real candidateId
+  fetchCandidateProfile: async () => {
+    try {
+      const { isAuthenticated } = get();
+      
+      // Only fetch if user is authenticated
+      if (!isAuthenticated) {
+        return;
+      }
+      
+      try {
+        // Try to fetch candidate profile first
+        const { fetchCurrentCandidateProfile } = await import('@/lib/candidate-profile-api');
+        const candidateProfile = await fetchCurrentCandidateProfile();
+        
+        // Update store with candidateId from the API response
+        set({ candidateId: candidateProfile.candidateId });
+        
+      } catch (profileError: any) {
+        // If profile doesn't exist (400/404), fallback to /api/users/current
+        if (profileError.message === 'PROFILE_NOT_FOUND') {
+          const { fetchCurrentUser } = await import('@/lib/candidate-profile-api');
+          const userProfile = await fetchCurrentUser();
+          
+          // Use user.id as candidateId temporarily
+          set({ candidateId: userProfile.id });
+        } else {
+          throw profileError;
+        }
+      }
+      
+    } catch (error) {
+      // Don't throw - let the app continue even if profile fetch fails
+    }
   },
 
   // -------- API methods --------
@@ -253,10 +341,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         headers: { "Content-Type": "application/json" },
         withCredentials: true, // để backend set cookie refresh
       });
+
       const res = await client.post("/api/auth/login", { email, password });
+
       const result = res.data?.result as TokenResponse;
       if (!result?.accessToken || !result?.expiresIn) {
-        throw new Error("Invalid login response");
+        set({ isLoading: false });
+        const error = new Error(
+          "Invalid login response - missing token or expiry"
+        );
+        (error as any).response = { status: 500, data: res.data };
+        throw error;
       }
 
       const accessToken = result.accessToken;
@@ -264,7 +359,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const roles = extractRoles(decoded);
       const role = roles[0] ?? null;
       const isAdmin = isAdminByRoles(roles);
-      const expMs = (decoded?.exp ? decoded.exp * 1000 : Date.now() + result.expiresIn * 1000);
+      const expMs = decoded?.exp
+        ? decoded.exp * 1000
+        : Date.now() + result.expiresIn * 1000;
       const expiresAt = Math.min(expMs, Date.now() + result.expiresIn * 1000); // an toàn hơn
 
       const userInfo = {
@@ -273,6 +370,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         role,
         name: decoded?.name ?? decoded?.email ?? email,
       };
+
+      console.log("🔵 [AUTH STORE] Calling setAuthFromTokens with:", {
+        hasToken: !!accessToken,
+        tokenLength: accessToken.length,
+        name: decoded?.name ?? decoded?.email ?? email,
+      });
 
       // Đẩy vào action chung (tự lưu localStorage + set timer)
       get().setAuthFromTokens({
@@ -283,12 +386,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         user: userInfo,
       });
 
+      // ✅ Fetch user profile to get real userId
+      // Fire and forget - don't block login flow
+      get().fetchCandidateProfile().catch((err) => {
+        // Silent fail
+      });
+
       set({ isLoading: false });
       return { success: true, isAdmin };
     } catch (err: any) {
-      set({ isLoading: false });
-      const msg = err?.response?.data?.message || err?.message || "Login failed";
-      throw msg;
+      const msg =
+        err?.response?.data?.message || err?.message || "Login failed";
+      const error = new Error(msg);
+      (error as any).response = err?.response;
+      throw error;
     }
   },
 
@@ -319,7 +430,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
         // buffer nhẹ cho token siêu ngắn
         const buffer = result.expiresIn <= 10 ? 500 : 0;
-        const expMs = (decoded?.exp ? decoded.exp * 1000 : Date.now() + result.expiresIn * 1000) - buffer;
+        const expMs =
+          (decoded?.exp
+            ? decoded.exp * 1000
+            : Date.now() + result.expiresIn * 1000) - buffer;
 
         get().setAuthFromTokens({
           accessToken,

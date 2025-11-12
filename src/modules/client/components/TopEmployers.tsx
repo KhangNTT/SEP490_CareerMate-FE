@@ -1,128 +1,83 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowRight, MapPin } from "lucide-react";
+import Image from "next/image";
 
-interface Employer {
-    id: string;
-    name: string;
-    logo: string;
-    skills: string[];
-    location: string;
-    jobCount?: number;
-    isViewCompany?: boolean;
+interface Company {
+  id: string;
+  name: string;
+  logo: string;
+  isTop?: boolean;
 }
 
-const employers: Employer[] = [
-    {
-        id: "1",
-        name: "NEXON DEV VINA",
-        logo: "NEXON",
-        skills: ["Games", "Unity", "Unreal Engine", "C#", "C++", "HTML5"],
-        location: "Ho Chi Minh",
-        jobCount: 4
-    },
-    {
-        id: "2",
-        name: "MB Bank",
-        logo: "MB",
-        skills: ["Python", "Java", "JavaScript", "Oracle", "AngularJS", "ReactJS"],
-        location: "Ha Noi - Ho Chi Minh",
-        jobCount: 27
-    },
-    {
-        id: "3",
-        name: "LG Electronics Development Vietnam (LGEDV)",
-        logo: "LG",
-        skills: ["C++", "Tester", "OOP", "Embedded", "Android", "C++"],
-        location: "Da Nang - Others - Ha Noi",
-        isViewCompany: true
-    },
-    {
-        id: "4",
-        name: "NAB Innovation Centre Vietnam",
-        logo: "NAB",
-        skills: ["NodeJS", "ReactJS", "Java", "Cloud", "Agile"],
-        location: "Ho Chi Minh",
-        jobCount: 12
-    }
+const companies: Company[] = [
+  { id: "1", name: "FPT", logo: "/images/companies/image.png", isTop: true },
+  { id: "2", name: "Apple", logo: "/images/companies/image1.png", isTop: true },
+  { id: "3", name: "Samsung", logo: "/images/companies/image2.png", isTop: true },
+  { id: "4", name: "Nvidia", logo: "/images/companies/image3.png", isTop: true },
+  { id: "5", name: "Viettel", logo: "/images/companies/image4.png", isTop: true },
+  { id: "6", name: "", logo: "/images/companies/image5.png" },
+  { id: "7", name: "", logo: "/images/companies/image6.png" },
+  { id: "8", name: "", logo: "/images/companies/image7.png" },
+  { id: "9", name: "", logo: "/images/companies/image8.png" },
+  { id: "10", name: "", logo: "/images/companies/image9.png" },
+  { id: "11", name: "", logo: "/images/companies/image10.png" },
+  { id: "12", name: "", logo: "/images/companies/image11.png" },
 ];
 
 export function TopEmployers() {
-    return (
-        <section className="py-12 bg-white">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <h2 className="text-3xl font-bold text-gray-900 mb-8">Top Employers</h2>
+  return (
+    <section className="py-12 bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Tiêu đề */}
+        <h2 className="text-6xl font-bold text-[#6a6a6a] mb-12 text-center">
+            Top Employers
+        </h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {employers.map((employer) => (
-                        <div key={employer.id} className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow">
-                            {/* Company Logo */}
-                            <div className="flex items-center mb-4">
-                                <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
-                                    <span className="text-sm font-bold text-gray-600">{employer.logo}</span>
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold text-gray-900 text-sm">{employer.name}</h3>
-                                </div>
-                            </div>
+        {/* Hàng Top */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6 justify-items-center mb-10">
+          {companies
+            .filter((c) => c.isTop)
+            .map((company) => (
+              <div
+                key={company.id}
+                className="relative bg-white border rounded-xl shadow-sm hover:shadow-md p-6 flex items-center justify-center transition"
+              >
+                <span className="absolute top-2 left-2 bg-green-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                  TOP
+                </span>
+                <Image
+                  src={company.logo}
+                  alt={company.name}
+                  width={100}
+                  height={100}
+                  className="object-contain mx-auto"
+                />
+              </div>
+            ))}
+        </div>
 
-                            {/* Skills */}
-                            <div className="mb-4">
-                                <div className="flex flex-wrap gap-2">
-                                    {employer.skills.map((skill, index) => (
-                                        <span
-                                            key={index}
-                                            className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded"
-                                        >
-                                            {skill}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Location */}
-                            <div className="flex items-center text-gray-600 text-sm mb-4">
-                                <MapPin className="w-4 h-4 mr-1" />
-                                <span>{employer.location}</span>
-                            </div>
-
-                            {/* Action */}
-                            <div className="flex items-center justify-between">
-                                {employer.jobCount ? (
-                                    <div className="flex items-center">
-                                        <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                                        <span className="text-sm text-gray-600">{employer.jobCount} Jobs</span>
-                                    </div>
-                                ) : (
-                                    <div></div>
-                                )}
-
-                                <Link
-                                    href={`/client/companies/${employer.id}`}
-                                    className="flex items-center text-blue-600 hover:text-blue-800 text-sm font-medium"
-                                >
-                                    {employer.isViewCompany ? "View company" : "View jobs"}
-                                    <ArrowRight className="w-4 h-4 ml-1" />
-                                </Link>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                {/* View All Companies Button */}
-                <div className="text-center mt-8">
-                    <Link
-                        href="/client/companies"
-                        className="inline-flex items-center px-6 py-3  bg-gradient-to-r from-[#3a4660] to-gray-400 text-white rounded-lg hover:bg-gradient-to-r hover:from-[#3a4660] hover:to-[#3a4660] transition-colors"
-                    >
-                        View All Companies
-                        <ArrowRight className="w-5 h-5 ml-2" />
-                    </Link>
-                </div>
-            </div>
-        </section>
-    );
+        {/* Hàng công ty khác */}
+        <div className="flex flex-wrap justify-center gap-10">
+          {companies
+            .filter((c) => !c.isTop)
+            .map((company) => (
+              <div
+                key={company.id}
+                className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white border flex items-center justify-center shadow-sm hover:shadow-md transition"
+              >
+                <Image
+                  src={company.logo}
+                  alt={company.name}
+                  width={80}
+                  height={80}
+                  className="rounded-full object-contain"
+                />
+              </div>
+            ))}
+        </div>
+      </div>
+    </section>
+  );
 }
 
 export default TopEmployers;

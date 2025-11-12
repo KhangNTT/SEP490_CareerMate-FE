@@ -51,9 +51,8 @@ const JobCard: React.FC<JobCardProps> = ({
   const { Icon, className, label } = getWorkModeUI(workMode);
 
   return (
-    <div className={`bg-white rounded-lg border p-4 mb-4 transition-all ${
-      isSelected ? 'border-[#3a4660] border-l-4 shadow-md bg-[#f0f2f5]' : 'border-gray-200 hover:shadow-md'
-    }`}>
+    <div className={`bg-white rounded-lg border p-4 mb-4 transition-all ${isSelected ? 'border-[#3a4660] border-l-4 shadow-md bg-[#f0f2f5]' : 'border-gray-200 hover:shadow-md'
+      }`}>
       <div className="flex justify-between items-start mb-3">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
@@ -72,11 +71,11 @@ const JobCard: React.FC<JobCardProps> = ({
             <span className="w-4 h-4 bg-[#3a4660] rounded-sm flex-shrink-0"></span>
             <span className="text-sm font-medium text-gray-700">{company}</span>
           </div>
-          
+
           {salaryRange && (
             <div className="mb-2">
-              <span className="px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                {salaryRange}
+              <span className="salary-badge inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-bold text-xs shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200">
+                💰 {salaryRange}
               </span>
             </div>
           )}

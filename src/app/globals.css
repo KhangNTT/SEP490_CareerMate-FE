@@ -28,6 +28,26 @@
   display: flex !important;
 }
 
+/* Salary Badge - Highlighted salary display */
+.salary-badge {
+  @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg;
+  @apply bg-gradient-to-r from-emerald-500 to-emerald-600;
+  @apply text-white font-bold shadow-md;
+  @apply transition-all duration-200;
+}
+
+.salary-badge:hover {
+  @apply shadow-lg transform scale-105;
+}
+
+.text-destructive {
+  color: #dc2626 !important;
+}
+
+.border-destructive {
+  border-color: #dc2626 !important;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme {

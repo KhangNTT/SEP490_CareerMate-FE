@@ -22,15 +22,29 @@ export function useAuthHydration(): boolean {
     const expiresAt = storedExpiry ? parseInt(storedExpiry, 10) : 0;
     const isValid = !!storedToken && expiresAt > Date.now();
 
+    console.debug("🔍 useAuthHydration: Checking localStorage...", {
+      hasToken: !!storedToken,
+      expiresAt,
+      isValid,
+      timeRemaining: expiresAt - Date.now()
+    });
+
     if (isValid) {
       // Cập nhật store ngay lập tức (đồng bộ UI)
+      console.debug("✅ useAuthHydration: Token valid, restoring to store");
       setAuthFromTokens({
         accessToken: storedToken!,
         tokenExpiresAt: expiresAt,
         isAuthenticated: true,
         // role sẽ được cập nhật chuẩn ở bước async dưới
       });
+    } else if (storedToken && !isValid) {
+      // Token expired - will try to refresh in async effect
+      console.debug("⚠️ useAuthHydration: Token expired, will attempt refresh in async effect");
+      // Don't clear yet - let async effect try to refresh first
     } else {
+      // No token at all
+      console.debug("❌ useAuthHydration: No token found, clearing auth");
       // Xóa token hỏng/hết hạn
       localStorage.removeItem("access_token");
       localStorage.removeItem("token_expires_at");

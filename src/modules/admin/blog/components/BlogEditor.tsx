@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import TipTapEditor from './tiptap-editor';
+import dynamic from 'next/dynamic';
 import ThumbnailUpload from './thumbnail-upload';
 import { ArrowLeft, Save, Eye, Send } from 'lucide-react';
 import Link from 'next/link';
@@ -17,6 +17,19 @@ import { blogApi } from '@/lib/blog-api';
 import { Blog, BlogCreateRequest, BlogUpdateRequest, BlogStatus } from '@/types/blog';
 import { useAdminCheck } from '@/lib/auth-admin';
 import toast from 'react-hot-toast';
+
+// Lazy load TipTap editor to reduce initial bundle size
+const TipTapEditor = dynamic(() => import('./tiptap-editor'), {
+    ssr: false,
+    loading: () => (
+        <div className="flex items-center justify-center h-64 border border-gray-200 rounded-lg bg-gray-50">
+            <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-2"></div>
+                <p className="text-sm text-gray-600">Loading editor...</p>
+            </div>
+        </div>
+    ),
+});
 
 interface BlogEditorProps {
     blogId?: number; // Optional for create, required for edit

@@ -2,12 +2,11 @@ import axios from "axios";
 import { useAuthStore } from "@/store/use-auth-store";
 
 // Debug the API URL being used
-const baseURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-console.log('🌐 API Base URL:', baseURL);
+const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 const api = axios.create({
   baseURL,
-  timeout: 10000,
+  timeout: 30000, // ✅ Increased from 10000 to 30000ms (30 seconds)
   headers: { "Content-Type": "application/json" },
   withCredentials: true, // Important: enables cookies for token rotation
 });
@@ -22,7 +21,7 @@ export const initializeAuth = async () => {
   
   // Prevent multiple concurrent initializations
   if (isInitializing) {
-    console.debug("Auth initialization already in progress, skipping");
+    console.debug("🔄 Auth initialization already in progress, skipping");
     return lastInitResult || false;
   }
   
@@ -35,63 +34,101 @@ export const initializeAuth = async () => {
   const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
   const expiresAtStr = localStorage.getItem(TOKEN_EXPIRES_AT_KEY);
   
-  console.debug("Initializing auth from localStorage");
+  console.debug("🔍 Initializing auth from localStorage...");
   
-  if (accessToken && expiresAtStr) {
-    const expiresAt = parseInt(expiresAtStr, 10);
-    const timeRemaining = expiresAt - Date.now();
-    
-    console.debug(`Token time remaining at initialization: ${timeRemaining}ms`);
-    
-    // Check if token is still valid before setting authenticated state
-    const isTokenValid = expiresAt > Date.now();
-    
-    // Always restore the token from localStorage first, but only set authenticated if valid
-    const { getState, setState } = useAuthStore;
-    setState({
-      ...getState(),
-      accessToken: isTokenValid ? accessToken : null,
-      tokenExpiresAt: isTokenValid ? expiresAt : null,
-      isAuthenticated: isTokenValid
-    });
-    
-    // If token is not expired or close to expiry
-    if (isTokenValid && expiresAt > Date.now()) {
-      // For very short-lived tokens, only refresh if less than 2 seconds remaining
-      // Reduce aggressive refreshing to avoid unnecessary calls
-      if (timeRemaining < 2000) {
-        console.debug("Token very close to expiry during initialization, refreshing immediately");
-        try {
-          const { refresh } = useAuthStore.getState();
-          await refresh();
-          return true;
-        } catch (err: any) {
-          // Don't immediately invalidate on network errors
-          const isNetworkError = !err.response;
-          if (isNetworkError) {
-            console.debug("Network error during token refresh - using existing token");
-            return true; // Still return true to indicate we have a token
-          }
-          
-          console.debug("Failed to refresh token during initialization:", err?.message || "Unknown error");
-          lastInitResult = false;
-          isInitializing = false;
-          return false;
-        }
+  // ✅ CASE 1: No access token in localStorage - try to get one from refresh token cookie
+  if (!accessToken || !expiresAtStr) {
+    console.debug("📭 No access token in localStorage, attempting to refresh from cookie");
+    try {
+      const newToken = await safeRefreshToken();
+      if (newToken) {
+        console.debug("✅ Successfully refreshed token from cookie during initialization");
+        lastInitResult = true;
+        isInitializing = false;
+        return true;
+      } else {
+        console.debug("❌ No refresh token cookie available or refresh failed");
+        lastInitResult = false;
+        isInitializing = false;
+        return false;
       }
-      
-      console.debug("Token is still valid, no refresh needed");
-      lastInitResult = true;
-      isInitializing = false;
-      return true;
-    } else if (!isTokenValid) {
-      console.debug("Token expired, but not attempting refresh during initialization to avoid conflicts");
-      // Don't attempt refresh during initialization to avoid multiple refresh calls
-      // Let the AuthProvider handle this instead
+    } catch (error: any) {
+      console.debug("❌ Failed to refresh from cookie during initialization:", error?.message || "Unknown error");
       lastInitResult = false;
       isInitializing = false;
       return false;
     }
+  }
+  
+  // ✅ CASE 2: Have access token - check if it's still valid
+  if (accessToken && expiresAtStr) {
+    const expiresAt = parseInt(expiresAtStr, 10);
+    const timeRemaining = expiresAt - Date.now();
+    const isTokenValid = expiresAt > Date.now();
+    
+    console.debug(`⏱️ Token time remaining: ${timeRemaining}ms (${isTokenValid ? 'VALID' : 'EXPIRED'})`);
+    
+    // If token is expired, try to refresh it
+    if (!isTokenValid) {
+      console.debug("🔄 Token expired, attempting to refresh from cookie");
+      try {
+        const newToken = await safeRefreshToken();
+        if (newToken) {
+          console.debug("✅ Successfully refreshed expired token from cookie");
+          lastInitResult = true;
+          isInitializing = false;
+          return true;
+        } else {
+          console.debug("❌ Failed to refresh expired token - no valid refresh token");
+          // Clear expired token from localStorage
+          localStorage.removeItem(ACCESS_TOKEN_KEY);
+          localStorage.removeItem(TOKEN_EXPIRES_AT_KEY);
+          lastInitResult = false;
+          isInitializing = false;
+          return false;
+        }
+      } catch (error: any) {
+        console.debug("❌ Error refreshing expired token:", error?.message || "Unknown error");
+        // Clear expired token from localStorage
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
+        localStorage.removeItem(TOKEN_EXPIRES_AT_KEY);
+        lastInitResult = false;
+        isInitializing = false;
+        return false;
+      }
+    }
+    
+    // Token is still valid - restore it to store
+    const { getState, setState } = useAuthStore;
+    setState({
+      ...getState(),
+      accessToken,
+      tokenExpiresAt: expiresAt,
+      isAuthenticated: true
+    });
+    
+    // ✅ Fetch user profile to get candidateId (non-blocking)
+    console.debug("📝 Scheduling user profile fetch after token validation...");
+    const { fetchCandidateProfile } = useAuthStore.getState();
+    fetchCandidateProfile().catch((profileError: any) => {
+      console.debug("⚠️ Failed to fetch user profile:", profileError?.message || "Unknown error");
+    });
+    
+    // If token is very close to expiry (< 2 seconds), refresh it proactively
+    if (timeRemaining < 2000) {
+      console.debug("⚠️ Token very close to expiry, refreshing proactively");
+      try {
+        await safeRefreshToken();
+      } catch (err: any) {
+        // Don't fail initialization if refresh fails - token is still valid for now
+        console.debug("⚠️ Proactive refresh failed but token still valid:", err?.message || "Unknown error");
+      }
+    }
+    
+    console.debug("✅ Token is valid, authentication restored");
+    lastInitResult = true;
+    isInitializing = false;
+    return true;
   }
   
   lastInitResult = false;
@@ -131,7 +168,7 @@ const shouldRefreshToken = () => {
 };
 
 // Safely handle token refresh with fallback
-const safeRefreshToken = async () => {
+const safeRefreshToken = async (): Promise<string | null> => {
   try {
     // Use our specialized Next.js API route for token refresh
     const refreshAxios = axios.create({
@@ -140,7 +177,8 @@ const safeRefreshToken = async () => {
       withCredentials: true,
     });
     
-    console.debug("Attempting token refresh through specialized Next.js API endpoint");
+    console.debug("🔄 Attempting token refresh through Next.js API endpoint");
+    
     // Use our dedicated token refresh endpoint that handles redirects properly
     const response = await refreshAxios.post('/api/auth/token-refresh');
     
@@ -150,38 +188,57 @@ const safeRefreshToken = async () => {
       const bufferTime = expiresIn <= 10 ? 500 : 0;
       const expiresAt = Date.now() + (expiresIn * 1000) - bufferTime;
       
-      console.debug(`Token refresh successful via proxy. Expires in ${expiresIn}s`);
+      console.debug(`✅ Token refresh successful. Expires in ${expiresIn}s`);
       
       // Update auth store manually
-      localStorage.setItem("access_token", accessToken);
-      localStorage.setItem("token_expires_at", expiresAt.toString());
+      if (typeof window !== 'undefined') {
+        localStorage.setItem("access_token", accessToken);
+        localStorage.setItem("token_expires_at", expiresAt.toString());
+      }
       
       useAuthStore.setState({
         accessToken,
-        refreshToken: null, // Not storing refresh token in state
+        refreshToken: null, // Not storing refresh token in state (it's in httpOnly cookie)
         tokenExpiresAt: expiresAt,
         isAuthenticated: true
       });
       
+      // ✅ Fetch user profile to get candidateId after successful refresh (non-blocking)
+      console.debug("📝 Scheduling user profile fetch after token refresh...");
+      const { fetchCandidateProfile } = useAuthStore.getState();
+      fetchCandidateProfile().catch((profileError: any) => {
+        console.debug("⚠️ Failed to fetch user profile:", profileError?.message || "Unknown error");
+      });
+      
       return accessToken;
     } else {
-      console.debug("Invalid response format from refresh endpoint");
+      console.debug("⚠️ Invalid response format from refresh endpoint");
       return null;
     }
   } catch (error: any) {
-    console.debug("Token refresh failed:", 
-      error.response ? `Status ${error.response.status}` : error.message || "Unknown error");
-    return null;
+    // Better error handling - distinguish between different error types
+    if (!error.response) {
+      // Network error - might be offline or CORS issue
+      console.debug("⚠️ Network error during token refresh:", error.message || "Unknown error");
+      return null;
+    } else if (error.response.status === 401 || error.response.status === 403) {
+      // Refresh token is invalid/expired
+      console.debug(`⚠️ Refresh token invalid (${error.response.status}): ${error.response.data?.message || 'Unauthorized'}`);
+      return null;
+    } else {
+      // Other server error
+      console.debug(`⚠️ Token refresh failed with status ${error.response.status}:`, error.response.data?.message || error.message);
+      return null;
+    }
   }
 };
 
 // Add request interceptor
 api.interceptors.request.use(async (config) => {
   // Block any requests to Google OAuth that might happen due to redirects
-  if (config.url?.includes('accounts.google.com') || 
+  if (config.url?.includes('/oauth') || 
       config.url?.includes('oauth2') || 
       config.url?.includes('google.com')) {
-    console.error("Blocking request to OAuth URL:", config.url);
     // Cancel the request
     return Promise.reject(new Error("OAuth requests are not allowed in this context"));
   }
@@ -192,6 +249,30 @@ api.interceptors.request.use(async (config) => {
   }
 
   const { accessToken, refresh, tokenExpiresAt } = useAuthStore.getState();
+
+  // ✅ FIX: If no access token but we're authenticated (refresh token cookie exists)
+  // Try to refresh the token before making the request
+  if (!accessToken && typeof window !== 'undefined') {
+    console.debug("No access token found, attempting to refresh from cookie");
+    if (!isRefreshing) {
+      isRefreshing = true;
+      try {
+        const newToken = await safeRefreshToken();
+        if (newToken) {
+          console.debug("Successfully refreshed token from cookie");
+          config.headers.Authorization = `Bearer ${newToken}`;
+          isRefreshing = false;
+          return config;
+        } else {
+          console.debug("Failed to refresh token from cookie, request will proceed without token");
+        }
+      } catch (error: any) {
+        console.debug("Error refreshing token from cookie:", error?.message || "Unknown error");
+      } finally {
+        isRefreshing = false;
+      }
+    }
+  }
 
   // Debug token expiration
   if (tokenExpiresAt) {
@@ -244,7 +325,7 @@ api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const originalRequest = error.config;
-    const { refresh, logout } = useAuthStore.getState();
+    const { refresh, logout, clearAuth } = useAuthStore.getState();
     
     // Log all API errors with more detail
     if (error.response) {
@@ -256,7 +337,7 @@ api.interceptors.response.use(
       }
     }
 
-    // Handle token expiration
+    // Handle token expiration (401 Unauthorized)
     if (error.response?.status === 401 && !originalRequest._retry) {
       console.debug("401 error detected, attempting token refresh");
       originalRequest._retry = true;
@@ -265,13 +346,17 @@ api.interceptors.response.use(
       const skipRefreshPaths = [
         '/api/auth/token', 
         '/api/auth/refresh', 
-        '/api/auth/logout'
+        '/api/auth/logout',
+        '/api/auth/login',
+        '/api/auth/register'
       ];
       
       // If this is an auth endpoint that returned 401, don't attempt refresh
       const isAuthEndpoint = skipRefreshPaths.some(path => originalRequest.url?.includes(path));
       if (isAuthEndpoint) {
-        console.debug("Auth endpoint returned 401, skipping refresh");
+        console.debug("Auth endpoint returned 401, clearing auth state without logout");
+        // Just clear the auth state, don't call logout API
+        clearAuth();
         return Promise.reject(error);
       }
 
@@ -279,11 +364,16 @@ api.interceptors.response.use(
         // If we're already refreshing, wait for the new token
         if (isRefreshing) {
           console.debug("Token refresh already in progress, waiting...");
-          return new Promise(resolve => {
+          return new Promise((resolve, reject) => {
             subscribeTokenRefresh(token => {
-              console.debug("Received refreshed token, retrying request");
-              originalRequest.headers.Authorization = `Bearer ${token}`;
-              resolve(api(originalRequest));
+              if (token) {
+                console.debug("Received refreshed token, retrying request");
+                originalRequest.headers.Authorization = `Bearer ${token}`;
+                resolve(api(originalRequest));
+              } else {
+                console.debug("Token refresh failed, rejecting request");
+                reject(error);
+              }
             });
           });
         }
@@ -295,23 +385,52 @@ api.interceptors.response.use(
         const newToken = await safeRefreshToken();
 
         if (newToken) {
-          console.debug("Token refresh successful, retrying request");
+          console.debug("✅ Token refresh successful, retrying original request");
           onTokenRefreshed(newToken);
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
           isRefreshing = false;
           return api(originalRequest);
         } else {
-          // If refresh failed, logout
-          console.debug("Token refresh failed, logging out");
-          await logout();
+          // ⚠️ CRITICAL FIX: Only logout if refresh token is truly invalid
+          // Check if this is a refresh token failure (cookie missing/expired)
+          console.debug("⚠️ Token refresh returned null - refresh token may be invalid");
+          
+          // Notify waiting requests that refresh failed
+          onTokenRefreshed('');
+          
+          // Clear auth state but DON'T call logout API (refresh token already invalid)
+          console.debug("Clearing auth state due to refresh token failure");
+          clearAuth();
+          
           isRefreshing = false;
           return Promise.reject(error);
         }
-      } catch (refreshError) {
-        console.error("Error during token refresh:", refreshError);
+      } catch (refreshError: any) {
+        console.debug("❌ Error during token refresh:", refreshError?.message || "Unknown error");
+        
+        // Notify waiting requests that refresh failed
+        onTokenRefreshed('');
         isRefreshing = false;
-        await logout();
-        return Promise.reject(refreshError);
+        
+        // ⚠️ CRITICAL FIX: Check if this is a network error or refresh token error
+        const isNetworkError = !refreshError.response;
+        const isRefreshTokenError = refreshError.response?.status === 401 || refreshError.response?.status === 403;
+        
+        if (isNetworkError) {
+          // Network error - don't logout, just clear state temporarily
+          console.debug("Network error during refresh - NOT logging out (offline/CORS issue)");
+          // Don't clear auth - let user retry when network is back
+          return Promise.reject(refreshError);
+        } else if (isRefreshTokenError) {
+          // Refresh token is invalid - clear auth state
+          console.debug("Refresh token invalid (401/403) - clearing auth state");
+          clearAuth();
+          return Promise.reject(refreshError);
+        } else {
+          // Other error - don't logout, just fail the request
+          console.debug("Unexpected error during refresh - NOT logging out");
+          return Promise.reject(refreshError);
+        }
       }
     }
 
