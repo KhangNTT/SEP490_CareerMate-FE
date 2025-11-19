@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
@@ -35,7 +35,11 @@ export default function BlogManagement() {
     const { isAdmin } = useAdminCheck();
     const [blogs, setBlogs] = useState<Blog[]>([]);
     const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
+    const [searchInput, setSearchInput] = useState('');
+    const [activeSearch, setActiveSearch] = useState('');
+    const [statusFilter, setStatusFilter] = useState<string>('');
+    const [categoryFilter, setCategoryFilter] = useState<string>('');
+    const [sortBy, setSortBy] = useState<string>('createdAt,desc');
     const [currentPage, setCurrentPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
     const [totalElements, setTotalElements] = useState(0);
@@ -43,33 +47,84 @@ export default function BlogManagement() {
     const [blogToDelete, setBlogToDelete] = useState<Blog | null>(null);
     const [previewBlog, setPreviewBlog] = useState<Blog | null>(null);
     const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+    const [categories, setCategories] = useState<string[]>([]);
 
     const pageSize = 10;
 
-    useEffect(() => {
-        fetchBlogs();
-    }, [currentPage]);
-
-    const fetchBlogs = async () => {
+    const fetchBlogs = useCallback(async () => {
         try {
             setLoading(true);
 
-            // Use real API only - authentication is now working
-            const response = await blogApi.getBlogs({
+            let response;
+            const commonParams = {
                 page: currentPage,
                 size: pageSize,
-                sort: 'createdAt,desc'
-            });
+                sortBy: sortBy.split(',')[0],
+                sortDir: sortBy.split(',')[1]?.toUpperCase() || 'DESC'
+            };
+
+            // Determine which API method to use based on active filters
+            if (activeSearch) {
+                // Use search endpoint when there's a keyword
+                response = await blogApi.searchBlogs({
+                    keyword: activeSearch,
+                    status: statusFilter || undefined,
+                    ...commonParams
+                });
+            } else if (statusFilter) {
+                // Use status filter endpoint
+                response = await blogApi.getBlogsByStatus(statusFilter, commonParams);
+            } else if (categoryFilter) {
+                // Use category filter endpoint
+                response = await blogApi.getBlogsByCategory(categoryFilter, commonParams);
+            } else {
+                // Use default getAll endpoint
+                response = await blogApi.getBlogs(commonParams);
+            }
+
+            console.log('📦 Response:', response);
 
             setBlogs(response.content);
             setTotalPages(response.totalPages);
             setTotalElements(response.totalElements);
         } catch (error: any) {
-            console.error('Error fetching blogs:', error);
+            console.error('❌ Error fetching blogs:', error);
             toast.error('Failed to fetch blogs');
+            setBlogs([]);
         } finally {
             setLoading(false);
         }
+    }, [currentPage, activeSearch, statusFilter, categoryFilter, sortBy]);
+
+    // Fetch available categories on mount
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const cats = await blogApi.getCategories();
+                setCategories(cats);
+            } catch (error) {
+                console.error('Failed to fetch categories:', error);
+            }
+        };
+        fetchCategories();
+    }, []);
+
+    // Fetch blogs when filters change
+    useEffect(() => {
+        fetchBlogs();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentPage, activeSearch, statusFilter, categoryFilter, sortBy]);
+
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        setActiveSearch(searchInput);
+        setCurrentPage(0);
+    };
+
+    const handleClearSearch = () => {
+        setSearchInput('');
+        setActiveSearch('');
+        setCurrentPage(0);
     };
 
     const handleDeleteBlog = async (blog: Blog) => {
@@ -118,11 +173,6 @@ export default function BlogManagement() {
         setPreviewDialogOpen(true);
     };
 
-    const filteredBlogs = blogs.filter(blog =>
-        blog.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        blog.author.username.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('en-US', {
             year: 'numeric',
@@ -164,15 +214,84 @@ export default function BlogManagement() {
                 {/* Search and Filters */}
                 <Card className="mb-8 shadow-sm">
                     <CardContent className="p-6">
-                        <div className="flex items-center gap-4">
-                            <div className="relative flex-1">
-                                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                                <Input
-                                    placeholder="Search blogs by title or author..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-12 h-12 text-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                                />
+                        <div className="space-y-4">
+                            {/* Search Form */}
+                            <form onSubmit={handleSearch} className="flex items-center gap-2">
+                                <div className="relative flex-1">
+                                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                                    <Input
+                                        placeholder="Search blogs (press Enter to search)..."
+                                        value={searchInput}
+                                        onChange={(e) => setSearchInput(e.target.value)}
+                                        className="pl-12 h-12 text-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                                    />
+                                </div>
+                                <Button type="submit" className="h-12 px-6">
+                                    Search
+                                </Button>
+                                {activeSearch && (
+                                    <Button 
+                                        type="button" 
+                                        variant="outline" 
+                                        onClick={handleClearSearch}
+                                        className="h-12 px-6"
+                                    >
+                                        Clear
+                                    </Button>
+                                )}
+                            </form>
+
+                            {/* Filters Row */}
+                            <div className="flex items-center gap-4">
+                                <div className="flex-1">
+                                    <label className="text-sm font-medium text-gray-700 mb-2 block">Status</label>
+                                    <select
+                                        value={statusFilter}
+                                        onChange={(e) => {
+                                            setStatusFilter(e.target.value);
+                                            setCurrentPage(0);
+                                        }}
+                                        className="w-full h-10 px-4 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-blue-500"
+                                    >
+                                        <option value="">All Status</option>
+                                        <option value="DRAFT">Draft</option>
+                                        <option value="PUBLISHED">Published</option>
+                                        <option value="ARCHIVED">Archived</option>
+                                    </select>
+                                </div>
+                                <div className="flex-1">
+                                    <label className="text-sm font-medium text-gray-700 mb-2 block">Category</label>
+                                    <select
+                                        value={categoryFilter}
+                                        onChange={(e) => {
+                                            setCategoryFilter(e.target.value);
+                                            setCurrentPage(0);
+                                        }}
+                                        className="w-full h-10 px-4 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-blue-500"
+                                    >
+                                        <option value="">All Categories</option>
+                                        {categories.map((cat) => (
+                                            <option key={cat} value={cat}>
+                                                {cat.charAt(0) + cat.slice(1).toLowerCase()}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="flex-1">
+                                    <label className="text-sm font-medium text-gray-700 mb-2 block">Sort By</label>
+                                    <select
+                                        value={sortBy}
+                                        onChange={(e) => setSortBy(e.target.value)}
+                                        className="w-full h-10 px-4 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-blue-500"
+                                    >
+                                        <option value="createdAt,desc">Newest First</option>
+                                        <option value="createdAt,asc">Oldest First</option>
+                                        <option value="title,asc">Title (A-Z)</option>
+                                        <option value="title,desc">Title (Z-A)</option>
+                                        <option value="viewCount,desc">Most Viewed</option>
+                                        <option value="averageRating,desc">Highest Rated</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     </CardContent>
@@ -180,13 +299,15 @@ export default function BlogManagement() {
 
                 {/* Blog List */}
                 <div className="space-y-6">
-                    {filteredBlogs.length === 0 ? (
+                    {blogs.length === 0 ? (
                         <Card className="shadow-sm">
                             <CardContent className="p-12 text-center">
                                 <div className="text-xl text-gray-500 mb-4">
-                                    {searchTerm ? 'No blogs match your search criteria' : 'No blogs found'}
+                                    {activeSearch || statusFilter || categoryFilter
+                                        ? 'No blogs match your search criteria' 
+                                        : 'No blogs found'}
                                 </div>
-                                {!searchTerm && (
+                                {!activeSearch && !statusFilter && !categoryFilter && (
                                     <Link href="/admin/blog/create">
                                         <Button className="mt-4 px-6 py-3 text-lg">Create Your First Blog</Button>
                                     </Link>
@@ -194,7 +315,7 @@ export default function BlogManagement() {
                             </CardContent>
                         </Card>
                     ) : (
-                        filteredBlogs.map((blog) => (
+                        blogs.map((blog) => (
                             <Card key={blog.id} className="hover:shadow-lg transition-shadow duration-200 bg-white border border-gray-200">
                                 <CardContent className="p-8">
                                     <div className="flex justify-between items-start gap-6">
@@ -207,7 +328,7 @@ export default function BlogManagement() {
                                             <div className="flex items-center gap-6 text-base text-gray-600 mb-4">
                                                 <div className="flex items-center gap-2">
                                                     <User className="w-5 h-5" />
-                                                    <span className="font-medium">{blog.author.username}</span>
+                                                    <span className="font-medium">{blog.authorName || 'Unknown Author'}</span>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <Calendar className="w-5 h-5" />
@@ -217,21 +338,21 @@ export default function BlogManagement() {
 
                                             {/* Stats */}
                                             <div className="flex items-center gap-8 text-base text-gray-600 mb-5">
-                                                {blog.averageRating && (
+                                                {blog.averageRating !== undefined && blog.averageRating !== null && blog.averageRating > 0 && (
                                                     <div className="flex items-center gap-2 bg-yellow-50 px-3 py-1 rounded-full">
-                                                        <Star className="w-5 h-5 text-yellow-500" />
+                                                        <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
                                                         <span className="font-medium">
-                                                            {blog.averageRating.toFixed(1)} ({blog.ratingCount} ratings)
+                                                            {blog.averageRating.toFixed(1)} ({blog.ratingCount || 0} ratings)
                                                         </span>
                                                     </div>
                                                 )}
-                                                {blog.commentCount && (
+                                                {blog.commentCount !== undefined && blog.commentCount !== null && blog.commentCount >= 0 && (
                                                     <div className="flex items-center gap-2 bg-blue-50 px-3 py-1 rounded-full">
                                                         <MessageSquare className="w-5 h-5 text-blue-500" />
                                                         <span className="font-medium">{blog.commentCount} comments</span>
                                                     </div>
                                                 )}
-                                                {blog.viewCount && (
+                                                {blog.viewCount !== undefined && blog.viewCount !== null && blog.viewCount >= 0 && (
                                                     <div className="flex items-center gap-2 bg-green-50 px-3 py-1 rounded-full">
                                                         <Eye className="w-5 h-5 text-green-500" />
                                                         <span className="font-medium">{blog.viewCount} views</span>
@@ -391,7 +512,7 @@ export default function BlogManagement() {
                                         <div className="flex items-center gap-6 text-sm text-gray-600 mb-6">
                                             <div className="flex items-center gap-2">
                                                 <User className="w-4 h-4" />
-                                                <span>{previewBlog.author.username}</span>
+                                                <span>{previewBlog.authorName || 'Unknown Author'}</span>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <Calendar className="w-4 h-4" />

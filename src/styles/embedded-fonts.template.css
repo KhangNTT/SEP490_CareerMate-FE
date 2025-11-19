@@ -1,0 +1,247 @@
+/**
+ * Embedded Fonts Template for Puppeteer PDF Generation
+ * 
+ * This is a TEMPLATE file showing how to embed Base64 fonts.
+ * 
+ * To generate the actual embedded-fonts.css with real Base64 data:
+ * 1. Add font files to ./public/fonts/
+ * 2. Run: node tools/generate-embedded-fonts.cjs
+ * 
+ * IMPORTANT:
+ * - Replace REPLACE_WITH_BASE64_HERE with actual Base64 string
+ * - Use tools/convert-font-to-base64.cjs to convert individual fonts
+ * - Or use tools/generate-embedded-fonts.cjs to batch convert
+ */
+
+/* ============================================
+   INTER FONT FAMILY
+   ============================================ */
+
+/* Inter Light (300) */
+@font-face {
+  font-family: "Inter";
+  src: url("data:font/ttf;base64,REPLACE_WITH_BASE64_HERE") format("truetype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Inter Regular (400) */
+@font-face {
+  font-family: "Inter";
+  src: url("data:font/ttf;base64,REPLACE_WITH_BASE64_HERE") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Inter Medium (500) */
+@font-face {
+  font-family: "Inter";
+  src: url("data:font/ttf;base64,REPLACE_WITH_BASE64_HERE") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Inter SemiBold (600) */
+@font-face {
+  font-family: "Inter";
+  src: url("data:font/ttf;base64,REPLACE_WITH_BASE64_HERE") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Inter Bold (700) */
+@font-face {
+  font-family: "Inter";
+  src: url("data:font/ttf;base64,REPLACE_WITH_BASE64_HERE") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ============================================
+   ROBOTO FONT FAMILY
+   ============================================ */
+
+/* Roboto Light (300) */
+@font-face {
+  font-family: "Roboto";
+  src: url("data:font/ttf;base64,REPLACE_WITH_BASE64_HERE") format("truetype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Roboto Regular (400) */
+@font-face {
+  font-family: "Roboto";
+  src: url("data:font/ttf;base64,REPLACE_WITH_BASE64_HERE") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Roboto Medium (500) */
+@font-face {
+  font-family: "Roboto";
+  src: url("data:font/ttf;base64,REPLACE_WITH_BASE64_HERE") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Roboto Bold (700) */
+@font-face {
+  font-family: "Roboto";
+  src: url("data:font/ttf;base64,REPLACE_WITH_BASE64_HERE") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ============================================
+   USAGE EXAMPLE IN HTML
+   ============================================ */
+
+/*
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    /* Import embedded fonts */
+    @import url('embedded-fonts.css');
+    
+    /* Apply to body */
+    body {
+      font-family: 'Inter', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    
+    /* Headings */
+    h1, h2, h3 {
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+    }
+    
+    /* Body text */
+    p, span, div {
+      font-family: 'Roboto', sans-serif;
+      font-weight: 400;
+    }
+    
+    /* Bold text */
+    .font-bold {
+      font-weight: 700;
+    }
+    
+    /* Medium text */
+    .font-medium {
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <h1>This uses Inter Bold (700)</h1>
+  <p>This uses Roboto Regular (400)</p>
+  <p class="font-bold">This uses Roboto Bold (700)</p>
+</body>
+</html>
+*/
+
+/* ============================================
+   USAGE IN PUPPETEER
+   ============================================ */
+
+/*
+// Option 1: Read CSS file and inject inline
+const fs = require('fs');
+const embeddedFontsCSS = fs.readFileSync('./src/styles/embedded-fonts.css', 'utf8');
+
+const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    ${embeddedFontsCSS}
+    
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+  </style>
+</head>
+<body>
+  ${yourContentHtml}
+</body>
+</html>
+`;
+
+await page.setContent(html, { waitUntil: 'networkidle0' });
+
+// Option 2: Use page.addStyleTag()
+await page.setContent(yourHtml);
+await page.addStyleTag({ content: embeddedFontsCSS });
+
+// Generate PDF
+await page.pdf({
+  format: 'A4',
+  printBackground: true,
+  preferCSSPageSize: true,
+});
+*/
+
+/* ============================================
+   FONT FILE SOURCES
+   ============================================ */
+
+/*
+Download fonts:
+- Inter: https://rsms.me/inter/
+- Roboto: https://fonts.google.com/specimen/Roboto
+
+Recommended formats:
+1. WOFF2 (best compression, modern browsers only)
+2. TTF (universal support, larger file size)
+
+File structure:
+./public/fonts/
+  ├── Inter-Light.ttf
+  ├── Inter-Regular.ttf
+  ├── Inter-Medium.ttf
+  ├── Inter-SemiBold.ttf
+  ├── Inter-Bold.ttf
+  ├── Roboto-Light.ttf
+  ├── Roboto-Regular.ttf
+  ├── Roboto-Medium.ttf
+  └── Roboto-Bold.ttf
+*/
+
+/* ============================================
+   PERFORMANCE NOTES
+   ============================================ */
+
+/*
+⚠️  Base64 encoding increases file size by ~33%
+⚠️  Each font weight = ~50-200 KB Base64
+⚠️  Total CSS file can be 500KB - 2MB
+
+✅ Benefits:
+  - 100% reliable in Docker/CI
+  - No external dependencies
+  - Works offline
+  - No CORS issues
+
+❌ Drawbacks:
+  - Large CSS file size
+  - Not cached separately
+  - Slower initial load
+
+💡 Recommendation:
+  - Use only essential weights (400, 600, 700)
+  - Consider WOFF2 format for better compression
+  - Use this approach ONLY for PDF generation
+  - Keep using Google Fonts for web pages
+*/

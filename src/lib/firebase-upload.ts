@@ -40,6 +40,43 @@ export async function uploadCV(userId: string, file: File): Promise<string> {
 }
 
 /**
+ * Upload CV PDF from Blob to Firebase Storage (private)
+ * Used after generating PDF with Puppeteer
+ * Path: /careermate-files/candidates/{userId}/cv/{fileName}
+ */
+export async function uploadCVPDF(
+  userId: string, 
+  pdfBlob: Blob, 
+  customFileName?: string
+): Promise<string> {
+  try {
+    const timestamp = Date.now();
+    const fileName = customFileName 
+      ? `${timestamp}_${customFileName}.pdf`
+      : `cv_${timestamp}.pdf`;
+    
+    const fileRef = ref(storage, `careermate-files/candidates/${userId}/cv/${fileName}`);
+    
+    // Upload blob với metadata
+    await uploadBytes(fileRef, pdfBlob, {
+      contentType: "application/pdf",
+      customMetadata: {
+        uploadedAt: new Date().toISOString(),
+        type: "generated-cv",
+      },
+    });
+    
+    const downloadURL = await getDownloadURL(fileRef);
+    
+    console.log("✅ CV PDF uploaded successfully:", downloadURL);
+    return downloadURL;
+  } catch (error) {
+    console.error("❌ Error uploading CV PDF:", error);
+    throw new Error("Failed to upload CV PDF to Firebase");
+  }
+}
+
+/**
  * Delete file from Firebase Storage
  */
 export async function deleteFile(fileUrl: string): Promise<void> {

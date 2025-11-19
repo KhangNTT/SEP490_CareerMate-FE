@@ -161,7 +161,7 @@ export default function CandidateHeader() {
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center space-x-8">
             <Link
-              href="/candidate/jobs-detail"
+              href="/jobs-detail"
               className="text-[#ffffff] hover:text-[#c8c8c8]"
             >
               All Jobs
@@ -179,7 +179,7 @@ export default function CandidateHeader() {
               Blog
             </Link>
             <Link
-              href="/candidate/cv-templates-introduction"
+              href="/cv-templates-introduction"
               className="text-[#ffffff] hover:text-[#c8c8c8]"
             >
               CV Templates

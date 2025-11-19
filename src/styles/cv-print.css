@@ -1,0 +1,384 @@
+/**
+ * CV Template Print Styles for Puppeteer PDF Generation
+ * 
+ * This file fixes layout issues when generating PDFs:
+ * - Sidebar disappearing
+ * - Flex/Grid layouts collapsing
+ * - Inconsistent spacing
+ * - Two-column layout breaking
+ * 
+ * Usage: Import this CSS in your Puppeteer HTML template
+ * 
+ * @see EMBEDDED_FONTS_GUIDE.md for font embedding
+ * @see PDF_EXPORT_OPTIMIZATION.md for optimization tips
+ */
+
+/* ============================================
+   PRINT MODE - CRITICAL FIXES
+   ============================================ */
+
+@media print {
+  /* ===== FORCE COLORS ===== */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* ===== DISABLE PROBLEMATIC PROPERTIES ===== */
+  * {
+    overflow: visible !important;
+    /* Chrome PDF collapses elements with overflow: hidden */
+  }
+
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  /* Remove screen-only properties that break print */
+  [class*="h-screen"],
+  [class*="min-h-screen"],
+  [class*="max-h-screen"] {
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+  }
+
+  /* ===== CV CONTAINER - A4 SIZE ===== */
+  .cv-container {
+    width: 210mm !important;
+    max-width: 210mm !important;
+    min-height: 297mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    page-break-after: always !important;
+    background: white !important;
+    box-shadow: none !important;
+    transform: none !important; /* Remove zoom transforms */
+  }
+
+  /* ===== TWO-COLUMN LAYOUT (SIDEBAR + CONTENT) ===== */
+  /* Use GRID for print - more reliable than flex */
+  
+  .cv-layout-two-column {
+    display: grid !important;
+    grid-template-columns: 260px 1fr !important;
+    gap: 0 !important;
+    min-height: 297mm !important;
+  }
+
+  .cv-sidebar {
+    width: 260px !important;
+    max-width: 260px !important;
+    min-width: 260px !important;
+    display: block !important;
+    /* Prevent sidebar from disappearing */
+    position: static !important;
+    float: none !important;
+    flex: none !important;
+  }
+
+  .cv-content {
+    width: calc(210mm - 260px) !important;
+    display: block !important;
+    /* Ensure content fills remaining space */
+    position: static !important;
+    float: none !important;
+    flex: none !important;
+  }
+
+  /* ===== GRID LAYOUTS ===== */
+  /* Fix grid collapse in print mode */
+  
+  [class*="grid"] {
+    display: grid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)) !important; }
+  .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+  
+  /* Fixed width columns */
+  .grid-cols-\[260px_1fr\] { grid-template-columns: 260px 1fr !important; }
+  .grid-cols-\[1fr_260px\] { grid-template-columns: 1fr 260px !important; }
+
+  /* ===== FLEX LAYOUTS ===== */
+  /* Convert problematic flex to grid or block */
+  
+  .flex-1,
+  [class*="flex-grow"] {
+    flex: none !important;
+    width: 100% !important;
+  }
+
+  /* Keep flex for simple layouts (horizontal alignment) */
+  .flex {
+    display: flex !important;
+  }
+
+  .items-center { align-items: center !important; }
+  .items-start { align-items: flex-start !important; }
+  .justify-center { justify-content: center !important; }
+  .justify-between { justify-content: space-between !important; }
+  .justify-start { justify-content: flex-start !important; }
+
+  /* ===== SPACING ===== */
+  /* Ensure consistent spacing in print */
+  
+  .gap-0 { gap: 0 !important; }
+  .gap-1 { gap: 0.25rem !important; }
+  .gap-2 { gap: 0.5rem !important; }
+  .gap-3 { gap: 0.75rem !important; }
+  .gap-4 { gap: 1rem !important; }
+  .gap-6 { gap: 1.5rem !important; }
+  .gap-8 { gap: 2rem !important; }
+
+  /* Padding */
+  .p-0 { padding: 0 !important; }
+  .p-2 { padding: 0.5rem !important; }
+  .p-4 { padding: 1rem !important; }
+  .p-6 { padding: 1.5rem !important; }
+  .p-8 { padding: 2rem !important; }
+  .p-10 { padding: 2.5rem !important; }
+  .p-12 { padding: 3rem !important; }
+
+  /* Margin */
+  .m-0 { margin: 0 !important; }
+  .mb-1 { margin-bottom: 0.25rem !important; }
+  .mb-2 { margin-bottom: 0.5rem !important; }
+  .mb-3 { margin-bottom: 0.75rem !important; }
+  .mb-4 { margin-bottom: 1rem !important; }
+  .mb-6 { margin-bottom: 1.5rem !important; }
+  .mb-8 { margin-bottom: 2rem !important; }
+
+  /* ===== HIDE PRINT-IRRELEVANT ELEMENTS ===== */
+  
+  .no-print,
+  .zoom-controls,
+  .cv-controls,
+  button,
+  .sticky-top,
+  [class*="sticky"],
+  nav,
+  header,
+  footer {
+    display: none !important;
+  }
+
+  /* Show only CV content */
+  .cv-template {
+    display: block !important;
+  }
+
+  /* ===== PAGE BREAKS ===== */
+  
+  .page-break-before {
+    page-break-before: always !important;
+  }
+
+  .page-break-after {
+    page-break-after: always !important;
+  }
+
+  .page-break-inside-avoid {
+    page-break-inside: avoid !important;
+  }
+
+  /* Avoid breaking inside these elements */
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid !important;
+  }
+
+  ul, ol, dl {
+    page-break-inside: avoid !important;
+  }
+
+  /* ===== TEXT RENDERING ===== */
+  
+  .cv-text-content {
+    text-align: justify !important;
+    hyphens: auto !important;
+    -webkit-hyphens: auto !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+  }
+
+  .cv-url-text {
+    word-break: break-all !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  /* ===== IMAGES ===== */
+  
+  img {
+    max-width: 100% !important;
+    height: auto !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Avatar/Profile photo */
+  .cv-avatar,
+  [class*="profile-photo"] {
+    width: 120px !important;
+    height: 120px !important;
+    object-fit: cover !important;
+  }
+
+  /* ===== BORDERS & SHADOWS ===== */
+  
+  /* Keep borders, remove shadows (not print-friendly) */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  .border { border-width: 1px !important; }
+  .border-2 { border-width: 2px !important; }
+  .border-4 { border-width: 4px !important; }
+
+  /* ===== BACKGROUND COLORS ===== */
+  /* Ensure backgrounds print correctly */
+  
+  .bg-white { background-color: #ffffff !important; }
+  .bg-gray-50 { background-color: #f9fafb !important; }
+  .bg-gray-100 { background-color: #f3f4f6 !important; }
+  .bg-gray-800 { background-color: #1f2937 !important; }
+  .bg-blue-50 { background-color: #eff6ff !important; }
+  .bg-blue-500 { background-color: #3b82f6 !important; }
+  .bg-blue-600 { background-color: #2563eb !important; }
+
+  /* ===== TYPOGRAPHY ===== */
+  
+  .text-xs { font-size: 0.75rem !important; line-height: 1rem !important; }
+  .text-sm { font-size: 0.875rem !important; line-height: 1.25rem !important; }
+  .text-base { font-size: 1rem !important; line-height: 1.5rem !important; }
+  .text-lg { font-size: 1.125rem !important; line-height: 1.75rem !important; }
+  .text-xl { font-size: 1.25rem !important; line-height: 1.75rem !important; }
+  .text-2xl { font-size: 1.5rem !important; line-height: 2rem !important; }
+  .text-3xl { font-size: 1.875rem !important; line-height: 2.25rem !important; }
+  .text-4xl { font-size: 2.25rem !important; line-height: 2.5rem !important; }
+
+  .font-light { font-weight: 300 !important; }
+  .font-normal { font-weight: 400 !important; }
+  .font-medium { font-weight: 500 !important; }
+  .font-semibold { font-weight: 600 !important; }
+  .font-bold { font-weight: 700 !important; }
+
+  /* ===== TEXT COLORS ===== */
+  
+  .text-gray-600 { color: #4b5563 !important; }
+  .text-gray-700 { color: #374151 !important; }
+  .text-gray-800 { color: #1f2937 !important; }
+  .text-gray-900 { color: #111827 !important; }
+  .text-white { color: #ffffff !important; }
+  .text-blue-600 { color: #2563eb !important; }
+  .text-blue-700 { color: #1d4ed8 !important; }
+}
+
+/* ============================================
+   SPECIFIC TEMPLATE FIXES
+   ============================================ */
+
+@media print {
+  /* === MODERN TEMPLATE === */
+  [data-template="modern"] .cv-layout {
+    display: grid !important;
+    grid-template-columns: 260px 1fr !important;
+  }
+
+  /* === PROFESSIONAL TEMPLATE === */
+  [data-template="professional"] {
+    background-color: #f8f8f8 !important;
+  }
+
+  [data-template="professional"] .cv-header {
+    background-color: white !important;
+    border-left: 8px solid #8b1e3f !important;
+  }
+
+  /* === CREATIVE TEMPLATE === */
+  [data-template="creative"] {
+    background: linear-gradient(to bottom right, #faf5ff, #fce7f3, #fff7ed) !important;
+  }
+
+  [data-template="creative"] .grid-cols-12 {
+    grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  }
+
+  .col-span-8 { grid-column: span 8 / span 8 !important; }
+  .col-span-4 { grid-column: span 4 / span 4 !important; }
+  .col-span-2 { grid-column: span 2 / span 2 !important; }
+  .col-span-3 { grid-column: span 3 / span 3 !important; }
+
+  /* === MINIMALIST TEMPLATE === */
+  [data-template="minimalist"] {
+    padding: 3rem !important;
+  }
+
+  /* === CLASSIC TEMPLATE === */
+  [data-template="classic"] {
+    padding: 3rem !important;
+  }
+}
+
+/* ============================================
+   DEBUGGING (Remove in production)
+   ============================================ */
+
+@media print {
+  /* Uncomment to debug layout issues */
+  /*
+  .cv-container { border: 2px solid red !important; }
+  .cv-sidebar { border: 2px solid blue !important; }
+  .cv-content { border: 2px solid green !important; }
+  .grid { border: 1px dashed purple !important; }
+  .flex { border: 1px dashed orange !important; }
+  */
+}
+
+/* ============================================
+   USAGE NOTES
+   ============================================ */
+
+/*
+HTML Structure:
+
+<div class="cv-container" data-template="professional">
+  <div class="cv-layout-two-column">
+    <aside class="cv-sidebar">
+      <!-- Sidebar content -->
+    </aside>
+    <main class="cv-content">
+      <!-- Main content -->
+    </main>
+  </div>
+</div>
+
+Or for single-column templates:
+
+<div class="cv-container" data-template="classic">
+  <div class="cv-template">
+    <!-- CV content -->
+  </div>
+</div>
+
+Puppeteer Configuration:
+
+await page.pdf({
+  format: 'A4',
+  printBackground: true,
+  preferCSSPageSize: true,
+  displayHeaderFooter: false,
+  margin: { top: '0mm', bottom: '0mm', left: '0mm', right: '0mm' }
+});
+
+Important:
+- Use emulateMediaType('screen') before generating PDF
+- Set viewport to A4 dimensions: 794×1123px
+- Load this CSS before other styles
+- Test in Chrome DevTools > Print Preview
+*/

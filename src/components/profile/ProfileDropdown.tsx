@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
-
 import {
   User,
   Settings,
@@ -16,6 +14,10 @@ import {
   ChevronDown,
   CreditCard,
   HelpCircle,
+  FileUser,
+  BriefcaseBusiness,
+  LayoutDashboard,
+  FileText,
 } from "lucide-react";
 import { useAuthStore } from "@/store/use-auth-store";
 
@@ -36,8 +38,8 @@ export function ProfileDropdown({
   const [isDarkMode, setIsDarkMode] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const { isAuthenticated, accessToken, logout } = useAuthStore();
-   const router = useRouter();
+  const { isAuthenticated, accessToken, logout, isLoading } = useAuthStore();
+  const router = useRouter();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -70,14 +72,14 @@ export function ProfileDropdown({
   };
 
   // Normalize role - handle both "RECRUITER" and "ROLE_RECRUITER" formats
-  const normalizedRole = 
+  const normalizedRole =
     role?.toUpperCase().includes("CANDIDATE")
       ? "ROLE_CANDIDATE"
       : role?.toUpperCase().includes("RECRUITER")
-      ? "ROLE_RECRUITER"
-      : role?.toUpperCase().includes("ADMIN")
-      ? "ROLE_ADMIN"
-      : "ROLE_USER";
+        ? "ROLE_RECRUITER"
+        : role?.toUpperCase().includes("ADMIN")
+          ? "ROLE_ADMIN"
+          : "ROLE_USER";
 
   const isCandidate = normalizedRole === "ROLE_CANDIDATE";
   const isRecruiter = normalizedRole === "ROLE_RECRUITER";
@@ -125,35 +127,51 @@ export function ProfileDropdown({
         <button
           onClick={toggleDropdown}
           className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-white"
+          disabled={isLoading}
         >
-          {/* Avatar */}
-          <div className="relative">
-            {userAvatar ? (
-              <img
-                src="https://encrypted-tbn1.gstatic.com/licensed-image?q=tbn:ANd9GcTPMg7sLIhRN7k0UrPxSsHzujqgLqdTq67Pj4uVqKmr4sFR0eH4h4h-sWjxVvi3vKOl47pyShZMal8qcNuipNE4fbSfblUL99EfUtDrBto"
-                alt={userName}
-                className="w-8 h-8 rounded-full object-cover"
-              />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                <User className="w-4 h-4 text-white" />
+          {/* Show skeleton during loading/hydration */}
+          {isLoading ? (
+            <>
+              {/* Avatar Skeleton */}
+              <div className="w-8 h-8 rounded-full bg-white/20 animate-pulse" />
+              
+              {/* Username Skeleton */}
+              <div className="h-3 w-20 bg-white/20 rounded animate-pulse hidden sm:block" />
+              
+              {/* Dropdown Arrow - keep visible but subtle */}
+              <ChevronDown className="w-4 h-4 opacity-50" />
+            </>
+          ) : (
+            <>
+              {/* Avatar */}
+              <div className="relative">
+                {userAvatar ? (
+                  <img
+                    src="https://encrypted-tbn1.gstatic.com/licensed-image?q=tbn:ANd9GcTPMg7sLIhRN7k0UrPxSsHzujqgLqdTq67Pj4uVqKmr4sFR0eH4h4h-sWjxVvi3vKOl47pyShZMal8qcNuipNE4fbSfblUL99EfUtDrBto"
+                    alt={userName}
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                    <User className="w-4 h-4 text-white" />
+                  </div>
+                )}
+                {/* Online indicator */}
+                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
               </div>
-            )}
-            {/* Online indicator */}
-            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
-          </div>
 
-          {/* User Name */}
-          <span className="font-medium text-sm hidden sm:block">
-            {userName || userEmail || "User"}
-          </span>
+              {/* User Name */}
+              <span className="font-medium text-sm hidden sm:block">
+                {userName || userEmail || "User"}
+              </span>
 
-          {/* Dropdown Arrow */}
-          <ChevronDown
-            className={`w-4 h-4 transition-transform ${
-              isOpen ? "rotate-180" : ""
-            }`}
-          />
+              {/* Dropdown Arrow */}
+              <ChevronDown
+                className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""
+                  }`}
+              />
+            </>
+          )}
         </button>
 
         {/* Dropdown Menu */}
@@ -189,7 +207,24 @@ export function ProfileDropdown({
               {isCandidate && (
                 <>
                   <Link
-                    href="/profile"
+                    href="/candidate/dashboard"
+                    className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    {/* <User className="w-4 h-4" /> */}
+                    <LayoutDashboard className="w-4 h-4" />
+                    Dashboard
+                  </Link>
+                  <Link
+                    href="/candidate/cv-management"
+                    className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <FileText className="w-4 h-4" />
+                    CV Management
+                  </Link>
+                   <Link
+                    href="/candidate/cm-profile"
                     className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                     onClick={() => setIsOpen(false)}
                   >
@@ -201,16 +236,8 @@ export function ProfileDropdown({
                     className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                     onClick={() => setIsOpen(false)}
                   >
-                    <CreditCard className="w-4 h-4" />
-                    My Applications
-                  </Link>
-                  <Link
-                    href="/cv-management"
-                    className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <Settings className="w-4 h-4" />
-                    CV Management
+                    <BriefcaseBusiness className="w-4 h-4" />
+                    My jobs
                   </Link>
                   <Link
                     href="/settings"

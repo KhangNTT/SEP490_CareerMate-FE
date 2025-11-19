@@ -34,8 +34,8 @@ const CVSidebar: React.FC<CVSidebarProps> = memo(({ activePage }) => {
   };
 
   return (
-    <aside className="lg:w-64 bg-white shadow-sm rounded-xl border border-gray-200 h-fit">
-      <div className="p-6">
+    <aside className="lg:w-64 bg-white shadow-sm rounded-xl border border-gray-200 flex flex-col max-h-[calc(100vh-var(--sticky-offset,80px)-var(--content-pad,24px)*2)] overflow-hidden">
+      <div className="p-6 flex-shrink-0 border-b border-gray-100">
         <div className="flex items-center space-x-2 mb-1">
           <PiHandWavingLight className="w-5 h-5 text-gray-500" />
           <p className="text-xs text-gray-500">Welcome</p>
@@ -45,7 +45,7 @@ const CVSidebar: React.FC<CVSidebarProps> = memo(({ activePage }) => {
         </div>
       </div>
 
-      <nav className="space-y-1 px-3 pb-4">
+      <nav className="space-y-1 px-3 py-4 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400">
         {items.map((item) => {
           const active = isActive(item.href, item.key);
           return (
@@ -53,10 +53,10 @@ const CVSidebar: React.FC<CVSidebarProps> = memo(({ activePage }) => {
               key={item.key}
               href={item.href}
               aria-current={active ? "page" : undefined}
-              className={`flex items-center gap-3 py-2 px-3 rounded-md ${
+              className={`flex items-center gap-3 py-2.5 px-3 rounded-md transition-colors ${
                 active
                   ? "bg-gray-100 text-gray-600 font-medium"
-                  : "hover:bg-gray-100 text-gray-700"
+                  : "hover:bg-gray-50 text-gray-700"
               }`}
             >
               <span

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import CVSidebar from "@/components/layout/CVSidebar";
 import { useLayout } from "@/contexts/LayoutContext";
 import api from "@/lib/api";
+import { openCVTemplate } from "@/lib/cv-template-navigation";
 import {
   ProfileHeaderCard,
   AboutMeSection,
@@ -586,6 +587,48 @@ export default function CMProfile() {
     }
   };
 
+  // Handler for Preview & Download CV button
+  const handlePreviewCV = () => {
+    // Prepare CV data from profile information
+    const cvData = {
+      personalInfo: {
+        fullName: profileName || "",
+        position: profileTitle || "",
+        email: "", // You might want to get this from auth context
+        phone: profilePhone || "",
+        location: profileAddress || "",
+        website: profileLink || "",
+        photoUrl: profileImage || "",
+        summary: aboutMeHook.aboutMeText || "",
+      },
+      experience: workExpHook.workExperiences || [],
+      education: educationHook.educations || [],
+      skills: skillsHook.coreSkillGroups || [],
+      languages: languagesHook.languages || [],
+      certifications: certificatesHook.certificates || [],
+      projects: projectsHook.projects || [],
+      awards: awardsHook.awards || [],
+    };
+
+    // Prepare profile data
+    const profile = {
+      fullName: profileName,
+      title: profileTitle,
+      phone: profilePhone,
+      dob: profileDob,
+      gender: profileGender,
+      address: profileAddress,
+      link: profileLink,
+      image: profileImage,
+    };
+
+    // Use default template (you can make this configurable)
+    const templateId = "modern";
+
+    // Navigate to CV template page with data
+    openCVTemplate(cvData, profile, templateId);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="mx-auto max-w-7xl px-4 py-6 md:px-6">
@@ -744,6 +787,7 @@ export default function CMProfile() {
             profileCompletion={profileCompletion}
             expandedSections={expandedSections}
             onToggleSection={toggleSection}
+            onPreviewClick={handlePreviewCV}
           />
         </div>
       </main>

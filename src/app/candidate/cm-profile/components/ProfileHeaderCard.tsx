@@ -1,6 +1,7 @@
 import { FiEdit } from "react-icons/fi";
 import { FaEnvelope, FaPhone, FaCalendar, FaMapMarkerAlt, FaLink, FaGenderless } from "react-icons/fa";
 import { BsGenderMale, BsGenderFemale } from "react-icons/bs";
+import { Link2 } from "lucide-react";
 
 interface ProfileHeaderCardProps {
     profileName: string;
@@ -104,7 +105,7 @@ export default function ProfileHeaderCard({
                     </span>
                 </div>
                 <div className="flex items-center space-x-2.5">
-                    <FaLink className="text-gray-400 text-base" />
+                    <Link2 className="text-gray-400 text-base" />
                     {profileLink ? (
                         <a
                             href={profileLink.startsWith('http') ? profileLink : `https://${profileLink}`}

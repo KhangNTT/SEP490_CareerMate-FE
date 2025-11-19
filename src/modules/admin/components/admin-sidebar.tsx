@@ -15,7 +15,8 @@ import {
     ChevronDown,
     ChevronRight,
     Brain,
-    BookUser
+    BookUser,
+    Shield
 } from "lucide-react";
 
 export interface NavItem {
@@ -43,6 +44,7 @@ const NAV_ITEMS: NavItem[] = [
         subItems: [
             { label: "All Blogs", href: "/admin/blog" },
             { label: "Create Blog", href: "/admin/blog/create" },
+            { label: "Moderation", href: "/admin/moderation" },
         ],
     },
     {
@@ -84,10 +86,18 @@ export function AdminSidebar() {
     const [expandedItems, setExpandedItems] = useState<string[]>([]);
     const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
     const [isPinned, setIsPinned] = useState(false);
+    const [mounted, setMounted] = useState(false);
     const pathname = usePathname();
 
-    // Load initial state
+    // Wait for client-side mount to prevent hydration mismatch
     React.useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    // Load initial state only on client
+    React.useEffect(() => {
+        if (!mounted) return;
+        
         localStorage.removeItem("admin-sidebar-pinned");
         localStorage.setItem("admin-sidebar-open", "false");
         
@@ -97,9 +107,13 @@ export function AdminSidebar() {
 
         const savedExpanded = localStorage.getItem("admin-sidebar-expanded-items");
         if (savedExpanded) {
-            setExpandedItems(JSON.parse(savedExpanded));
+            try {
+                setExpandedItems(JSON.parse(savedExpanded));
+            } catch (e) {
+                // Invalid JSON, ignore
+            }
         }
-    }, []);
+    }, [mounted]);
 
     // Hover open sidebar
     const handleMouseEnter = () => {
@@ -177,7 +191,9 @@ export function AdminSidebar() {
             const newItems = prev.includes(label)
                 ? prev.filter((item) => item !== label)
                 : [...prev, label];
-            localStorage.setItem("admin-sidebar-expanded-items", JSON.stringify(newItems));
+            if (typeof window !== 'undefined') {
+                localStorage.setItem("admin-sidebar-expanded-items", JSON.stringify(newItems));
+            }
             return newItems;
         });
     };
@@ -187,6 +203,17 @@ export function AdminSidebar() {
         (item.subItems && item.subItems.some((sub) => pathname === sub.href));
 
     const isSubItemActive = (sub: SubMenuItem) => pathname === sub.href;
+
+    // Don't render until mounted to prevent hydration mismatch
+    if (!mounted) {
+        return (
+            <aside
+                className="fixed left-0 top-0 z-40 h-screen w-16 border-r bg-white shadow-sm transition-all duration-300 ease-in-out"
+            >
+                <div className="flex flex-col h-full" />
+            </aside>
+        );
+    }
 
     return (
         <aside

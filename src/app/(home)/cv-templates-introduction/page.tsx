@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import "./template-styles.css";
+import "./fix-size.css";
 import {
   ArrowRight,
   FileText,
@@ -25,15 +27,15 @@ export default function CVTemplatesIntroductionPage() {
     },
     {
       id: 2,
-      name: "Elegant",
-      image: "/images/cvtemp/elegant.png",
-      description: "Modern and elegant template",
+      name: "Vintage",
+      image: "/images/cvtemp/vintage.png",
+      description: "Classic and unique template",
     },
     {
       id: 3,
       name: "Minimal",
       image: "/images/cvtemp/minimal.png",
-      description: "Minimal and clean template",
+      description: "Clean and modern template",
     },
     {
       id: 4,
@@ -45,13 +47,13 @@ export default function CVTemplatesIntroductionPage() {
       id: 5,
       name: "Polished",
       image: "/images/cvtemp/polished.png",
-      description: "Professional and refined template",
+      description: "Polished and clean template",
     },
     {
       id: 6,
-      name: "Vintage",
-      image: "/images/cvtemp/vintage.png",
-      description: "Classic and unique template",
+      name: "Professional",
+      image: "/images/cvtemp/professional.png",
+      description: "Professional and refined template",
     },
   ];
 
@@ -116,7 +118,7 @@ export default function CVTemplatesIntroductionPage() {
               <div className="text-center mt-12">
                 <div className="flex justify-center gap-4 mb-16">
                   <button className="bg-gradient-to-r from-[#3a4660] to-gray-400 text-white px-8 py-3 rounded-lg hover:from-[#3a4660] hover:to-[#3a4660] transition-all duration-200 font-medium">
-                    <Link href="/update-cvprofile">Create CV Now</Link>
+                    <Link href="/candidate/cm-profile">Create CV Now</Link>
                   </button>
                   <Link
                     href="/cv-templates"
@@ -141,9 +143,9 @@ export default function CVTemplatesIntroductionPage() {
                   }}
                 ></div>
                 {/* Side Templates (Smaller) */}
-                <div className="absolute left-1/6 z-10 opacity-50 transform scale-65 -translate-x-8 transition-all duration-700 ease-in-out">
+                <div className="absolute left-1/6 z-10 opacity-50 transform scale-[0.65] -translate-x-8 transition-all duration-700 ease-in-out template-left">
                   <div
-                    className="relative overflow-hidden rounded-xl bg-white shadow-xl cursor-pointer hover:opacity-80 transition-all duration-500 ease-out hover:scale-105"
+                    className="relative overflow-hidden rounded-xl bg-white shadow-xl cursor-pointer hover:opacity-80 transition-all duration-500 ease-out hover:scale-105 cv-template-container"
                     onClick={() =>
                       setSelectedTemplate(
                         selectedTemplate === 0
@@ -161,7 +163,7 @@ export default function CVTemplatesIntroductionPage() {
                         ].image
                       }
                       alt="Previous Template"
-                      className="w-96 h-auto min-h-[32rem] object-contain transition-all duration-500 ease-out"
+                      className="cv-template-image"
                     />
                     <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
                       <div className="bg-white bg-opacity-90 rounded-lg px-3 py-1 shadow-lg transition-all duration-300 ease-out">
@@ -178,9 +180,9 @@ export default function CVTemplatesIntroductionPage() {
                     </div>
                   </div>
                 </div>
-                <div className="absolute right-1/6 z-10 opacity-50 transform scale-65 translate-x-8 transition-all duration-700 ease-in-out">
+                <div className="absolute right-1/6 z-10 opacity-50 transform scale-[0.65] translate-x-8 transition-all duration-700 ease-in-out template-right">
                   <div
-                    className="relative overflow-hidden rounded-xl bg-white shadow-xl cursor-pointer hover:opacity-80 transition-all duration-500 ease-out hover:scale-105"
+                    className="relative overflow-hidden rounded-xl bg-white shadow-xl cursor-pointer hover:opacity-80 transition-all duration-500 ease-out hover:scale-105 cv-template-container"
                     onClick={() =>
                       setSelectedTemplate(
                         selectedTemplate === templates.length - 1
@@ -198,7 +200,7 @@ export default function CVTemplatesIntroductionPage() {
                         ].image
                       }
                       alt="Next Template"
-                      className="w-96 h-auto min-h-[32rem] object-contain transition-all duration-500 ease-out"
+                      className="cv-template-image"
                     />
                     <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
                       <div className="bg-white bg-opacity-90 rounded-lg px-3 py-1 shadow-lg transition-all duration-300 ease-out">
@@ -217,12 +219,17 @@ export default function CVTemplatesIntroductionPage() {
                 </div>
 
                 {/* Main Template (Center - Larger) */}
-                <div className="relative z-20 mx-auto">
-                  <div className="group relative overflow-hidden rounded-2xl bg-white shadow-2xl transform transition-all duration-700 ease-in-out hover:scale-110">
+                <div className="relative z-20 mx-auto template-center">
+                  <div className="group relative overflow-hidden rounded-2xl bg-white shadow-2xl transform transition-all duration-700 ease-in-out hover:scale-110 cv-template-container">
                     <img
                       src={templates[selectedTemplate].image}
                       alt={`${templates[selectedTemplate].name} CV Template`}
-                      className="w-96 h-auto min-h-[28rem] object-contain transition-all duration-500 ease-out"
+                      className="cv-template-image main-template-image"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "contain"
+                      }}
                     />
 
                     {/* Overlay on hover */}

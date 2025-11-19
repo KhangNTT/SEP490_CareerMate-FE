@@ -76,7 +76,7 @@ class BlogApiService {
 
     async createBlog(data: BlogCreateRequest): Promise<BlogResponse> {
         console.log('📝 Creating blog with data:', data);
-        const response = await api.post<ApiResponse<BlogResponse>>('/blogs', data);
+        const response = await api.post<ApiResponse<BlogResponse>>('/api/blogs', data);
         console.log('📝 Blog creation response:', response.data);
         console.log('📝 Response structure:', {
             hasCode: 'code' in response.data,
@@ -116,7 +116,7 @@ class BlogApiService {
         console.log('📝 Data being sent includes title:', data.title);
         console.log('📝 Complete request payload:', JSON.stringify(data, null, 2));
 
-        const response = await api.put<ApiResponse<BlogResponse>>(`/blogs/${blogId}`, data);
+        const response = await api.put<ApiResponse<BlogResponse>>(`/api/blogs/${blogId}`, data);
         console.log('📝 API updateBlog response:', response.data);
 
         const responseData = response.data;
@@ -151,7 +151,7 @@ class BlogApiService {
 
             // Now delete the blog from database
             console.log('🗑️ Deleting blog from database...');
-            const response = await api.delete<ApiResponse<void>>(`/blogs/${blogId}`);
+            const response = await api.delete<ApiResponse<void>>(`/api/blogs/${blogId}`);
             console.log('🗑️ Blog deletion response:', response.data);
 
             // Handle different response formats - check for both 0 and 1000 as success codes
@@ -170,7 +170,7 @@ class BlogApiService {
     }
 
     async publishBlog(blogId: number): Promise<BlogResponse> {
-        const response = await api.put<ApiResponse<BlogResponse>>(`/blogs/${blogId}/publish`);
+        const response = await api.put<ApiResponse<BlogResponse>>(`/api/blogs/${blogId}/publish`);
 
         const responseData = response.data;
 
@@ -192,7 +192,7 @@ class BlogApiService {
     }
 
     async unpublishBlog(blogId: number): Promise<BlogResponse> {
-        const response = await api.put<ApiResponse<BlogResponse>>(`/blogs/${blogId}/unpublish`);
+        const response = await api.put<ApiResponse<BlogResponse>>(`/api/blogs/${blogId}/unpublish`);
         const responseData = response.data;
 
         if (responseData.code !== undefined && responseData.code !== 0 && responseData.code !== 1000) {
@@ -213,7 +213,7 @@ class BlogApiService {
     }
 
     async archiveBlog(blogId: number): Promise<BlogResponse> {
-        const response = await api.put<ApiResponse<BlogResponse>>(`/blogs/${blogId}/archive`);
+        const response = await api.put<ApiResponse<BlogResponse>>(`/api/blogs/${blogId}/archive`);
 
         const responseData = response.data;
 
@@ -235,7 +235,7 @@ class BlogApiService {
     }
 
     async unarchiveBlog(blogId: number): Promise<BlogResponse> {
-        const response = await api.put<ApiResponse<BlogResponse>>(`/blogs/${blogId}/unarchive`);
+        const response = await api.put<ApiResponse<BlogResponse>>(`/api/blogs/${blogId}/unarchive`);
         const responseData = response.data;
 
         if (responseData.code !== undefined && responseData.code !== 0 && responseData.code !== 1000) {
@@ -258,7 +258,7 @@ class BlogApiService {
     // Public Blog Endpoints (No Authentication Required)
 
     async getBlog(blogId: number): Promise<BlogResponse> {
-        const response = await api.get<ApiResponse<BlogResponse>>(`/blogs/${blogId}`);
+        const response = await api.get<ApiResponse<BlogResponse>>(`/api/blogs/${blogId}`);
 
         const responseData = response.data;
 
@@ -284,19 +284,18 @@ class BlogApiService {
             page = 0,
             size = 10,
             sortBy = 'createdAt',
-            sortDir = 'DESC',
-            status,
-            category,
-            keyword
+            sortDir = 'DESC'
         } = params;
 
-        let url = `/blogs?page=${page}&size=${size}&sortBy=${sortBy}&sortDir=${sortDir}`;
+        // Build query parameters
+        const queryParams = new URLSearchParams();
+        queryParams.append('page', page.toString());
+        queryParams.append('size', size.toString());
+        queryParams.append('sortBy', sortBy);
+        queryParams.append('sortDir', sortDir);
 
-        if (status) url += `&status=${status}`;
-        if (category) url += `&category=${category}`;
-        if (keyword) url += `&keyword=${keyword}`;
-
-        console.log('📋 Fetching blogs with URL:', url);
+        const url = `/api/blogs?${queryParams.toString()}`;
+        console.log('📋 Fetching all blogs with URL:', url);
         const response = await api.get<ApiResponse<PagedResponse<BlogResponse>>>(url);
         console.log('📋 Blogs response:', response.data);
         console.log('📋 Response structure:', {
@@ -330,62 +329,115 @@ class BlogApiService {
         throw new Error('Unexpected response format from server');
     }
 
-    async getBlogsByStatus(status: BlogStatus, params: BlogPaginationParams = {}): Promise<PagedResponse<BlogResponse>> {
+    async getBlogsByStatus(status: string, params: BlogPaginationParams = {}): Promise<PagedResponse<BlogResponse>> {
         const {
             page = 0,
-            size = 10
+            size = 10,
+            sortBy = 'createdAt',
+            sortDir = 'DESC'
         } = params;
 
-        const url = `/blogs/status/${status}?page=${page}&size=${size}`;
+        const queryParams = new URLSearchParams();
+        queryParams.append('page', page.toString());
+        queryParams.append('size', size.toString());
+        queryParams.append('sortBy', sortBy);
+        queryParams.append('sortDir', sortDir);
+
+        const url = `/api/blogs/status/${status}?${queryParams.toString()}`;
+        console.log('📊 Fetching blogs by status with URL:', url);
         const response = await api.get<ApiResponse<PagedResponse<BlogResponse>>>(url);
-        if (response.data.code !== 1000) {
-            throw new Error(response.data.message);
+
+        const responseData = response.data;
+
+        if (responseData.code !== undefined && responseData.code !== 0 && responseData.code !== 1000) {
+            console.error('📝 Get blogs by status error:', responseData);
+            throw new Error(responseData.message || 'Failed to fetch blogs by status');
         }
-        return response.data.result!;
+
+        return responseData.result || responseData as unknown as PagedResponse<BlogResponse>;
     }
 
     async getBlogsByCategory(category: string, params: BlogPaginationParams = {}): Promise<PagedResponse<BlogResponse>> {
         const {
             page = 0,
-            size = 10
+            size = 10,
+            sortBy = 'createdAt',
+            sortDir = 'DESC'
         } = params;
 
-        const url = `/blogs/category/${category}?page=${page}&size=${size}`;
+        const queryParams = new URLSearchParams();
+        queryParams.append('page', page.toString());
+        queryParams.append('size', size.toString());
+        queryParams.append('sortBy', sortBy);
+        queryParams.append('sortDir', sortDir);
+
+        const url = `/api/blogs/category/${category}?${queryParams.toString()}`;
+        console.log('📁 Fetching blogs by category with URL:', url);
         const response = await api.get<ApiResponse<PagedResponse<BlogResponse>>>(url);
-        if (response.data.code !== 1000) {
-            throw new Error(response.data.message);
+
+        const responseData = response.data;
+
+        if (responseData.code !== undefined && responseData.code !== 0 && responseData.code !== 1000) {
+            console.error('📝 Get blogs by category error:', responseData);
+            throw new Error(responseData.message || 'Failed to fetch blogs by category');
         }
-        return response.data.result!;
+
+        return responseData.result || responseData as unknown as PagedResponse<BlogResponse>;
     }
 
-    async searchBlogs(keyword: string, params: BlogPaginationParams = {}): Promise<PagedResponse<BlogResponse>> {
+    async searchBlogs(params: BlogPaginationParams = {}): Promise<PagedResponse<BlogResponse>> {
         const {
+            keyword,
+            status,
             page = 0,
-            size = 10
+            size = 10,
+            sortBy = 'createdAt',
+            sortDir = 'DESC'
         } = params;
 
-        const url = `/blogs/search?keyword=${keyword}&status=PUBLISHED&page=${page}&size=${size}`;
+        // Build query parameters for search endpoint
+        const queryParams = new URLSearchParams();
+        queryParams.append('page', page.toString());
+        queryParams.append('size', size.toString());
+        queryParams.append('sortBy', sortBy);
+        queryParams.append('sortDir', sortDir);
+
+        if (keyword) queryParams.append('keyword', keyword);
+        if (status) queryParams.append('status', status);
+
+        const url = `/api/blogs/search?${queryParams.toString()}`;
+        console.log('🔍 Searching blogs with URL:', url);
         const response = await api.get<ApiResponse<PagedResponse<BlogResponse>>>(url);
-        if (response.data.code !== 1000) {
-            throw new Error(response.data.message);
+
+        const responseData = response.data;
+
+        if (responseData.code !== undefined && responseData.code !== 0 && responseData.code !== 1000) {
+            console.error('📝 Search blogs error:', responseData);
+            throw new Error(responseData.message || 'Failed to search blogs');
         }
-        return response.data.result!;
+
+        return responseData.result || responseData as unknown as PagedResponse<BlogResponse>;
     }
 
     async getCategories(): Promise<string[]> {
-        const response = await api.get<ApiResponse<string[]>>('/blogs/categories');
-        if (response.data.code !== 1000) {
-            throw new Error(response.data.message);
+        const response = await api.get<ApiResponse<string[]>>('/api/blogs/categories');
+        const responseData = response.data;
+        
+        if (responseData.code !== undefined && responseData.code !== 0 && responseData.code !== 1000) {
+            console.error('📝 Get categories error:', responseData);
+            throw new Error(responseData.message || 'Failed to fetch categories');
         }
-        return response.data.result!;
+        
+        return responseData.result || [];
     }
 
     // Image Upload
     async uploadImage(file: File): Promise<string> {
         const formData = new FormData();
+        // ⚠️ CRITICAL: Backend expects 'image' not 'file'
         formData.append('image', file);
 
-        const response = await api.post<ApiResponse<ImageUploadResponse>>('/upload/image', formData, {
+        const response = await api.post<ApiResponse<ImageUploadResponse>>('/api/upload/image', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },

@@ -128,9 +128,10 @@ export default function AdminAuthGuard({
         "🔍 Admin Guard: Not authenticated and no stored token, redirecting to",
         redirectIfGuest
       );
+      // Increased delay to allow silent refresh to complete
       setTimeout(() => {
         router.replace(redirectIfGuest);
-      }, 100);
+      }, 500);
       return;
     }
 
@@ -152,9 +153,10 @@ export default function AdminAuthGuard({
         "🔍 Admin Guard: Authenticated but not admin, redirecting to",
         redirectIfNotAdmin
       );
+      // Increased delay to allow silent refresh to complete
       setTimeout(() => {
         router.replace(redirectIfNotAdmin);
-      }, 100);
+      }, 500);
       return;
     }
 

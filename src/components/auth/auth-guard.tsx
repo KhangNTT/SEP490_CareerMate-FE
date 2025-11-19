@@ -64,7 +64,8 @@ export default function AuthGuard({
   useEffect(() => {
     if (!hasHydrated || isLoading) return;
 
-    // Use a small delay to ensure the state is fully updated
+    // Use a longer delay to ensure silent refresh has time to complete
+    // This prevents premature redirect when opening in a new tab
     const timer = setTimeout(() => {
       if (mode === "guest" && isAuthenticated) {
         // If this is a guest-only route and user is authenticated, redirect away
@@ -73,7 +74,7 @@ export default function AuthGuard({
         // If this is a protected route and user is not authenticated, redirect to login
         router.replace(redirectTo);
       }
-    }, 100);
+    }, 500); // Increased from 100ms to 500ms to allow silent refresh to complete
 
     return () => clearTimeout(timer);
   }, [isLoading, isAuthenticated, mode, router, redirectTo, hasHydrated]);

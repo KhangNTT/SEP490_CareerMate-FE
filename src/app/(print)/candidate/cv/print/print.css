@@ -1,0 +1,998 @@
+/* ========================================
+   CV PRINT STYLES - PURE CSS (NO TAILWIND)
+   A4 Fixed Layout: 210mm × 297mm
+   ======================================== */
+
+/* ========================================
+   PAGE SETUP
+   ======================================== */
+
+@page {
+  size: A4;
+  margin: 10mm;
+}
+
+/* ========================================
+   GLOBAL RESET
+   ======================================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  color-adjust: exact;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #000000;
+  background: #ffffff;
+}
+
+/* ========================================
+   CV PAGE CONTAINER
+   ======================================== */
+
+.cv-page {
+  width: 210mm;
+  min-height: 297mm;
+  padding: 15mm;
+  background: #ffffff;
+  page-break-after: always;
+  position: relative;
+}
+
+/* ========================================
+   TYPOGRAPHY
+   ======================================== */
+
+h1 {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 8px;
+  color: #1a1a1a;
+}
+
+h2 {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+  margin-bottom: 12px;
+  color: #2c2c2c;
+}
+
+h3 {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-bottom: 6px;
+  color: #333333;
+}
+
+p {
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 8px;
+  color: #404040;
+}
+
+strong {
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+/* ========================================
+   CLASSIC TEMPLATE
+   ======================================== */
+
+.classic-template {
+  padding: 20mm;
+}
+
+.classic-template .cv-header {
+  text-align: center;
+  padding-bottom: 20px;
+  margin-bottom: 24px;
+  border-bottom: 2px solid #000000;
+}
+
+.classic-template .cv-name {
+  font-size: 28px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+  color: #000000;
+}
+
+.classic-template .cv-title {
+  font-size: 16px;
+  font-weight: 400;
+  color: #4a4a4a;
+  margin-bottom: 12px;
+}
+
+.classic-template .contact-info {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.classic-template .contact-item {
+  font-size: 12px;
+  color: #333333;
+}
+
+.classic-template .cv-section {
+  margin-bottom: 24px;
+  page-break-inside: avoid;
+}
+
+.classic-template .section-title {
+  font-size: 18px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #cccccc;
+  color: #000000;
+}
+
+.classic-template .summary-text {
+  font-size: 14px;
+  line-height: 1.7;
+  text-align: justify;
+  color: #2c2c2c;
+}
+
+.classic-template .experience-item,
+.classic-template .education-item,
+.classic-template .certification-item {
+  margin-bottom: 18px;
+  page-break-inside: avoid;
+}
+
+.classic-template .item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+
+.classic-template .item-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.classic-template .item-period {
+  font-size: 12px;
+  font-weight: 500;
+  color: #666666;
+}
+
+.classic-template .item-subtitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: #4a4a4a;
+  margin-bottom: 6px;
+}
+
+.classic-template .item-description {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #2c2c2c;
+  text-align: justify;
+}
+
+.classic-template .skills-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.classic-template .skill-group {
+  page-break-inside: avoid;
+}
+
+.classic-template .skill-category {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #1a1a1a;
+}
+
+.classic-template .skill-items {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #404040;
+}
+
+.classic-template .languages-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.classic-template .language-item {
+  font-size: 13px;
+  color: #2c2c2c;
+}
+
+/* ========================================
+   MODERN TEMPLATE (TWO-COLUMN)
+   ======================================== */
+
+.modern-template {
+  display: grid;
+  grid-template-columns: 70mm 1fr;
+  padding: 0;
+  gap: 0;
+}
+
+.modern-template .cv-sidebar {
+  background-color: #1e3a5f;
+  color: #ffffff;
+  padding: 20mm 12mm;
+  min-height: 297mm;
+}
+
+.modern-template .cv-main {
+  padding: 20mm 15mm;
+  background-color: #ffffff;
+}
+
+.modern-template .photo-container {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin: 0 auto 20px;
+  border: 3px solid #ffffff;
+}
+
+.modern-template .profile-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.modern-template .sidebar-section {
+  margin-bottom: 24px;
+  page-break-inside: avoid;
+}
+
+.modern-template .sidebar-title {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid #ffffff;
+  color: #ffffff;
+}
+
+.modern-template .sidebar-item {
+  font-size: 12px;
+  line-height: 1.5;
+  margin-bottom: 8px;
+  color: #e5e5e5;
+}
+
+.modern-template .sidebar-skill-group {
+  margin-bottom: 16px;
+}
+
+.modern-template .sidebar-skill-category {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #ffffff;
+}
+
+.modern-template .sidebar-skill-item {
+  font-size: 12px;
+  margin-bottom: 4px;
+  padding-left: 12px;
+  position: relative;
+  color: #e5e5e5;
+}
+
+.modern-template .sidebar-skill-item::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: #ffffff;
+}
+
+.modern-template .sidebar-language {
+  margin-bottom: 10px;
+}
+
+.modern-template .sidebar-language strong {
+  font-size: 13px;
+  display: block;
+  margin-bottom: 2px;
+  color: #ffffff;
+}
+
+.modern-template .sidebar-language p {
+  font-size: 12px;
+  color: #e5e5e5;
+}
+
+.modern-template .modern-header {
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 3px solid #1e3a5f;
+}
+
+.modern-template .cv-name {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1e3a5f;
+  margin-bottom: 6px;
+}
+
+.modern-template .cv-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #4a4a4a;
+}
+
+.modern-template .cv-section {
+  margin-bottom: 24px;
+  page-break-inside: avoid;
+}
+
+.modern-template .section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e3a5f;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.modern-template .summary-text {
+  font-size: 14px;
+  line-height: 1.7;
+  color: #2c2c2c;
+  text-align: justify;
+}
+
+.modern-template .experience-item,
+.modern-template .education-item,
+.modern-template .certification-item {
+  margin-bottom: 18px;
+  padding-left: 16px;
+  border-left: 3px solid #1e3a5f;
+  page-break-inside: avoid;
+}
+
+.modern-template .item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+
+.modern-template .item-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.modern-template .item-period {
+  font-size: 12px;
+  font-weight: 500;
+  color: #666666;
+}
+
+.modern-template .item-subtitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1e3a5f;
+  margin-bottom: 6px;
+}
+
+.modern-template .item-description {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #2c2c2c;
+}
+
+/* ========================================
+   PROFESSIONAL TEMPLATE
+   ======================================== */
+
+.professional-template {
+  padding: 0;
+}
+
+.professional-template .professional-header {
+  background-color: #2c5282;
+  padding: 20mm 20mm 15mm 20mm;
+  position: relative;
+  color: #ffffff;
+}
+
+.professional-template .header-accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 8mm;
+  height: 100%;
+  background-color: #1a365d;
+}
+
+.professional-template .header-content {
+  position: relative;
+  z-index: 1;
+}
+
+.professional-template .cv-name {
+  font-size: 30px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 6px;
+}
+
+.professional-template .cv-title {
+  font-size: 18px;
+  font-weight: 400;
+  color: #e5e5e5;
+}
+
+.professional-template .contact-bar {
+  background-color: #f7f7f7;
+  padding: 10px 20mm;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  border-bottom: 1px solid #d0d0d0;
+}
+
+.professional-template .contact-item {
+  font-size: 12px;
+  color: #333333;
+}
+
+.professional-template .professional-layout {
+  display: grid;
+  grid-template-columns: 75mm 1fr;
+  gap: 0;
+}
+
+.professional-template .professional-sidebar {
+  background-color: #f9f9f9;
+  padding: 20mm 12mm;
+  border-right: 1px solid #d0d0d0;
+}
+
+.professional-template .professional-main {
+  padding: 20mm 15mm;
+  background-color: #ffffff;
+}
+
+.professional-template .sidebar-section {
+  margin-bottom: 24px;
+  page-break-inside: avoid;
+}
+
+.professional-template .sidebar-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #2c5282;
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid #2c5282;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.professional-template .summary-text {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #2c2c2c;
+  text-align: justify;
+}
+
+.professional-template .skill-group {
+  margin-bottom: 16px;
+}
+
+.professional-template .skill-category {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 6px;
+}
+
+.professional-template .skill-list {
+  list-style: none;
+  padding: 0;
+}
+
+.professional-template .skill-list li {
+  font-size: 12px;
+  line-height: 1.5;
+  padding-left: 14px;
+  margin-bottom: 4px;
+  position: relative;
+  color: #404040;
+}
+
+.professional-template .skill-list li::before {
+  content: '▪';
+  position: absolute;
+  left: 0;
+  color: #2c5282;
+}
+
+.professional-template .language-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 8px;
+  color: #2c2c2c;
+}
+
+.professional-template .language-item strong {
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.professional-template .cv-section {
+  margin-bottom: 24px;
+  page-break-inside: avoid;
+}
+
+.professional-template .section-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #2c5282;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #2c5282;
+}
+
+.professional-template .experience-item,
+.professional-template .education-item {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e0e0e0;
+  page-break-inside: avoid;
+}
+
+.professional-template .experience-item:last-child,
+.professional-template .education-item:last-child {
+  border-bottom: none;
+}
+
+.professional-template .item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.professional-template .item-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 4px;
+}
+
+.professional-template .item-subtitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: #2c5282;
+}
+
+.professional-template .item-period {
+  font-size: 12px;
+  font-weight: 500;
+  color: #666666;
+  text-align: right;
+}
+
+.professional-template .item-description {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #2c2c2c;
+}
+
+.professional-template .certifications-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.professional-template .certification-item {
+  page-break-inside: avoid;
+}
+
+.professional-template .certification-item .item-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 4px;
+}
+
+.professional-template .certification-item .item-subtitle {
+  font-size: 12px;
+  color: #666666;
+}
+
+/* ========================================
+   VINTAGE TEMPLATE (TWO-COLUMN)
+   ======================================== */
+
+.vintage-template {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 0;
+  padding: 20mm;
+  background: #ffffff;
+}
+
+.vintage-template .vintage-left {
+  padding-right: 20px;
+  border-right: 2px solid #e5e5e5;
+}
+
+.vintage-template .vintage-right {
+  padding-left: 20px;
+}
+
+/* Vintage Header */
+.vintage-template .vintage-header {
+  margin-bottom: 24px;
+}
+
+.vintage-template .vintage-name {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 4px;
+}
+
+.vintage-template .vintage-position {
+  font-size: 16px;
+  font-weight: 400;
+  color: #666666;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+}
+
+.vintage-template .vintage-summary {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #2c2c2c;
+  text-align: justify;
+}
+
+/* Vintage Sections */
+.vintage-template .vintage-section {
+  margin-bottom: 24px;
+  page-break-inside: avoid;
+}
+
+.vintage-template .vintage-section-title {
+  font-size: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #1a1a1a;
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #cccccc;
+  letter-spacing: 1px;
+}
+
+/* Vintage Experience */
+.vintage-template .vintage-experience-item {
+  margin-bottom: 20px;
+  page-break-inside: avoid;
+}
+
+.vintage-template .vintage-experience-header {
+  display: flex;
+  margin-bottom: 6px;
+}
+
+.vintage-template .vintage-period {
+  width: 110px;
+  flex-shrink: 0;
+  font-size: 13px;
+  color: #666666;
+}
+
+.vintage-template .vintage-experience-content {
+  flex: 1;
+}
+
+.vintage-template .vintage-position-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.vintage-template .vintage-company {
+  font-weight: 400;
+  color: #1a1a1a;
+}
+
+.vintage-template .vintage-description {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #2c2c2c;
+  margin-left: 110px;
+  margin-top: 4px;
+  text-align: justify;
+}
+
+.vintage-template .vintage-achievements {
+  margin-left: 110px;
+  margin-top: 8px;
+  padding-left: 20px;
+  list-style: disc;
+}
+
+.vintage-template .vintage-achievements li {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #2c2c2c;
+  margin-bottom: 4px;
+}
+
+/* Vintage Skills */
+.vintage-template .vintage-skill-group {
+  margin-bottom: 12px;
+}
+
+.vintage-template .vintage-skill-category {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 4px;
+}
+
+.vintage-template .vintage-skill-items {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #404040;
+}
+
+/* Vintage Right Column (Sidebar) */
+.vintage-template .vintage-photo-container {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.vintage-template .vintage-photo {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin: 0 auto 16px;
+  display: block;
+}
+
+.vintage-template .vintage-contact {
+  margin-bottom: 24px;
+}
+
+.vintage-template .vintage-contact-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: #2c2c2c;
+}
+
+.vintage-template .vintage-contact-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: #666666;
+}
+
+.vintage-template .vintage-contact-text {
+  flex: 1;
+  word-break: break-word;
+}
+
+/* Vintage Education */
+.vintage-template .vintage-education-item {
+  margin-bottom: 16px;
+  page-break-inside: avoid;
+}
+
+.vintage-template .vintage-school {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 4px;
+}
+
+.vintage-template .vintage-degree {
+  font-size: 13px;
+  color: #404040;
+  margin-bottom: 4px;
+}
+
+.vintage-template .vintage-edu-details {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #666666;
+}
+
+/* Vintage Certifications */
+.vintage-template .vintage-cert-item {
+  margin-bottom: 12px;
+  page-break-inside: avoid;
+}
+
+.vintage-template .vintage-cert-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 2px;
+}
+
+.vintage-template .vintage-cert-issuer {
+  font-size: 12px;
+  color: #666666;
+}
+
+/* Vintage Languages */
+.vintage-template .vintage-language-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #2c2c2c;
+}
+
+.vintage-template .vintage-language-name {
+  font-weight: 500;
+}
+
+.vintage-template .vintage-language-level {
+  color: #666666;
+}
+
+/* Vintage Soft Skills */
+.vintage-template .vintage-soft-skills-list {
+  list-style: disc;
+  padding-left: 20px;
+}
+
+.vintage-template .vintage-soft-skills-list li {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #2c2c2c;
+  margin-bottom: 6px;
+}
+
+/* ========================================
+   PAGE BREAK CONTROL
+   ======================================== */
+
+.page-break-before {
+  page-break-before: always;
+}
+
+.page-break-after {
+  page-break-after: always;
+}
+
+.no-page-break {
+  page-break-inside: avoid;
+}
+
+/* ========================================
+   PRINT MEDIA QUERY
+   ======================================== */
+
+@media print {
+  body {
+    margin: 0;
+    padding: 0;
+  }
+
+  .cv-page {
+    margin: 0;
+    box-shadow: none;
+  }
+
+  /* Force colors in print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Ensure backgrounds print */
+  .modern-template .cv-sidebar,
+  .professional-template .professional-header,
+  .professional-template .professional-sidebar,
+  .professional-template .contact-bar {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+/* Page Break Controls */
+.page-break {
+  page-break-before: always;
+  break-before: page;
+}
+
+.page-break-after {
+  page-break-after: always;
+  break-after: page;
+}
+
+.avoid-break {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.avoid-break-before {
+  page-break-before: avoid;
+  break-before: avoid;
+}
+
+.avoid-break-after {
+  page-break-after: avoid;
+  break-after: avoid;
+}
+
+/* Text Utilities */
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.uppercase {
+  text-transform: uppercase;
+}
+
+.mb-0 {
+  margin-bottom: 0;
+}
+
+.mt-0 {
+  margin-top: 0;
+}

@@ -395,6 +395,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isLoading: false });
       return { success: true, isAdmin };
     } catch (err: any) {
+      set({ isLoading: false }); // ✅ Reset loading state on error
       const msg =
         err?.response?.data?.message || err?.message || "Login failed";
       const error = new Error(msg);
@@ -409,7 +410,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // fallback 0 = hết hạn/không hợp lệ
   },
 
-  refresh: async () =>
+  refresh: async () => {
+    // 🔄 Use unified refresh manager to prevent refresh storms
+    const { unifiedRefresh } = await import("@/lib/refresh-manager");
+    return unifiedRefresh();
+  },
+
+  // Legacy implementation (kept for reference, no longer used directly)
+  _legacyRefresh: async () =>
     SimpleThrottle.throttle("refresh", async () => {
       try {
         const client = axios.create({

@@ -43,13 +43,9 @@ export function useAuthHydration(): boolean {
       console.debug("⚠️ useAuthHydration: Token expired, will attempt refresh in async effect");
       // Don't clear yet - let async effect try to refresh first
     } else {
-      // No token at all
-      console.debug("❌ useAuthHydration: No token found, clearing auth");
-      // Xóa token hỏng/hết hạn
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("token_expires_at");
-      localStorage.removeItem("refresh_token");
-      clearAuth();
+      // No token at all - will try silent refresh in async effect
+      console.debug("❌ useAuthHydration: No token found, will attempt silent refresh in async effect");
+      // Don't clear auth yet - let async effect try silent refresh first
     }
   }, [setLoading, setAuthFromTokens, clearAuth]);
 
@@ -62,49 +58,29 @@ export function useAuthHydration(): boolean {
       try {
         const api = await import("@/lib/api").catch(() => null);
         const initializeAuth = api?.initializeAuth as
-          | (() => Promise<
-              | false
-              | {
-                  accessToken?: string | null;
-                  tokenExpiresAt?: number | null;
-                  isAuthenticated: boolean;
-                  role?: string | null;
-                }
-            >)
+          | (() => Promise<boolean>)
           | undefined;
 
-        let result:
-          | false
-          | {
-              accessToken?: string | null;
-              tokenExpiresAt?: number | null;
-              isAuthenticated: boolean;
-              role?: string | null;
-            } = false;
+        let success = false;
 
         if (initializeAuth) {
-          // initializeAuth nên tự xử lý refresh + /me để lấy role
-          result = await initializeAuth();
+          // initializeAuth returns boolean: true if session restored, false otherwise
+          success = await initializeAuth();
         }
 
         if (!cancelled) {
-          if (result && result.isAuthenticated) {
-            setAuthFromTokens({
-              accessToken: result.accessToken ?? localStorage.getItem("access_token"),
-              tokenExpiresAt:
-                typeof result.tokenExpiresAt === "number"
-                  ? result.tokenExpiresAt
-                  : (localStorage.getItem("token_expires_at")
-                      ? parseInt(localStorage.getItem("token_expires_at")!, 10)
-                      : null),
-              isAuthenticated: true,
-              role: result.role ?? null,
-            });
+          if (success) {
+            // Session already restored inside initializeAuth
+            // No need to call setAuthFromTokens - it's already done
+            console.debug("✅ useAuthHydration: Auth initialization successful");
           } else {
+            // Only clear auth if initialization failed
+            console.debug("❌ useAuthHydration: Auth initialization failed, clearing auth");
             clearAuth();
           }
         }
-      } catch {
+      } catch (error: any) {
+        console.debug("❌ useAuthHydration: Error during initialization:", error?.message);
         if (!cancelled) clearAuth();
       } finally {
         if (!cancelled) setLoading(false);
@@ -114,7 +90,7 @@ export function useAuthHydration(): boolean {
     return () => {
       cancelled = true;
     };
-  }, [setAuthFromTokens, clearAuth, setLoading]);
+  }, [clearAuth, setLoading]);
 
   // 3) Đồng bộ đa tab (nếu đăng xuất ở tab khác)
   useEffect(() => {

@@ -78,30 +78,32 @@ function isCandidate(token: string): boolean {
 export function middleware(request: NextRequest) {
   const refreshToken = request.cookies.get('refreshToken')?.value;
 
-  if (DEBUG.MIDDLEWARE) {
-    safeLog.middleware('🔍 [MIDDLEWARE] Cookies check:', {
-      hasCookies: request.cookies.size > 0,
-      hasRefreshToken: !!refreshToken,
-    });
-  }
+  // Don't log on every request - only when needed
+  // if (DEBUG.MIDDLEWARE) {
+  //   safeLog.middleware('🔍 [MIDDLEWARE] Cookies check:', {
+  //     hasCookies: request.cookies.size > 0,
+  //     hasRefreshToken: !!refreshToken,
+  //   });
+  // }
 
-  // 🧭 Auth pages
-  if (refreshToken) {
-    try {
-      const decoded = decodeJWT(refreshToken);
-      const now = Math.floor(Date.now() / 1000);
-      if (decoded && decoded.exp && decoded.exp > now) {
-        if (
-          request.nextUrl.pathname.startsWith('/sign-in') ||
-          request.nextUrl.pathname.startsWith('/sign-up')
-        ) {
-          return NextResponse.redirect(new URL('/', request.url));
-        }
-      }
-    } catch (error) {
-      safeLog.error('Invalid refresh token in middleware:', error);
-    }
-  }
+  // 🧭 Auth pages - allow access to sign-in/sign-up even if user has token
+  // This allows users to logout and sign in with different account
+  // if (refreshToken) {
+  //   try {
+  //     const decoded = decodeJWT(refreshToken);
+  //     const now = Math.floor(Date.now() / 1000);
+  //     if (decoded && decoded.exp && decoded.exp > now) {
+  //       if (
+  //         request.nextUrl.pathname.startsWith('/sign-in') ||
+  //         request.nextUrl.pathname.startsWith('/sign-up')
+  //       ) {
+  //         return NextResponse.redirect(new URL('/', request.url));
+  //       }
+  //     }
+  //   } catch (error) {
+  //     safeLog.error('Invalid refresh token in middleware:', error);
+  //   }
+  // }
 
   // 🧩 Common validation helper
   const validateToken = (token?: string) => {
@@ -161,6 +163,14 @@ export function middleware(request: NextRequest) {
 
   // 👩‍💼 Candidate routes
   if (request.nextUrl.pathname.startsWith('/candidate')) {
+    // ✨ Allow unauthenticated access to print pages (for PDF export)
+    if (request.nextUrl.pathname.startsWith('/candidate/cv/print/')) {
+      safeLog.middleware('✅ [MIDDLEWARE] Print page - allowing unauthenticated access', {
+        path: request.nextUrl.pathname,
+      });
+      return NextResponse.next();
+    }
+
     safeLog.middleware('🔍 [MIDDLEWARE] Candidate route accessed:', {
       path: request.nextUrl.pathname,
     });

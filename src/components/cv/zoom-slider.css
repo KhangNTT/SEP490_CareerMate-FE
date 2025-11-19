@@ -8,6 +8,70 @@
   transition: none; /* Remove transitions for better responsiveness */
 }
 
+/* Text overflow handling styles */
+.cv-text-content {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  hyphens: auto;
+}
+
+/* Project URL and website links */
+.cv-url-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* General CV template text handling */
+.cv-template p, .cv-template span, .cv-template div, .cv-template h1, .cv-template h2, .cv-template h3, .cv-template h4 {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+/* Handle long links and email addresses */
+.cv-template a, .cv-template [title] {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  display: inline-block;
+}
+
+/* Specific fixes for email and URL fields */
+.cv-template [href^="mailto:"],
+.cv-template [href^="http"],
+.cv-template [title*="@"],
+.cv-template [title*=".com"],
+.cv-template [title*=".org"],
+.cv-template [title*=".net"],
+.cv-template [title*="www."] {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* Force all links to wrap properly */
+.cv-template p a, .cv-template div a, .cv-template li a, .cv-template span a {
+  word-break: break-all;
+  word-wrap: break-word;
+}
+
+/* Print-specific styles to ensure content fits properly */
+@media print {
+  .cv-template {
+    overflow: visible !important;
+  }
+  
+  .cv-template p, .cv-template div, .cv-template span, .cv-template a, .cv-template li {
+    overflow-wrap: break-word !important;
+    word-wrap: break-word !important;
+    word-break: break-word !important;
+    white-space: normal !important;
+  }
+}
+
 .slider-input::-webkit-slider-track {
   width: 100%;
   height: 6px;

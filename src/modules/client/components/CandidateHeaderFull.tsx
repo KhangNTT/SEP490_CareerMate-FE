@@ -169,7 +169,7 @@ export function CandidateHeader() {
                             Blog
                         </Link>
 
-                        <Link href="/candidate/cv-templates-introduction" className="text-gray-300 hover:text-white transition-colors">
+                        <Link href="/cv-templates-introduction" className="text-gray-300 hover:text-white transition-colors">
                             CV Templates
                         </Link>
 

@@ -20,9 +20,10 @@ export default function SignInForm({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<"div">) {
-  //isloading
   const { form, onSubmit, showPassword, togglePasswordVisibility } =
     useSignInHook();
+  
+  const isSubmitting = form.formState.isSubmitting;
   return (
     <>
       <section className="py-16 md:py-20 lg:py-24">
@@ -65,6 +66,7 @@ export default function SignInForm({
                                 className="border-stroke dark:text-body-color-dark dark:shadow-two text-body-color focus:border-primary dark:focus:border-primary w-full rounded-xs border bg-[#f8f8f8] px-6 py-3 text-base outline-hidden transition-all duration-300 dark:border-transparent dark:bg-[#2C303B] dark:focus:shadow-none"
                                 placeholder="Enter your email"
                                 autoComplete="email"
+                                disabled={isSubmitting}
                                 {...field}
                               />
                             </FormControl>
@@ -94,6 +96,7 @@ export default function SignInForm({
                                   className="border-stroke dark:text-body-color-dark dark:shadow-two text-body-color focus:border-primary dark:focus:border-primary w-full rounded-xs border bg-[#f8f8f8] px-6 py-3 text-base outline-hidden transition-all duration-300 dark:border-transparent dark:bg-[#2C303B] dark:focus:shadow-none"
                                   placeholder="Enter your password"
                                   autoComplete="current-password"
+                                  disabled={isSubmitting}
                                   {...field}
                                 />
                                 <Button
@@ -102,6 +105,7 @@ export default function SignInForm({
                                   size="sm"
                                   className="group absolute top-1/2 right-0 h-full -translate-y-1/2 px-3 py-2 hover:cursor-pointer hover:bg-transparent"
                                   onClick={togglePasswordVisibility}
+                                  disabled={isSubmitting}
                                 >
                                   {showPassword ? (
                                     <EyeOff className="text-muted-foreground size-5 group-hover:text-blue-600" />
@@ -163,9 +167,10 @@ export default function SignInForm({
                     <div className="mb-6">
                       <Button
                         type="submit"
-                        className="shadow-submit dark:shadow-submit-dark bg-primary hover:bg-primary/90 flex w-full items-center justify-center rounded-xs px-9 py-4 text-base font-medium text-white duration-300"
+                        disabled={isSubmitting}
+                        className="shadow-submit dark:shadow-submit-dark bg-primary hover:bg-primary/90 flex w-full items-center justify-center rounded-xs px-9 py-4 text-base font-medium text-white duration-300 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        Sign in
+                        {isSubmitting ? "Signing in..." : "Sign in"}
                       </Button>
                     </div>
                   </form>

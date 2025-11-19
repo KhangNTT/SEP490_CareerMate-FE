@@ -30,21 +30,29 @@ export default function ActiveJobsPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [jobStats, setJobStats] = useState<JobPostingStats | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(5);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
 
   // Fetch jobs on component mount
   useEffect(() => {
     fetchJobs();
-  }, []);
+  }, [currentPage, pageSize]);
 
   const fetchJobs = async () => {
     try {
       setIsLoading(true);
-      const response = await getRecruiterJobPostings();
+      const response = await getRecruiterJobPostings({ page: currentPage, size: pageSize });
       
       if ((response.code === 0 || response.code === 200) && response.result) {
-        // Filter only ACTIVE jobs
-        const activeJobs = response.result.filter(job => job.status === 'ACTIVE');
+        // Filter only ACTIVE jobs from paginated content
+        const activeJobs = response.result.content.filter(job => job.status === 'ACTIVE');
         setJobs(activeJobs);
+        setTotalPages(response.result.totalPages);
+        setTotalElements(response.result.totalElements);
         
         if (activeJobs.length === 0) {
           toast("No active jobs found", { icon: "ℹ️" });
@@ -423,6 +431,70 @@ export default function ActiveJobsPage() {
                 </li>
               ))}
             </ul>
+          </div>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-8 flex items-center justify-between bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+          <div className="text-sm text-gray-600">
+            Showing <span className="font-semibold">{jobs.length}</span> of{" "}
+            <span className="font-semibold">{totalElements}</span> active jobs
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+              disabled={currentPage === 0}
+              className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-3 py-2 text-sm font-medium rounded-md ${
+                    currentPage === page
+                      ? 'bg-sky-600 text-white'
+                      : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  {page + 1}
+                </button>
+              ))}
+            </div>
+            
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages - 1, prev + 1))}
+              disabled={currentPage === totalPages - 1}
+              className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <label htmlFor="pageSize" className="text-sm text-gray-600">
+              Items per page:
+            </label>
+            <select
+              id="pageSize"
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(0);
+              }}
+              className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-sky-500 focus:border-sky-500"
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
           </div>
         </div>
       )}

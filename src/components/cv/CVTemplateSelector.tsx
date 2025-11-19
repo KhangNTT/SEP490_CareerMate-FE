@@ -16,25 +16,31 @@ export default function CVTemplateSelector({ onTemplateSelect }: Props) {
     onTemplateSelect?.(templateId);
   };
 
-  // Tạo preview cho mỗi template (placeholder cho hình ảnh)
+  // Tạo preview cho mỗi template với hình ảnh thật từ thư mục cvtemp
   const getTemplatePreview = (template: CVTemplate) => {
     return (
-      <div className="relative w-full aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden group hover:shadow-lg transition-all duration-200">
-        {/* Placeholder cho hình ảnh template - có thể thay thế bằng <img> */}
-        <div className="w-full h-full bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col items-center justify-center">
-          <div className="text-4xl mb-2">{template.icon}</div>
-          <div className="text-center px-4">
-            <h4 className="font-semibold text-gray-700 text-sm mb-1">{template.name}</h4>
-            <p className="text-xs text-[#6B7280] line-clamp-2">{template.description}</p>
+      <div className="relative w-full aspect-[3/4] bg-white rounded-lg overflow-hidden group hover:shadow-lg transition-all duration-200 border border-gray-100">
+        {/* Hiển thị hình ảnh template từ thư mục cvtemp */}
+        <div className="w-full h-full bg-white flex flex-col items-center justify-center">
+          <div className="w-full h-full relative">
+            <img 
+              src={template.previewImage || `/images/cvtemp/${template.id}.png`} 
+              alt={`${template.name} template`} 
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                // Fallback to category name if exact ID image doesn't exist
+                (e.target as HTMLImageElement).src = `/images/cvtemp/${template.category}.png`;
+              }}
+            />
           </div>
         </div>
 
         {/* Hover overlay */}
-        <div className="absolute inset-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
+        <div className="absolute inset-0 group-hover:bg-black group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
           <div className="opacity-0 group-hover:opacity-100 transition-opacity">
             <div className="bg-white rounded-full p-3 shadow-lg">
               {selectedTemplate === template.id ? (
-                <Check className="w-6 h-6 text-blue-500" />
+                <Check className="w-6 h-6 text-[#00ec2f]" />
               ) : (
                 <Image className="w-6 h-6 text-gray-400" />
               )}
@@ -44,7 +50,7 @@ export default function CVTemplateSelector({ onTemplateSelect }: Props) {
 
         {/* Selection indicator */}
         {selectedTemplate === template.id && (
-          <div className="absolute top-3 right-3 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+          <div className="absolute top-3 right-3 bg-[#00ec2f] w-6 h-6 rounded-full flex items-center justify-center shadow-md">
             <Check className="w-4 h-4 text-white" />
           </div>
         )}
@@ -53,7 +59,7 @@ export default function CVTemplateSelector({ onTemplateSelect }: Props) {
   };
 
   return (
-    <div className="h-full bg-white flex flex-col">
+    <div className="h-full bg-gradient-to-br from-[#667085] via-white-900 to-[#f8f8f8] flex flex-col">
       {/* Sticky Header */}
       
       
@@ -67,7 +73,7 @@ export default function CVTemplateSelector({ onTemplateSelect }: Props) {
                 onClick={() => handleSelectTemplate(template.id)}
                 className={`
                   cursor-pointer transition-all duration-200 hover:scale-105
-                  ${selectedTemplate === template.id ? 'ring-2 ring-blue-500 ring-offset-2 rounded-lg' : ''}
+                  ${selectedTemplate === template.id ? 'ring-2 ring-[#00ec2f] ring-offset-2 rounded-lg' : ''}
                 `}
               >
                 {getTemplatePreview(template)}

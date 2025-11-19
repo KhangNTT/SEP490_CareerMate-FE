@@ -37,16 +37,18 @@ class PublicBlogApiService {
     async getBlogs(params: {
         page?: number;
         size?: number;
-        sort?: string;
-        keyword?: string;
-        status?: string;
+        sortBy?: string;
+        sortDir?: string;
     }): Promise<PagedResponse<BlogResponse>> {
-        let url = `/blogs?page=${params.page || 0}&size=${params.size || 20}`;
+        // Build query parameters
+        const queryParams = new URLSearchParams();
+        queryParams.append('page', (params.page || 0).toString());
+        queryParams.append('size', (params.size || 20).toString());
+        queryParams.append('sortBy', params.sortBy || 'createdAt');
+        queryParams.append('sortDir', params.sortDir || 'DESC');
 
-        if (params.sort) url += `&sort=${params.sort}`;
-        if (params.keyword) url += `&keyword=${params.keyword}`;
-        if (params.status) url += `&status=${params.status}`;
-
+        const url = `/api/blogs?${queryParams.toString()}`;
+        console.log('📋 Public API - Fetching all blogs with URL:', url);
         const response = await publicApi.get(url);
 
         // Handle the wrapped response format from backend
@@ -57,8 +59,57 @@ class PublicBlogApiService {
         return response.data;
     }
 
+    async searchBlogs(params: {
+        keyword?: string;
+        page?: number;
+        size?: number;
+        sortBy?: string;
+        sortDir?: string;
+    }): Promise<PagedResponse<BlogResponse>> {
+        const queryParams = new URLSearchParams();
+        queryParams.append('page', (params.page || 0).toString());
+        queryParams.append('size', (params.size || 20).toString());
+        queryParams.append('sortBy', params.sortBy || 'createdAt');
+        queryParams.append('sortDir', params.sortDir || 'DESC');
+
+        if (params.keyword) queryParams.append('keyword', params.keyword);
+
+        const url = `/api/blogs/search?${queryParams.toString()}`;
+        console.log('🔍 Public API - Searching blogs with URL:', url);
+        const response = await publicApi.get(url);
+
+        if (response.data.result) {
+            return response.data.result;
+        }
+
+        return response.data;
+    }
+
+    async getBlogsByCategory(category: string, params: {
+        page?: number;
+        size?: number;
+        sortBy?: string;
+        sortDir?: string;
+    }): Promise<PagedResponse<BlogResponse>> {
+        const queryParams = new URLSearchParams();
+        queryParams.append('page', (params.page || 0).toString());
+        queryParams.append('size', (params.size || 20).toString());
+        queryParams.append('sortBy', params.sortBy || 'createdAt');
+        queryParams.append('sortDir', params.sortDir || 'DESC');
+
+        const url = `/api/blogs/category/${category}?${queryParams.toString()}`;
+        console.log('📁 Public API - Fetching blogs by category with URL:', url);
+        const response = await publicApi.get(url);
+
+        if (response.data.result) {
+            return response.data.result;
+        }
+
+        return response.data;
+    }
+
     async getBlog(blogId: number): Promise<BlogResponse> {
-        const response = await publicApi.get(`/blogs/${blogId}`);
+        const response = await publicApi.get(`/api/blogs/${blogId}`);
 
         // Handle the wrapped response format from backend
         if (response.data.result) {
@@ -106,7 +157,7 @@ class PublicBlogApiService {
 
     async getRatings(blogId: number): Promise<Rating[]> {
         try {
-            const response = await publicApi.get<Rating[]>(`/api/blogs/${blogId}/ratings`);
+            const response = await publicApi.get<Rating[]>(`/api/blogs/${blogId}/rate`);
             return response.data;
         } catch (error: any) {
             // Ratings require authentication - return empty array for unauthorized users
@@ -119,7 +170,7 @@ class PublicBlogApiService {
 
     async getUserRating(blogId: number): Promise<Rating | null> {
         try {
-            const response = await publicApi.get<Rating>(`/api/blogs/${blogId}/ratings/my-rating`);
+            const response = await publicApi.get<Rating>(`/api/blogs/${blogId}/rate/my-rating`);
             return response.data;
         } catch (error: any) {
             // Return null if user hasn't rated (404) or unauthorized (401)

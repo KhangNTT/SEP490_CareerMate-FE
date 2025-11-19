@@ -85,14 +85,14 @@ export default function CreateJobPage() {
     const fetchJobs = async () => {
       try {
         setIsLoadingJobs(true);
-        const response = await getRecruiterJobPostings();
+        const response = await getRecruiterJobPostings({ page: 0, size: 100 });
         console.log('📋 Job postings response:', response);
         
         if (response.code === 0 && response.result) {
-          setJobs(response.result);
-          toast.success(`Loaded ${response.result.length} job postings`);
+          setJobs(response.result.content);
+          toast.success(`Loaded ${response.result.content.length} job postings`);
         } else if (response.code === 200 && response.result) {
-          setJobs(response.result);
+          setJobs(response.result.content);
         } else {
           toast.error(response.message || "Failed to load job postings");
         }
@@ -248,9 +248,9 @@ export default function CreateJobPage() {
         toast.success("Job post created successfully!");
         
         // Refresh job list from server instead of adding locally
-        const jobsResponse = await getRecruiterJobPostings();
+        const jobsResponse = await getRecruiterJobPostings({ page: 0, size: 100 });
         if (jobsResponse.code === 0 || jobsResponse.code === 200) {
-          setJobs(jobsResponse.result);
+          setJobs(jobsResponse.result.content);
         }
         
         setIsOpen(false);

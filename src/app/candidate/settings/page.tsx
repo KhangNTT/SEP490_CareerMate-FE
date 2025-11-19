@@ -8,10 +8,10 @@ import { useLayout } from "@/contexts/LayoutContext";
 const SettingsPage = () => {
   // Sử dụng context thay vì useEffect
   const { headerHeight } = useLayout();
-  
+
   // Backup solution nếu context chưa hoạt động
   const [headerH, setHeaderH] = useState(headerHeight || 0);
-  
+
   // Chỉ sử dụng localStorage ở client-side
   useEffect(() => {
     // Kiểm tra nếu đang ở client-side
@@ -46,7 +46,7 @@ const SettingsPage = () => {
             {/* Account Information */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <h1 className="text-xl font-semibold text-gray-900 mb-6">Account Information</h1>
-              
+
               <div className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email:</label>
@@ -60,7 +60,7 @@ const SettingsPage = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Full name:</label>
                   <div className="flex items-center">
@@ -72,7 +72,7 @@ const SettingsPage = () => {
                       Your account name is synchronized with profile information.
                     </div>
                   </div>
-                  <Link href="/profile" className="text-gray-600 hover:text-gray-800 text-sm mt-2 inline-flex items-center">
+                  <Link href="/candidate/cm-profile" className="text-gray-600 hover:text-gray-800 text-sm mt-2 inline-flex items-center">
                     Update profile information
                     <svg className="w-4 h-4 ml-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
@@ -81,11 +81,11 @@ const SettingsPage = () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Password */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Password</h2>
-              
+
               <div className="flex items-center text-sm text-gray-600">
                 <svg className="w-5 h-5 mr-2 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -93,7 +93,7 @@ const SettingsPage = () => {
                 You signed up with Google, so your account doesn't have a password.
               </div>
             </div>
-            
+
             {/* Job Invitation Settings */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="flex justify-between items-center mb-6">
@@ -106,7 +106,7 @@ const SettingsPage = () => {
                   </svg>
                 </Link>
               </div>
-              
+
               <div className="space-y-6">
                 <div className="flex items-center justify-between py-4 border-t border-b border-gray-200">
                   <span className="text-gray-700">Receive job invitations from employers via email, SMS and CM Inbox</span>
@@ -116,16 +116,16 @@ const SettingsPage = () => {
                     <span className="ml-3 text-sm font-medium text-gray-700">Yes</span>
                   </label>
                 </div>
-                
+
                 <div>
                   <h3 className="text-sm font-medium text-gray-700 mb-2">Don't receive invitations from:</h3>
                   <p className="text-xs text-gray-500 mb-4">Maximum 5 employers</p>
-                  
+
                   <div className="relative mb-2">
-                    <input 
-                      type="text" 
-                      className="w-full border border-gray-300 rounded-md py-2 pl-3 pr-10 focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-gray-500" 
-                      placeholder="Search company" 
+                    <input
+                      type="text"
+                      className="w-full border border-gray-300 rounded-md py-2 pl-3 pr-10 focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-gray-500"
+                      placeholder="Search company"
                     />
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                       <svg className="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -133,21 +133,21 @@ const SettingsPage = () => {
                       </svg>
                     </div>
                   </div>
-                  
+
                   <p className="text-sm text-gray-500">No companies selected</p>
                 </div>
               </div>
             </div>
-            
+
             {/* Delete Account */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-6">Delete Account</h2>
-              
+
               <p className="text-gray-600 mb-6">
                 Account deletion is a permanent action and cannot be undone. If you are deleting your account due to an excessive email
                 notifications, you can unsubscribe from emails <Link href="#" className="text-gray-600 underline">here</Link>.
               </p>
-              
+
               <button className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
                 Delete your account
               </button>

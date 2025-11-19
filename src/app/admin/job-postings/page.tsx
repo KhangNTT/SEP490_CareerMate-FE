@@ -108,6 +108,7 @@ export default function JobPostingsManagementPage() {
 
   useEffect(() => {
     fetchJobPostings(currentPage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, statusFilter]);
 
   const handleViewDetails = (job: JobPosting) => {

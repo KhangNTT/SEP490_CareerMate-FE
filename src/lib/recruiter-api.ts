@@ -439,14 +439,39 @@ export interface RecruiterJobPosting {
 export interface RecruiterJobPostingsResponse {
   code: number;
   message: string;
-  result: RecruiterJobPosting[];
+  result: {
+    content: RecruiterJobPosting[];
+    number: number;
+    size: number;
+    totalElements: number;
+    totalPages: number;
+    first: boolean;
+    last: boolean;
+  };
 }
 
-// Get all job postings of current recruiter
-export const getRecruiterJobPostings = async (): Promise<RecruiterJobPostingsResponse> => {
+export interface GetJobPostingsParams {
+  page?: number;
+  size?: number;
+}
+
+// Get all job postings of current recruiter with pagination
+export const getRecruiterJobPostings = async (params?: GetJobPostingsParams): Promise<RecruiterJobPostingsResponse> => {
   try {
-    console.log('🔵 [GET RECRUITER JOB POSTINGS] Fetching...');
-    const response = await api.get('/api/jobposting/recruiter');
+    const queryParams = new URLSearchParams();
+    
+    if (params?.page !== undefined) {
+      queryParams.append('page', params.page.toString());
+    }
+    if (params?.size !== undefined) {
+      queryParams.append('size', params.size.toString());
+    }
+    
+    const queryString = queryParams.toString();
+    const url = `/api/jobposting/recruiter${queryString ? `?${queryString}` : ''}`;
+    
+    console.log('🔵 [GET RECRUITER JOB POSTINGS] Fetching:', url);
+    const response = await api.get(url);
     console.log('✅ [GET RECRUITER JOB POSTINGS] Response:', response.data);
     return response.data;
   } catch (error: any) {

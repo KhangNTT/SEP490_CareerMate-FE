@@ -52,11 +52,9 @@ export interface BlogResponse {
     publishedAt?: string;
     createdAt: string;
     updatedAt: string;
-    author: {
-        id: number;
-        username: string;
-        email: string;
-    };
+    // Author information (from backend)
+    authorId: number;
+    authorName: string;
     // Aggregated stats (populated by backend)
     averageRating?: number;
     ratingCount?: number;
@@ -110,6 +108,9 @@ export interface BlogPaginationParams {
     status?: string;
     category?: string;
     keyword?: string;
+    search?: string; // Search in title, content, excerpt
+    tag?: string; // Filter by tag
+    authorId?: number; // Filter by author
 }
 
 // Error Codes
@@ -122,11 +123,14 @@ export enum ErrorCodes {
     INTERNAL_ERROR = 1005
 }
 
-// Image Upload Response
+// Image Upload Response (Firebase Storage)
 export interface ImageUploadResponse {
     imageUrl: string;
-    fileName: string;
+    publicId: string;
     fileSize: number;
+    originalName: string;
+    width: number;
+    height: number;
 }
 
 // Comment System

@@ -4,12 +4,14 @@ interface ProfileStrengthSidebarProps {
     profileCompletion: number;
     expandedSections: string[];
     onToggleSection: (section: string) => void;
+    onPreviewClick?: () => void;
 }
 
 export default function ProfileStrengthSidebar({
     profileCompletion,
     expandedSections,
-    onToggleSection
+    onToggleSection,
+    onPreviewClick
 }: ProfileStrengthSidebarProps) {
     return (
         <aside className="hidden xl:block space-y-6 sticky [top:calc(var(--sticky-offset)+var(--content-pad))] self-start transition-all duration-300">
@@ -121,6 +123,7 @@ export default function ProfileStrengthSidebar({
                                 : "bg-gray-400 cursor-not-allowed"
                             } text-white font-medium rounded-md transition`}
                         disabled={profileCompletion < 70}
+                        onClick={onPreviewClick}
                     >
                         Preview & Download CV
                     </button>
