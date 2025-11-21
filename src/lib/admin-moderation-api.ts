@@ -130,7 +130,7 @@ class AdminModerationApiService {
         console.log('📦 Admin Comments Response:', responseData);
 
         // Handle wrapped response format
-        if (responseData.code !== undefined && responseData.code !== 0 && responseData.code !== 1000) {
+        if (responseData.code && (responseData.code < 200 || responseData.code >= 300)) {
             throw new Error(responseData.message || 'Failed to fetch comments');
         }
 
@@ -145,7 +145,7 @@ class AdminModerationApiService {
         const response = await api.get(`/api/admin/comments/${commentId}`);
         const responseData = response.data;
 
-        if (responseData.code !== undefined && responseData.code !== 0 && responseData.code !== 1000) {
+        if (responseData.code && (responseData.code < 200 || responseData.code >= 300)) {
             throw new Error(responseData.message || 'Failed to fetch comment');
         }
 
@@ -159,7 +159,7 @@ class AdminModerationApiService {
         const response = await api.delete(`/api/admin/comments/${commentId}`);
         const responseData = response.data;
 
-        if (responseData.code !== undefined && responseData.code !== 0 && responseData.code !== 1000) {
+        if (responseData.code && (responseData.code < 200 || responseData.code >= 300)) {
             throw new Error(responseData.message || 'Failed to delete comment');
         }
     }
@@ -171,7 +171,7 @@ class AdminModerationApiService {
         const response = await api.post(`/api/admin/comments/${commentId}/hide`);
         const responseData = response.data;
 
-        if (responseData.code !== undefined && responseData.code !== 0 && responseData.code !== 1000) {
+        if (responseData.code && (responseData.code < 200 || responseData.code >= 300)) {
             throw new Error(responseData.message || 'Failed to hide comment');
         }
 
@@ -185,7 +185,7 @@ class AdminModerationApiService {
         const response = await api.post(`/api/admin/comments/${commentId}/show`);
         const responseData = response.data;
 
-        if (responseData.code !== undefined && responseData.code !== 0 && responseData.code !== 1000) {
+        if (responseData.code && (responseData.code < 200 || responseData.code >= 300)) {
             throw new Error(responseData.message || 'Failed to show comment');
         }
 
@@ -201,7 +201,7 @@ class AdminModerationApiService {
 
         console.log('📊 Comment Statistics Response:', responseData);
 
-        if (responseData.code !== undefined && responseData.code !== 0 && responseData.code !== 1000) {
+        if (responseData.code && (responseData.code < 200 || responseData.code >= 300)) {
             throw new Error(responseData.message || 'Failed to fetch comment statistics');
         }
 
@@ -226,7 +226,7 @@ class AdminModerationApiService {
 
         console.log('⭐ Admin Ratings Response:', responseData);
 
-        if (responseData.code !== undefined && responseData.code !== 0 && responseData.code !== 1000) {
+        if (responseData.code && (responseData.code < 200 || responseData.code >= 300)) {
             throw new Error(responseData.message || 'Failed to fetch ratings');
         }
 
@@ -240,7 +240,7 @@ class AdminModerationApiService {
         const response = await api.get(`/api/admin/ratings/${ratingId}`);
         const responseData = response.data;
 
-        if (responseData.code !== undefined && responseData.code !== 0 && responseData.code !== 1000) {
+        if (responseData.code && (responseData.code < 200 || responseData.code >= 300)) {
             throw new Error(responseData.message || 'Failed to fetch rating');
         }
 
@@ -254,7 +254,7 @@ class AdminModerationApiService {
         const response = await api.delete(`/api/admin/ratings/${ratingId}`);
         const responseData = response.data;
 
-        if (responseData.code !== undefined && responseData.code !== 0 && responseData.code !== 1000) {
+        if (responseData.code && (responseData.code < 200 || responseData.code >= 300)) {
             throw new Error(responseData.message || 'Failed to delete rating');
         }
     }
@@ -268,7 +268,7 @@ class AdminModerationApiService {
 
         console.log('📊 Rating Statistics Response:', responseData);
 
-        if (responseData.code !== undefined && responseData.code !== 0 && responseData.code !== 1000) {
+        if (responseData.code && (responseData.code < 200 || responseData.code >= 300)) {
             throw new Error(responseData.message || 'Failed to fetch rating statistics');
         }
 
@@ -282,7 +282,7 @@ class AdminModerationApiService {
         const response = await api.get(`/api/admin/ratings/blog/${blogId}/summary`);
         const responseData = response.data;
 
-        if (responseData.code !== undefined && responseData.code !== 0 && responseData.code !== 1000) {
+        if (responseData.code && (responseData.code < 200 || responseData.code >= 300)) {
             throw new Error(responseData.message || 'Failed to fetch blog rating summary');
         }
 

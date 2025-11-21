@@ -38,7 +38,7 @@ interface BlogEditorProps {
 
 export default function BlogEditor({ blogId, isEdit = false }: BlogEditorProps) {
     const router = useRouter();
-    const { isAdmin } = useAdminCheck();
+    const { isAdmin, isChecking } = useAdminCheck();
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(isEdit);
     const [previewMode, setPreviewMode] = useState(false);
@@ -226,10 +226,13 @@ export default function BlogEditor({ blogId, isEdit = false }: BlogEditorProps) 
         setFormData(prev => ({ ...prev, content }));
     };
 
-    if (initialLoading) {
+    if (initialLoading || isChecking) {
         return (
             <div className="flex items-center justify-center min-h-screen">
-                <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">{isChecking ? 'Checking admin access...' : 'Loading blog editor...'}</p>
+                </div>
             </div>
         );
     }

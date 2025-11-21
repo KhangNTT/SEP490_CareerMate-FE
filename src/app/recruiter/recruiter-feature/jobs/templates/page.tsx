@@ -466,7 +466,7 @@ Requirements:
                   </p>
                 </div>
                 <div className="bg-sky-50 p-3 rounded-md">
-                  <p className="text-xs text-gray-600 mb-1">Job Package</p>
+                  <p className="text-xs text-gray-600 mb-1">Privilege</p>
                   <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                     selectedTemplate.jobPackage === 'PREMIUM' ? 'bg-purple-100 text-purple-800' :
                     selectedTemplate.jobPackage === 'STANDARD' ? 'bg-blue-100 text-blue-800' :

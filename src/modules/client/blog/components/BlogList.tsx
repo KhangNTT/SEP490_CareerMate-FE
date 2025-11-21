@@ -41,7 +41,6 @@ export function BlogList() {
         try {
             setLoading(true);
 
-            let response;
             const commonParams = {
                 page: currentPage,
                 size: pageSize,
@@ -49,20 +48,13 @@ export function BlogList() {
                 sortDir: sortBy.split(',')[1]?.toUpperCase() || 'DESC'
             };
 
-            // Determine which API method to use based on active filters
-            if (activeSearch) {
-                // Use search endpoint when there's a keyword
-                response = await publicBlogApi.searchBlogs({
-                    keyword: activeSearch,
-                    ...commonParams
-                });
-            } else if (categoryFilter) {
-                // Use category filter endpoint
-                response = await publicBlogApi.getBlogsByCategory(categoryFilter, commonParams);
-            } else {
-                // Use default getAll endpoint
-                response = await publicBlogApi.getBlogs(commonParams);
-            }
+            // Use the new unified filter endpoint that supports all filters simultaneously
+            const response = await publicBlogApi.filterBlogs({
+                keyword: activeSearch || undefined,
+                status: 'PUBLISHED', // Public users only see published blogs
+                category: categoryFilter || undefined,
+                ...commonParams
+            });
 
             console.log('📦 Public - Response:', response);
 
@@ -98,8 +90,11 @@ export function BlogList() {
             try {
                 const cats = await blogApi.getCategories();
                 setCategories(cats);
-            } catch (error) {
-                console.error('Failed to fetch categories:', error);
+                console.log('📁 Categories loaded:', cats);
+            } catch (error: any) {
+                console.warn('📁 Categories not available:', error.message);
+                // Categories are optional, continue without them
+                setCategories([]);
             }
         };
         fetchCategories();
@@ -181,24 +176,27 @@ export function BlogList() {
                                 )}
                             </form>
                             <div className="flex gap-4">
-                                <div className="flex-1">
-                                    <select
-                                        value={categoryFilter}
-                                        onChange={(e) => {
-                                            setCategoryFilter(e.target.value);
-                                            setCurrentPage(0);
-                                        }}
-                                        className="w-full h-10 px-4 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-blue-500"
-                                    >
-                                        <option value="">All Categories</option>
-                                        {categories.map((cat) => (
-                                            <option key={cat} value={cat}>
-                                                {cat.charAt(0) + cat.slice(1).toLowerCase()}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="flex-1">
+                                {/* Only show category filter if categories are available */}
+                                {categories.length > 0 && (
+                                    <div className="flex-1">
+                                        <select
+                                            value={categoryFilter}
+                                            onChange={(e) => {
+                                                setCategoryFilter(e.target.value);
+                                                setCurrentPage(0);
+                                            }}
+                                            className="w-full h-10 px-4 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-blue-500"
+                                        >
+                                            <option value="">All Categories</option>
+                                            {categories.map((cat) => (
+                                                <option key={cat} value={cat}>
+                                                    {cat.charAt(0) + cat.slice(1).toLowerCase()}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                                <div className={categories.length > 0 ? "flex-1" : "w-full"}>
                                     <select
                                         value={sortBy}
                                         onChange={(e) => setSortBy(e.target.value)}

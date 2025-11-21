@@ -452,20 +452,22 @@ export interface RecruiterJobPostingsResponse {
 
 export interface GetJobPostingsParams {
   page?: number;
-  size?: number;
+  size?: number; // Default: 5
 }
 
 // Get all job postings of current recruiter with pagination
+// Default: page=0, size=5
 export const getRecruiterJobPostings = async (params?: GetJobPostingsParams): Promise<RecruiterJobPostingsResponse> => {
   try {
     const queryParams = new URLSearchParams();
     
-    if (params?.page !== undefined) {
-      queryParams.append('page', params.page.toString());
-    }
-    if (params?.size !== undefined) {
-      queryParams.append('size', params.size.toString());
-    }
+    // Default page to 0 if not provided
+    const page = params?.page !== undefined ? params.page : 0;
+    queryParams.append('page', page.toString());
+    
+    // Default size to 5 if not provided
+    const size = params?.size !== undefined ? params.size : 5;
+    queryParams.append('size', size.toString());
     
     const queryString = queryParams.toString();
     const url = `/api/jobposting/recruiter${queryString ? `?${queryString}` : ''}`;
@@ -549,6 +551,70 @@ export const getJobPostingStats = async (jobPostingId: number): Promise<JobPosti
   } catch (error: any) {
     console.error('❌ [GET JOB STATS] Error:', error.response?.data || error);
     throw new Error(error.response?.data?.message || 'Failed to fetch job statistics');
+  }
+};
+
+// AI Candidate Recommendations
+export interface CandidateRecommendation {
+  candidateId: number;
+  candidateName: string | null;
+  email: string;
+  matchScore: number;
+  matchedSkills: string[];
+  missingSkills: string[];
+  totalYearsExperience: number;
+  profileSummary: string;
+  educationLevel: string | null;
+  certificatesCount: number;
+  projectsCount: number;
+  awardsCount: number;
+  languagesCount: number;
+  scoreBreakdown: any | null;
+}
+
+export interface RecommendationsResult {
+  jobPostingId: number;
+  jobTitle: string;
+  totalCandidatesFound: number;
+  recommendations: CandidateRecommendation[];
+  processingTimeMs: number;
+}
+
+export interface RecommendationsResponse {
+  code: number;
+  result: RecommendationsResult;
+}
+
+export interface GetRecommendationsParams {
+  maxCandidates?: number;
+  minMatchScore?: number;
+}
+
+// Get AI-powered candidate recommendations for a job posting
+export const getJobRecommendations = async (
+  jobPostingId: number, 
+  params?: GetRecommendationsParams
+): Promise<RecommendationsResponse> => {
+  try {
+    const queryParams = new URLSearchParams();
+    
+    if (params?.maxCandidates !== undefined) {
+      queryParams.append('maxCandidates', params.maxCandidates.toString());
+    }
+    if (params?.minMatchScore !== undefined) {
+      queryParams.append('minMatchScore', params.minMatchScore.toString());
+    }
+    
+    const queryString = queryParams.toString();
+    const url = `/api/recruiter/recommendations/job/${jobPostingId}${queryString ? `?${queryString}` : ''}`;
+    
+    console.log('🔵 [GET RECOMMENDATIONS] Fetching:', url);
+    const response = await api.get(url);
+    console.log('✅ [GET RECOMMENDATIONS] Response:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('❌ [GET RECOMMENDATIONS] Error:', error.response?.data || error);
+    throw new Error(error.response?.data?.message || 'Failed to fetch candidate recommendations');
   }
 };
 

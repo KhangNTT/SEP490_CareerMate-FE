@@ -28,6 +28,12 @@ export default function CreateJobPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingJobs, setIsLoadingJobs] = useState(false);
   
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(5);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  
   // Skills state
   const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
   const [isLoadingSkills, setIsLoadingSkills] = useState(false);
@@ -80,19 +86,22 @@ export default function CreateJobPage() {
     fetchSkills();
   }, []);
 
-  // Fetch recruiter's job postings on component mount
+  // Fetch recruiter's job postings with pagination
   useEffect(() => {
     const fetchJobs = async () => {
       try {
         setIsLoadingJobs(true);
-        const response = await getRecruiterJobPostings({ page: 0, size: 100 });
+        const response = await getRecruiterJobPostings({ page: currentPage, size: pageSize });
         console.log('📋 Job postings response:', response);
         
         if (response.code === 0 && response.result) {
           setJobs(response.result.content);
-          toast.success(`Loaded ${response.result.content.length} job postings`);
+          setTotalPages(response.result.totalPages);
+          setTotalElements(response.result.totalElements);
         } else if (response.code === 200 && response.result) {
           setJobs(response.result.content);
+          setTotalPages(response.result.totalPages);
+          setTotalElements(response.result.totalElements);
         } else {
           toast.error(response.message || "Failed to load job postings");
         }
@@ -105,7 +114,7 @@ export default function CreateJobPage() {
     };
     
     fetchJobs();
-  }, []);
+  }, [currentPage, pageSize]);
 
   // Load template from sessionStorage if available
   useEffect(() => {
@@ -212,7 +221,7 @@ export default function CreateJobPage() {
     if (!formData.yearsOfExperience) newErrors.yearsOfExperience = "Years of experience is required.";
     if (!formData.workModel.trim()) newErrors.workModel = "Work model is required.";
     if (!formData.salaryRange.trim()) newErrors.salaryRange = "Salary range is required.";
-    if (!formData.jobPackage.trim()) newErrors.jobPackage = "Job package is required.";
+    if (!formData.jobPackage.trim()) newErrors.jobPackage = "Privilege is required.";
     if (formData.skills.length === 0) newErrors.skills = "Please add at least one skill.";
     return newErrors;
   };
@@ -248,9 +257,11 @@ export default function CreateJobPage() {
         toast.success("Job post created successfully!");
         
         // Refresh job list from server instead of adding locally
-        const jobsResponse = await getRecruiterJobPostings({ page: 0, size: 100 });
+        const jobsResponse = await getRecruiterJobPostings({ page: currentPage, size: pageSize });
         if (jobsResponse.code === 0 || jobsResponse.code === 200) {
           setJobs(jobsResponse.result.content);
+          setTotalPages(jobsResponse.result.totalPages);
+          setTotalElements(jobsResponse.result.totalElements);
         }
         
         setIsOpen(false);
@@ -343,9 +354,6 @@ export default function CreateJobPage() {
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Expiration Date
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Package
-                </th>
                 <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
@@ -380,7 +388,7 @@ export default function CreateJobPage() {
                   <td className="px-6 py-4 text-sm text-gray-700">
                     {new Date(job.expirationDate).toLocaleDateString('vi-VN')}
                   </td>
-                  <td className="px-6 py-4 text-sm">
+                  {/* <td className="px-6 py-4 text-sm">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                       job.jobPackage === 'PREMIUM' ? 'bg-purple-100 text-purple-800' :
                       job.jobPackage === 'STANDARD' ? 'bg-blue-100 text-blue-800' :
@@ -388,7 +396,7 @@ export default function CreateJobPage() {
                     }`}>
                       {job.jobPackage}
                     </span>
-                  </td>
+                  </td> */}
                   <td className="px-6 py-4 text-right space-x-3">
                     <button
                       onClick={() => handleView(job)}
@@ -412,7 +420,86 @@ export default function CreateJobPage() {
         </div>
       ) : (
         <div className="rounded-lg border bg-white p-6 shadow-sm text-gray-600">
-          <p>No job posts yet. Click “Create Job Post” to add one.</p>
+          <p>No job posts yet. Click "Create Job Post" to add one.</p>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-6 flex items-center justify-between bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+          <div className="text-sm text-gray-600">
+            Showing <span className="font-semibold">{jobs.length}</span> of{" "}
+            <span className="font-semibold">{totalElements}</span> job postings
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+              disabled={currentPage === 0 || isLoadingJobs}
+              className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i;
+                } else if (currentPage < 3) {
+                  pageNum = i;
+                } else if (currentPage > totalPages - 4) {
+                  pageNum = totalPages - 5 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    disabled={isLoadingJobs}
+                    className={`px-3 py-2 text-sm font-medium rounded-md ${
+                      currentPage === pageNum
+                        ? 'bg-sky-600 text-white'
+                        : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    {pageNum + 1}
+                  </button>
+                );
+              })}
+            </div>
+            
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages - 1, prev + 1))}
+              disabled={currentPage === totalPages - 1 || isLoadingJobs}
+              className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <label htmlFor="pageSize" className="text-sm text-gray-600">
+              Items per page:
+            </label>
+            <select
+              id="pageSize"
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(0);
+              }}
+              disabled={isLoadingJobs}
+              className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-sky-500 focus:border-sky-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+          </div>
         </div>
       )}
 
@@ -584,21 +671,19 @@ export default function CreateJobPage() {
 
               <div>
                 <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
-                  <Package className="w-4 h-4 mr-1 text-gray-500" /> Job Package
+                  <Package className="w-4 h-4 mr-1 text-gray-500" /> Privilege
                   <span className="text-red-500 ml-1">*</span>
                 </label>
-                <select
+                <input
+                  type="text"
                   name="jobPackage"
                   value={formData.jobPackage}
                   onChange={handleChange}
                   className={`w-full p-2 border rounded-md ${
                     errors.jobPackage ? "border-red-500" : "border-gray-300"
                   }`}
-                >
-                  <option value="">Select Package...</option>
-                  <option value="STANDARD">STANDARD</option>
-                  <option value="PREMIUM">PREMIUM</option>
-                </select>
+                  placeholder="e.g. Health insurance, Free lunch, Gym membership"
+                />
                 {errors.jobPackage && (
                   <p className="text-sm text-red-600 mt-1">{errors.jobPackage}</p>
                 )}
@@ -748,16 +833,8 @@ export default function CreateJobPage() {
                 <p className="text-base text-gray-800">{viewJob.expirationDate}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Job Package</p>
-                <p className="text-base text-gray-800">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                    viewJob.jobPackage === 'PREMIUM' ? 'bg-purple-100 text-purple-800' :
-                    viewJob.jobPackage === 'STANDARD' ? 'bg-blue-100 text-blue-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {viewJob.jobPackage}
-                  </span>
-                </p>
+                <p className="text-sm text-gray-500">Privilege</p>
+                <p className="text-base text-gray-800">{viewJob.jobPackage}</p>
               </div>
             </div>
             {viewJob.skills && viewJob.skills.length > 0 && (

@@ -173,7 +173,7 @@ export default function CandidateHeader() {
               Companies
             </Link>
             <Link
-              href="/candidate/blog"
+              href="/blog"
               className="text-[#ffffff] hover:text-[#c8c8c8]"
             >
               Blog

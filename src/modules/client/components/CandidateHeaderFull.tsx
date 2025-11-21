@@ -165,7 +165,7 @@ export function CandidateHeader() {
                             </Link>
                         </div>
 
-                        <Link href="/candidate/blog" className="text-gray-300 hover:text-white transition-colors">
+                        <Link href="/blog" className="text-gray-300 hover:text-white transition-colors">
                             Blog
                         </Link>
 

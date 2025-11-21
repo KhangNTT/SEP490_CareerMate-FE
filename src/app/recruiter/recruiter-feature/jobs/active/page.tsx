@@ -10,13 +10,18 @@ import {
   CalendarDays,
   AlertTriangle,
   X,
+  Users,
+  Star,
 } from "lucide-react";
 import { 
   getRecruiterJobPostings, 
   RecruiterJobPosting, 
   extendJobPosting,
   getJobPostingStats,
-  JobPostingStats
+  JobPostingStats,
+  getJobRecommendations,
+  CandidateRecommendation,
+  RecommendationsResult
 } from "@/lib/recruiter-api";
 import toast from "react-hot-toast";
 
@@ -24,12 +29,18 @@ export default function ActiveJobsPage() {
   const [jobs, setJobs] = useState<RecruiterJobPosting[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedJob, setSelectedJob] = useState<RecruiterJobPosting | null>(null);
-  const [modalType, setModalType] = useState<"stats" | "extend" | "edit" | null>(null);
+  const [modalType, setModalType] = useState<"stats" | "extend" | "edit" | "recommendations" | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [extendDays, setExtendDays] = useState(7);
   const [isProcessing, setIsProcessing] = useState(false);
   const [jobStats, setJobStats] = useState<JobPostingStats | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
+  
+  // Recommendations state
+  const [recommendations, setRecommendations] = useState<RecommendationsResult | null>(null);
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
+  const [maxCandidates, setMaxCandidates] = useState(5);
+  const [minMatchScore, setMinMatchScore] = useState(0);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0);
@@ -80,7 +91,7 @@ export default function ActiveJobsPage() {
   };
 
   // Handler mở modal
-  const openModal = async (job: RecruiterJobPosting, type: "stats" | "extend" | "edit") => {
+  const openModal = async (job: RecruiterJobPosting, type: "stats" | "extend" | "edit" | "recommendations") => {
     setSelectedJob(job);
     setModalType(type);
     setEditTitle(job.title);
@@ -100,6 +111,27 @@ export default function ActiveJobsPage() {
         setJobStats(null);
       } finally {
         setIsLoadingStats(false);
+      }
+    }
+    
+    // Fetch recommendations if opening recommendations modal
+    if (type === "recommendations") {
+      try {
+        setIsLoadingRecommendations(true);
+        const recsResponse = await getJobRecommendations(job.id, { 
+          maxCandidates, 
+          minMatchScore 
+        });
+        if (recsResponse.code === 0 || recsResponse.code === 200) {
+          setRecommendations(recsResponse.result);
+          toast.success(`Found ${recsResponse.result.totalCandidatesFound} candidates in ${recsResponse.result.processingTimeMs}ms`);
+        }
+      } catch (error: any) {
+        console.error("Error fetching recommendations:", error);
+        toast.error("Could not load candidate recommendations");
+        setRecommendations(null);
+      } finally {
+        setIsLoadingRecommendations(false);
       }
     }
   };
@@ -237,6 +269,13 @@ export default function ActiveJobsPage() {
                     <td className="px-6 py-4 text-right text-sm font-medium">
                       <div className="flex justify-end items-center gap-3">
                         <button
+                          onClick={() => openModal(job, "recommendations")}
+                          className="text-[#3c679a] hover:text-[#2a4a6f]"
+                          title="View AI Recommendations"
+                        >
+                          <Users className="h-4.5 w-4.5" />
+                        </button>
+                        <button
                           onClick={() => openModal(job, "stats")}
                           className="text-gray-500 hover:text-gray-700"
                           title="View Stats"
@@ -270,8 +309,10 @@ export default function ActiveJobsPage() {
       {/* Modal - KHÔNG có nền đen */}
       {modalType && selectedJob && (
         <div
-          className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 
-          bg-white border border-gray-200 shadow-2xl rounded-lg p-6 w-[90%] sm:w-[400px] z-50"
+          className={`fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 
+          bg-white border border-gray-200 shadow-2xl rounded-lg p-6 z-50 ${
+            modalType === "recommendations" ? "w-[95%] max-w-6xl max-h-[90vh] overflow-y-auto" : "w-[90%] sm:w-[400px]"
+          }`}
         >
           <button
             onClick={() => setModalType(null)}
@@ -324,7 +365,7 @@ export default function ActiveJobsPage() {
                   <div className="bg-gray-50 p-3 rounded-md">
                     <p className="text-sm text-gray-500">Package</p>
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      selectedJob.jobPackage === 'PREMIUM' ? 'bg-purple-100 text-purple-800' :
+                      selectedJob.jobPackage === 'PREMIUM' ? 'bg-[#3c679a] text-[#718eb1]' :
                       selectedJob.jobPackage === 'STANDARD' ? 'bg-blue-100 text-blue-800' :
                       'bg-gray-100 text-gray-800'
                     }`}>
@@ -412,6 +453,153 @@ export default function ActiveJobsPage() {
                   Save
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* AI Recommendations */}
+          {modalType === "recommendations" && (
+            <div className="max-h-[80vh] overflow-y-auto">
+              <h2 className="text-xl font-semibold mb-6 text-gray-800 flex items-center gap-2 sticky top-0 bg-white pb-4 border-b">
+                <Users className="h-6 w-6 text-[#3c679a]" />
+                AI Candidate Recommendations
+              </h2>
+
+              {isLoadingRecommendations ? (
+                <div className="text-center py-12">
+                  <RefreshCw className="h-8 w-8 animate-spin text-[#3c679a] mx-auto mb-3" />
+                  <p className="text-sm text-gray-600">Finding best candidates...</p>
+                </div>
+              ) : recommendations ? (
+                <div className="space-y-4">
+                  {/* Summary */}
+                  <div className="bg-gradient-to-r from-[#e0e7ff] to-blue-50 p-4 rounded-lg border border-[#c3d0f7]">
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                      <div>
+                        <p className="text-sm text-gray-600">Job Title</p>
+                        <p className="font-bold text-gray-900">{recommendations.jobTitle}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Candidates Found</p>
+                        <p className="text-2xl font-bold text-[#3c679a]">{recommendations.totalCandidatesFound}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Processing Time</p>
+                        <p className="font-bold text-gray-900">{recommendations.processingTimeMs}ms</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Candidates List */}
+                  <div className="space-y-3">
+                    {recommendations.recommendations.map((candidate, index) => (
+                      <div 
+                        key={candidate.candidateId}
+                        className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-white"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-[#ced2d7] flex items-center justify-center font-bold text-[#3c679a]">
+                              #{index + 1}
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-gray-900">
+                                {candidate.candidateName || 'Anonymous Candidate'}
+                              </h3>
+                              <p className="text-sm text-gray-600">{candidate.email}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            <Star className="h-5 w-5 text-yellow-500 fill-current" />
+                            <span className="text-xl font-bold text-[#3c679a]">
+                              {(candidate.matchScore * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+                          <div className="bg-gray-50 p-2 rounded">
+                            <p className="text-xs text-gray-500">Experience</p>
+                            <p className="font-medium">{candidate.totalYearsExperience} years</p>
+                          </div>
+                          <div className="bg-blue-50 p-2 rounded">
+                            <p className="text-xs text-gray-500">Projects</p>
+                            <p className="font-medium text-blue-600">{candidate.projectsCount}</p>
+                          </div>
+                          <div className="bg-green-50 p-2 rounded">
+                            <p className="text-xs text-gray-500">Certificates</p>
+                            <p className="font-medium text-green-600">{candidate.certificatesCount}</p>
+                          </div>
+                          <div className="bg-amber-50 p-2 rounded">
+                            <p className="text-xs text-gray-500">Awards</p>
+                            <p className="font-medium text-amber-600">{candidate.awardsCount}</p>
+                          </div>
+                        </div>
+
+                        {candidate.profileSummary && (
+                          <div className="mb-3">
+                            <p className="text-sm text-gray-700 italic">"{candidate.profileSummary}"</p>
+                          </div>
+                        )}
+
+                        <div className="flex gap-3">
+                          {candidate.matchedSkills.length > 0 && (
+                            <div>
+                              <p className="text-xs font-semibold text-green-700 mb-1">Matched Skills:</p>
+                              <div className="flex flex-wrap gap-1">
+                                {candidate.matchedSkills.map((skill, idx) => (
+                                  <span 
+                                    key={idx}
+                                    className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium"
+                                  >
+                                    ✓ {skill}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {candidate.missingSkills.length > 0 && (
+                            <div>
+                              <p className="text-xs font-semibold text-red-700 mb-1">Missing Skills:</p>
+                              <div className="flex flex-wrap gap-1">
+                                {candidate.missingSkills.map((skill, idx) => (
+                                  <span 
+                                    key={idx}
+                                    className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full font-medium"
+                                  >
+                                    ✗ {skill}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="mt-3 pt-3 border-t flex justify-end gap-2">
+                          <button className="px-4 py-2 bg-[#3c679a] text-white text-sm font-medium rounded-md hover:bg-[#2a4a6f] transition-colors">
+                            View Profile
+                          </button>
+                          <button className="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors">
+                            Contact
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {recommendations.recommendations.length === 0 && (
+                    <div className="text-center py-12 text-gray-500">
+                      <Users className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                      <p>No matching candidates found</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <p>No recommendations data available</p>
+                </div>
+              )}
             </div>
           )}
         </div>

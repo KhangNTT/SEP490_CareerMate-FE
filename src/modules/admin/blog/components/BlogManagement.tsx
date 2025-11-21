@@ -32,7 +32,7 @@ import ConfirmDialog from './ConfirmDialog';
 import BlogStatusBadge from './BlogStatusBadge';
 
 export default function BlogManagement() {
-    const { isAdmin } = useAdminCheck();
+    const { isAdmin, isChecking } = useAdminCheck();
     const [blogs, setBlogs] = useState<Blog[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchInput, setSearchInput] = useState('');
@@ -55,7 +55,6 @@ export default function BlogManagement() {
         try {
             setLoading(true);
 
-            let response;
             const commonParams = {
                 page: currentPage,
                 size: pageSize,
@@ -63,24 +62,13 @@ export default function BlogManagement() {
                 sortDir: sortBy.split(',')[1]?.toUpperCase() || 'DESC'
             };
 
-            // Determine which API method to use based on active filters
-            if (activeSearch) {
-                // Use search endpoint when there's a keyword
-                response = await blogApi.searchBlogs({
-                    keyword: activeSearch,
-                    status: statusFilter || undefined,
-                    ...commonParams
-                });
-            } else if (statusFilter) {
-                // Use status filter endpoint
-                response = await blogApi.getBlogsByStatus(statusFilter, commonParams);
-            } else if (categoryFilter) {
-                // Use category filter endpoint
-                response = await blogApi.getBlogsByCategory(categoryFilter, commonParams);
-            } else {
-                // Use default getAll endpoint
-                response = await blogApi.getBlogs(commonParams);
-            }
+            // Use the new unified filter endpoint that supports all filters simultaneously
+            const response = await blogApi.filterBlogs({
+                keyword: activeSearch || undefined,
+                status: statusFilter || undefined,
+                category: categoryFilter || undefined,
+                ...commonParams
+            });
 
             console.log('📦 Response:', response);
 
@@ -183,10 +171,13 @@ export default function BlogManagement() {
         });
     };
 
-    if (loading) {
+    if (loading || isChecking) {
         return (
             <div className="flex items-center justify-center min-h-screen">
-                <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">{isChecking ? 'Checking admin access...' : 'Loading blog posts...'}</p>
+                </div>
             </div>
         );
     }

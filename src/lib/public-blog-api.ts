@@ -108,6 +108,76 @@ class PublicBlogApiService {
         return response.data;
     }
 
+    /**
+     * Filter blogs with multiple criteria (keyword, status, category)
+     * Uses the new /api/blogs/filter endpoint that supports concurrent filtering
+     * Falls back to legacy endpoints if the filter endpoint is not available
+     */
+    async filterBlogs(params: {
+        keyword?: string;
+        status?: string;
+        category?: string;
+        page?: number;
+        size?: number;
+        sortBy?: string;
+        sortDir?: string;
+    }): Promise<PagedResponse<BlogResponse>> {
+        const queryParams = new URLSearchParams();
+        queryParams.append('page', (params.page || 0).toString());
+        queryParams.append('size', (params.size || 20).toString());
+        queryParams.append('sortBy', params.sortBy || 'createdAt');
+        queryParams.append('sortDir', params.sortDir || 'DESC');
+
+        // Only add filters if they have values
+        if (params.keyword && params.keyword.trim()) queryParams.append('keyword', params.keyword.trim());
+        if (params.status && params.status.trim()) queryParams.append('status', params.status.trim());
+        if (params.category && params.category.trim()) queryParams.append('category', params.category.trim());
+
+        const url = `/api/blogs/filter?${queryParams.toString()}`;
+        console.log('🔍 Public API - Filtering blogs with URL:', url);
+        console.log('🔍 Active filters:', { keyword: params.keyword, status: params.status, category: params.category });
+        
+        try {
+            const response = await publicApi.get(url);
+
+            if (response.data.result) {
+                return response.data.result;
+            }
+
+            return response.data;
+        } catch (error: any) {
+            // If the filter endpoint doesn't exist (404) or returns 400, fall back to legacy endpoints
+            if (error.response?.status === 404 || error.response?.status === 400) {
+                console.warn('⚠️ /api/blogs/filter endpoint not available, falling back to legacy endpoints');
+                
+                const commonParams = {
+                    page: params.page,
+                    size: params.size,
+                    sortBy: params.sortBy,
+                    sortDir: params.sortDir
+                };
+                
+                // Determine which legacy endpoint to use based on active filters
+                if (params.keyword) {
+                    // Use search endpoint when there's a keyword
+                    return await this.searchBlogs({
+                        keyword: params.keyword,
+                        ...commonParams
+                    });
+                } else if (params.category) {
+                    // Use category filter endpoint (status ignored on public API in legacy mode)
+                    return await this.getBlogsByCategory(params.category, commonParams);
+                } else {
+                    // Use default getAll endpoint
+                    return await this.getBlogs(commonParams);
+                }
+            }
+            
+            // For other errors, throw them
+            throw error;
+        }
+    }
+
     async getBlog(blogId: number): Promise<BlogResponse> {
         const response = await publicApi.get(`/api/blogs/${blogId}`);
 

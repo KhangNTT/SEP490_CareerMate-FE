@@ -2,7 +2,6 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { AdminHeader } from "./AdminHeader";
-import { AdminFooter } from "./AdminFooter";
 import { AdminSidebar } from "./admin-sidebar";
 
 interface AdminLayoutWrapperProps {
@@ -33,14 +32,19 @@ export function AdminLayoutWrapper({ children }: AdminLayoutWrapperProps) {
     }, []);
 
     return (
-        <div className="min-h-screen bg-white flex">
-            <AdminSidebar />
-            <div className="flex-1 flex flex-col">
-                <AdminHeader sidebarOpen={sidebarOpen} />
+        <div className="min-h-screen bg-white">
+            {/* Header full width */}
+            <AdminHeader sidebarOpen={sidebarOpen} />
+            
+            <div className="flex">
+                {/* Sidebar */}
+                <AdminSidebar />
+                
+                {/* Main content */}
                 <main
                     className={`flex-1 transition-all duration-300 ${
                         sidebarOpen ? 'ml-64' : 'ml-16'
-                    } mt-16`}
+                    }`}
                 >
                     <div className="px-4 py-8">
                         <div className="mx-auto max-w-6xl">
@@ -48,7 +52,6 @@ export function AdminLayoutWrapper({ children }: AdminLayoutWrapperProps) {
                         </div>
                     </div>
                 </main>
-                <AdminFooter sidebarOpen={sidebarOpen} />
             </div>
         </div>
     );

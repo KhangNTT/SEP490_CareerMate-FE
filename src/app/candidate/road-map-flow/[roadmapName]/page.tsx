@@ -4,156 +4,62 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  ExternalLink,
-  BookOpen,
   Loader2,
   AlertCircle,
   X,
-  Maximize2,
-  Minimize2,
-  Save,
-  RotateCcw,
+  BookOpen,
+  ExternalLink,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import ReactFlow, {
-  Node,
-  Edge,
+  Node as ReactFlowNode,
+  Edge as ReactFlowEdge,
   Controls,
   Background,
   MiniMap,
   useNodesState,
   useEdgesState,
-  MarkerType,
   BackgroundVariant,
+  MarkerType,
+  Position,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import { getRoadmapByName, getTopicDetail, getSubtopicDetail, Topic, Subtopic } from "@/lib/roadmap-api";
-import toast from "react-hot-toast";
+import { getRoadmapByName, getTopicDetail } from "@/lib/roadmap-api";
 
-// Custom Topic Node Component
-function TopicNode({ data }: { data: any }) {
-  const hasSubtopics = data.subtopicCount > 0;
-  const isExpanded = data.isExpanded;
-  
-  return (
-    <div className="relative">
-      <button
-        onClick={data.onToggle}
-        className="relative bg-yellow-400 hover:bg-yellow-500 text-gray-900 px-6 py-4 rounded-xl font-bold text-center shadow-lg transition-all hover:shadow-xl cursor-pointer border-2 border-yellow-600 min-w-[200px]"
-      >
-        <div className="text-xs text-yellow-800 mb-2 font-semibold">
-          Topic {data.index}
-        </div>
-        <div className="text-sm">{data.label}</div>
-        {data.tag && (
-          <div className={`absolute -top-2 -right-2 w-6 h-6 rounded-full ${data.tagColor} border-2 border-white shadow-md`}></div>
-        )}
-        {hasSubtopics && (
-          <div className="absolute -bottom-2 -right-2 w-6 h-6 rounded-full bg-blue-600 border-2 border-white shadow-md flex items-center justify-center">
-            <span className="text-white text-xs font-bold">{isExpanded ? '−' : '+'}</span>
-          </div>
-        )}
-      </button>
-      {hasSubtopics && (
-        <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs text-gray-600 whitespace-nowrap">
-          {isExpanded ? 'Click to hide' : `${data.subtopicCount} subtopics`}
-        </div>
-      )}
-    </div>
-  );
-}
+export default function RoadmapFlowPage() {
+  const params = useParams();
+  const router = useRouter();
+  const roadmapName = decodeURIComponent(params.roadmapName as string);
 
-// Custom Subtopic Node Component
-function SubtopicNode({ data }: { data: any }) {
-  return (
-    <button
-      onClick={data.onClick}
-      className="relative bg-orange-300 hover:bg-orange-400 text-gray-900 px-4 py-2 rounded-lg font-semibold text-xs text-center shadow-md transition-all hover:shadow-lg cursor-pointer border-2 border-orange-500 min-w-[150px]"
-    >
-      <div>{data.label}</div>
-      {data.tag && (
-        <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${data.tagColor} border border-white shadow-sm`}></div>
-      )}
-    </button>
-  );
-}
-
-  const nodeTypes = {
-    topicNode: TopicNode,
-    subtopicNode: SubtopicNode,
-  };
-
-  // Default layout configuration
-  const defaultLayoutConfig = {
-    nodeSpacingX: 350,
-    nodeSpacingY: 200,
-  };
-
-  export default function RoadmapFlowPage() {
-    const params = useParams();
-    const router = useRouter();
-    
-    const roadmapName = decodeURIComponent(params.roadmapName as string);
-    
-  const [roadmapData, setRoadmapData] = useState<{ name: string; topics: Topic[] } | null>(null);
+  // State
+  const [roadmapData, setRoadmapData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>("");
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   
-  // React Flow states
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  
-  // Track expanded topics (showing subtopics)
-  const [expandedTopics, setExpandedTopics] = useState<Set<number>>(new Set());
-  
-  // Side panel for detail view
+  // Detail panel
   const [showDetailPanel, setShowDetailPanel] = useState(false);
-  const [detailContent, setDetailContent] = useState<{ name: string; description: string; resources: string[] } | null>(null);
-  const [isLoadingDetail, setIsLoadingDetail] = useState(false);    // Load saved layout preferences from localStorage
-    const loadSavedPreferences = useCallback(() => {
-      try {
-        const saved = localStorage.getItem('roadmap-flow-preferences');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          return parsed;
-        }
-      } catch (error) {
-        console.error('Error loading preferences:', error);
-      }
-      return defaultLayoutConfig;
-    }, []);
+  const [detailContent, setDetailContent] = useState<{ 
+    name: string; 
+    description: string; 
+    resources: string[];
+    courses: Array<{ id: number; title: string; url: string }>;
+    subtopics: Array<{ 
+      id: number;
+      name: string;
+      description: string;
+      courses: Array<{ id: number; title: string; url: string }>;
+      resources: string[];
+    }>;
+  } | null>(null);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+  const [expandedSubtopics, setExpandedSubtopics] = useState<Set<number>>(new Set());
 
-    // Layout configuration with saved preferences
-    const [layoutConfig, setLayoutConfig] = useState(loadSavedPreferences);
+  // React Flow states
+  const [reactFlowNodes, setReactFlowNodes, onNodesChange] = useNodesState([]);
+  const [reactFlowEdges, setReactFlowEdges, onEdgesChange] = useEdgesState([]);
 
-    // Save preferences to localStorage
-    const savePreferences = useCallback(() => {
-      setIsSaving(true);
-      try {
-        localStorage.setItem('roadmap-flow-preferences', JSON.stringify(layoutConfig));
-        toast.success('Layout preferences saved!');
-      } catch (error) {
-        console.error('Error saving preferences:', error);
-        toast.error('Failed to save preferences');
-      } finally {
-        setTimeout(() => setIsSaving(false), 500);
-      }
-    }, [layoutConfig]);
-
-    // Reset to default preferences
-    const resetPreferences = useCallback(() => {
-      setLayoutConfig(defaultLayoutConfig);
-      localStorage.removeItem('roadmap-flow-preferences');
-      toast.success('Reset to default layout');
-    }, []);
-
-  useEffect(() => {
-    if (roadmapName) {
-      fetchRoadmapData();
-    }
-  }, [roadmapName]);
-
+  // Fetch roadmap data
   const fetchRoadmapData = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -165,179 +71,424 @@ function SubtopicNode({ data }: { data: any }) {
         setRoadmapData(response.result);
       } else {
         setError("Không thể tải roadmap");
-        toast.error("Lỗi khi tải roadmap");
       }
-    } catch (error: any) {
-      console.error("Error fetching roadmap:", error);
-      setError("Không thể tải roadmap. Vui lòng thử lại.");
-      toast.error("Lỗi khi tải roadmap");
+    } catch (err) {
+      console.error("Error fetching roadmap:", err);
+      setError("Lỗi khi tải roadmap");
     } finally {
       setIsLoading(false);
     }
   }, [roadmapName]);
 
-  const handleTopicClick = useCallback(async (topicId: number, topicName: string) => {
-    setIsLoadingDetail(true);
+  useEffect(() => {
+    if (roadmapName) {
+      fetchRoadmapData();
+    }
+  }, [roadmapName, fetchRoadmapData]);
+
+  // Handle topic click
+  const handleTopicClick = useCallback(async (topicId: number) => {
     setShowDetailPanel(true);
-    
+    setIsLoadingDetail(true);
+    setDetailContent(null);
+    setExpandedSubtopics(new Set()); // Reset expanded subtopics
+
     try {
       const detail = await getTopicDetail(topicId);
+      const topicData: any = detail;
+      
+      // Get courses from topic
+      const topicCourses = topicData.courseResponses || [];
+      
+      // Get subtopics with their courses
+      const subtopicsData = topicData.subtopicResponses || [];
+      const subtopics = subtopicsData.map((sub: any) => ({
+        id: sub.id,
+        name: sub.name,
+        description: sub.description || '',
+        courses: sub.courseResponses || [],
+        resources: sub.resourceResponses?.map((r: any) => r.url) || [],
+      }));
+      
       setDetailContent({
         name: detail.name,
         description: detail.description,
-        resources: detail.resourceResponses.map(r => r.url).filter(url => url),
+        resources: topicData.resourceResponses?.map((r: any) => r.url) || [],
+        courses: topicCourses,
+        subtopics: subtopics,
       });
     } catch (error) {
-      toast.error("Không thể tải thông tin chi tiết");
+      console.error("Error fetching topic detail:", error);
       setDetailContent({
-        name: topicName,
-        description: "No description available",
+        name: "Error",
+        description: "Không thể tải thông tin chi tiết",
         resources: [],
+        courses: [],
+        subtopics: [],
       });
     } finally {
       setIsLoadingDetail(false);
     }
   }, []);
 
-  const handleSubtopicClick = useCallback(async (subtopicId: number, subtopicName: string) => {
-    setIsLoadingDetail(true);
-    setShowDetailPanel(true);
-    
-    try {
-      const detail = await getSubtopicDetail(subtopicId);
-      setDetailContent({
-        name: detail.name,
-        description: detail.description,
-        resources: detail.resourceResponses.map(r => r.url).filter(url => url),
-      });
-    } catch (error) {
-      toast.error("Không thể tải thông tin chi tiết");
-      setDetailContent({
-        name: subtopicName,
-        description: "No description available",
-        resources: [],
-      });
-    } finally {
-      setIsLoadingDetail(false);
-    }
-  }, []);
-
-  // Toggle subtopics visibility
-  const toggleTopicExpansion = useCallback((topicId: number) => {
-    setExpandedTopics(prev => {
+  // Toggle subtopic expansion
+  const toggleSubtopic = useCallback((index: number) => {
+    setExpandedSubtopics(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(topicId)) {
-        newSet.delete(topicId);
+      if (newSet.has(index)) {
+        newSet.delete(index);
       } else {
-        newSet.add(topicId);
+        newSet.add(index);
       }
       return newSet;
     });
   }, []);
 
-  const getTagColor = (tag: string) => {
-    const lowerTag = tag.toLowerCase();
-    if (lowerTag.includes("personal recommendation")) {
-      return "bg-purple-500";
+  // Build nodes and edges for Reaflow
+  const { nodes, edges } = useMemo(() => {
+    if (!roadmapData) return { nodes: [], edges: [] };
+
+    const flowNodes: any[] = [];
+    const flowEdges: any[] = [];
+    const topics: any[] = roadmapData?.topics || [];
+
+    // START node
+    flowNodes.push({
+      id: "start",
+      text: "START",
+      data: { type: "start" },
+    });
+
+    if (topics.length === 0) {
+      flowNodes.push({
+        id: "finish",
+        text: "FINISH",
+        data: { type: "finish" },
+      });
+
+      flowEdges.push({
+        id: "e-start-finish",
+        from: "start",
+        to: "finish",
+      });
+
+      return { nodes: flowNodes, edges: flowEdges };
     }
-    if (lowerTag.includes("alternative option")) {
-      return "bg-green-500";
-    }
-    if (lowerTag.includes("order not strict")) {
-      return "bg-gray-400";
-    }
-    return "";
-  };
 
-  // Build nodes and edges based on layout configuration
-  const { flowNodes, flowEdges } = useMemo(() => {
-    if (!roadmapData) return { flowNodes: [], flowEdges: [] };
-
-    const newNodes: Node[] = [];
-    const newEdges: Edge[] = [];
-    const { nodeSpacingX, nodeSpacingY } = layoutConfig;
-
-    // Horizontal layout - topics from left to right
-    roadmapData.topics.forEach((topic, index) => {
-      const x = index * nodeSpacingX;
-      const isExpanded = expandedTopics.has(topic.id);
-
-      // Add main topic node
-      newNodes.push({
+    // Topics (ẩn subtopics)
+    topics.forEach((topic: any, index: number) => {
+      flowNodes.push({
         id: `topic-${topic.id}`,
-        type: 'topicNode',
-        position: { x, y: 0 },
-        data: {
-          label: topic.name,
+        text: topic.name,
+        data: { 
+          type: "topic",
           index: index + 1,
-          tag: topic.tags,
-          tagColor: getTagColor(topic.tags || ""),
-          subtopicCount: topic.subtopics.length,
-          isExpanded: isExpanded,
-          onToggle: () => toggleTopicExpansion(topic.id),
+          topicId: topic.id,
         },
       });
 
-      // Connect to previous topic with smooth path
-      if (index > 0) {
-        const prevTopic = roadmapData.topics[index - 1];
-        newEdges.push({
-          id: `edge-${prevTopic.id}-${topic.id}`,
-          source: `topic-${prevTopic.id}`,
-          target: `topic-${topic.id}`,
-          type: 'smoothstep',
-          animated: true,
-          style: { stroke: '#3b82f6', strokeWidth: 3 },
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            color: '#3b82f6',
-          },
-        });
+      const prevId = index === 0 ? "start" : `topic-${topics[index - 1].id}`;
+      flowEdges.push({
+        id: `e-${prevId}-topic-${topic.id}`,
+        from: prevId,
+        to: `topic-${topic.id}`,
+      });
+    });
+
+    // FINISH
+    flowNodes.push({
+      id: "finish",
+      text: "FINISH",
+      data: { type: "finish" },
+    });
+
+    const lastTopic = topics[topics.length - 1];
+    flowEdges.push({
+      id: `e-topic-${lastTopic.id}-finish`,
+      from: `topic-${lastTopic.id}`,
+      to: "finish",
+    });
+
+    return { nodes: flowNodes, edges: flowEdges };
+  }, [roadmapData]);
+
+  // Build nodes and edges for ReactFlow
+  useEffect(() => {
+    if (!roadmapData) return;
+
+    const flowNodes: ReactFlowNode[] = [];
+    const flowEdges: ReactFlowEdge[] = [];
+    const topics: any[] = roadmapData?.topics || [];
+
+    // START node - positioned at top left
+    flowNodes.push({
+      id: "start",
+      type: "input",
+      position: { x: 50, y: 50 },
+      sourcePosition: Position.Right,
+      data: { label: "START" },
+      style: {
+        background: "#fbbf24",
+        color: "#fff",
+        border: "4px solid #fff",
+        borderRadius: "50%",
+        width: 100,
+        height: 100,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: "16px",
+        fontWeight: "bold",
+        boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
+      },
+    });
+
+    if (topics.length === 0) {
+      flowNodes.push({
+        id: "finish",
+        type: "output",
+        position: { x: 300, y: 200 },
+        data: { label: "FINISH" },
+        style: {
+          background: "#fbbf24",
+          color: "#fff",
+          border: "4px solid #fff",
+          borderRadius: "50%",
+          width: 100,
+          height: 100,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "16px",
+          fontWeight: "bold",
+          boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
+        },
+      });
+
+      flowEdges.push({
+        id: "e-start-finish",
+        source: "start",
+        target: "finish",
+        type: "smoothstep",
+        animated: true,
+        style: { stroke: "#20619a", strokeWidth: 5 },
+        markerEnd: {
+          type: MarkerType.Arrow,
+          width: 15,
+          height: 15,
+          color: "#a78bfa",
+        },
+      });
+
+      setReactFlowNodes(flowNodes);
+      setReactFlowEdges(flowEdges);
+      return;
+    }
+
+    // Topics in zigzag pattern: 3-4-3-4...
+    topics.forEach((topic: any, index: number) => {
+      // Determine row: row 0 = 3 topics, row 1 = 4 topics, row 2 = 3 topics, etc.
+      let currentRow = 0;
+      let positionInRow = 0;
+      let topicsPerRow = 3;
+      let tempIndex = index;
+      
+      while (tempIndex >= topicsPerRow) {
+        tempIndex -= topicsPerRow;
+        currentRow++;
+        topicsPerRow = (currentRow % 2 === 0) ? 3 : 4; // Alternate between 3 and 4
+      }
+      positionInRow = tempIndex;
+      topicsPerRow = (currentRow % 2 === 0) ? 3 : 4;
+      
+      // Calculate position
+      const isEvenRow = currentRow % 2 === 0;
+      const HORIZONTAL_SPACING = 300;
+      const VERTICAL_SPACING = 250;
+      const ROW_OFFSET = 50; // Offset for staggered rows
+      
+      let x: number;
+      if (isEvenRow) {
+        // Even rows (3 topics): left to right (1->2->3)
+        x = 300 + (positionInRow * HORIZONTAL_SPACING);
+      } else {
+        // Odd rows (4 topics): right to left (7<-6<-5<-4)
+        x = 200 + ((topicsPerRow - 1 - positionInRow) * HORIZONTAL_SPACING) + ROW_OFFSET;
+      }
+      
+      const y = 100 + (currentRow * VERTICAL_SPACING);
+
+      // Determine if this is the last topic in current row
+      const isLastInRow = positionInRow === topicsPerRow - 1;
+      // Determine if this is the first topic in current row
+      const isFirstInRow = positionInRow === 0;
+      
+      // Set source and target positions based on row direction and position
+      let sourcePos = Position.Right;
+      let targetPos = Position.Left;
+      
+      if (isEvenRow) {
+        // Even row: left to right
+        sourcePos = isLastInRow ? Position.Bottom : Position.Right;
+        targetPos = isFirstInRow && currentRow > 0 ? Position.Top : Position.Left;
+      } else {
+        // Odd row: right to left
+        sourcePos = isLastInRow ? Position.Bottom : Position.Left;
+        targetPos = isFirstInRow && currentRow > 0 ? Position.Top : Position.Right;
       }
 
-      // Add subtopics only if expanded
-      if (isExpanded && topic.subtopics.length > 0) {
-        topic.subtopics.forEach((subtopic, subIndex) => {
-          const subX = x + (subIndex - (topic.subtopics.length - 1) / 2) * 180;
-          const subY = nodeSpacingY;
+      flowNodes.push({
+        id: `topic-${topic.id}`,
+        type: "default",
+        position: { x, y },
+        sourcePosition: sourcePos,
+        targetPosition: targetPos,
+        data: { 
+          label: (
+            <div 
+              className="flex flex-col items-center gap-1 cursor-pointer"
+              onClick={() => handleTopicClick(topic.id)}
+            >
+              <div className="text-2xl font-bold">{index + 1}</div>
+              <div className="text-xs uppercase text-center max-w-[100px]">{topic.name}</div>
+            </div>
+          )
+        },
+        style: {
+          background: "#20619a",
+          color: "#fff",
+          border: "3px solid #fff",
+          borderRadius: "12px",
+          padding: "12px",
+          width: "150px",
+          height: "120px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: "0 4px 12px rgba(32, 97, 154, 0.3)",
+        },
+      });
 
-          newNodes.push({
-            id: `subtopic-${subtopic.id}`,
-            type: 'subtopicNode',
-            position: { x: subX, y: subY },
-            data: {
-              label: subtopic.name,
-              tag: subtopic.tags,
-              tagColor: getTagColor(subtopic.tags || ""),
-              onClick: () => handleSubtopicClick(subtopic.id, subtopic.name),
-            },
-          });
-
-          // Connect subtopic to topic with dashed line
-          newEdges.push({
-            id: `edge-topic-${topic.id}-subtopic-${subtopic.id}`,
-            source: `topic-${topic.id}`,
-            target: `subtopic-${subtopic.id}`,
-            type: 'straight',
-            style: { stroke: '#fb923c', strokeWidth: 2, strokeDasharray: '5,5' },
-          });
+      // Create edges
+      if (index === 0) {
+        // START -> Topic 1
+        flowEdges.push({
+          id: `e-start-topic-${topic.id}`,
+          source: "start",
+          target: `topic-${topic.id}`,
+          type: "smoothstep",
+          animated: true,
+          style: { stroke: "#20619a", strokeWidth: 5 },
+          markerEnd: {
+            type: MarkerType.Arrow,
+            width: 15,
+            height: 15,
+            color: "#20619a",
+          },
+        });
+      } else {
+        const prevTopic = topics[index - 1];
+        
+        // Calculate previous topic's row
+        let prevRow = 0;
+        let prevTopicsPerRow = 3;
+        let prevTempIndex = index - 1;
+        
+        while (prevTempIndex >= prevTopicsPerRow) {
+          prevTempIndex -= prevTopicsPerRow;
+          prevRow++;
+          prevTopicsPerRow = (prevRow % 2 === 0) ? 3 : 4;
+        }
+        
+        // Create edge
+        flowEdges.push({
+          id: `e-topic-${prevTopic.id}-topic-${topic.id}`,
+          source: `topic-${prevTopic.id}`,
+          target: `topic-${topic.id}`,
+          type: "smoothstep",
+          animated: true,
+          style: { stroke: "#20619a", strokeWidth: 5 },
+          markerEnd: {
+            type: MarkerType.Arrow,
+            width: 15,
+            height: 15,
+            color: "#20619a",
+          },
         });
       }
     });
 
-    return { flowNodes: newNodes, flowEdges: newEdges };
-  }, [roadmapData, layoutConfig, expandedTopics, handleSubtopicClick, toggleTopicExpansion]);
+    // FINISH node - position it after last topic
+    let lastRow = 0;
+    let lastTopicsPerRow = 3;
+    let lastTempIndex = topics.length - 1;
+    
+    while (lastTempIndex >= lastTopicsPerRow) {
+      lastTempIndex -= lastTopicsPerRow;
+      lastRow++;
+      lastTopicsPerRow = (lastRow % 2 === 0) ? 3 : 4;
+    }
+    
+    const lastRowSize = (lastRow % 2 === 0) ? 3 : 4;
+    const lastPositionInRow = lastTempIndex;
+    const isLastRowEven = lastRow % 2 === 0;
+    
+    let finishX: number;
+    if (isLastRowEven) {
+      // Even row (left to right), finish is to the right of last topic
+      finishX = 300 + (lastRowSize * 300);
+    } else {
+      // Odd row (right to left), finish is to the left of last topic
+      finishX = 200 + ((lastRowSize - 1 - lastPositionInRow) * 300) - 300 + 50;
+    }
+    const finishY = 100 + ((lastRow + 1) * 250);
+    
+    flowNodes.push({
+      id: "finish",
+      type: "output",
+      position: { x: finishX, y: finishY },
+      data: { label: "FINISH" },
+      style: {
+        background: "#fbbf24",
+        color: "#fff",
+        border: "4px solid #fff",
+        borderRadius: "50%",
+        width: 100,
+        height: 100,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: "16px",
+        fontWeight: "bold",
+        boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
+      },
+    });
 
-  useEffect(() => {
-    setNodes(flowNodes);
-    setEdges(flowEdges);
-  }, [flowNodes, flowEdges, setNodes, setEdges]);
+    const lastTopic = topics[topics.length - 1];
+    flowEdges.push({
+      id: `e-topic-${lastTopic.id}-finish`,
+      source: `topic-${lastTopic.id}`,
+      target: "finish",
+      type: "smoothstep",
+      animated: true,
+      style: { stroke: "#20619a", strokeWidth: 5 },
+      markerEnd: {
+        type: MarkerType.Arrow,
+        width: 15,
+        height: 15,
+        color: "#20619a",
+      },
+    });
+
+    setReactFlowNodes(flowNodes);
+    setReactFlowEdges(flowEdges);
+  }, [roadmapData, handleTopicClick]);
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-purple-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 text-[#20619a] animate-spin mx-auto mb-4" />
           <p className="text-gray-600">Đang tải roadmap...</p>
         </div>
       </div>
@@ -346,14 +497,13 @@ function SubtopicNode({ data }: { data: any }) {
 
   if (error || !roadmapData) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-        <div className="bg-white rounded-xl p-8 text-center border border-gray-200 max-w-md">
+      <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-purple-50 flex items-center justify-center">
+        <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Lỗi</h3>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <p className="text-gray-600">{error || "Không tìm thấy roadmap"}</p>
           <button
-            onClick={() => router.push("/candidate/road-map")}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            onClick={() => router.back()}
+            className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-[#20619a]"
           >
             Quay lại
           </button>
@@ -363,195 +513,232 @@ function SubtopicNode({ data }: { data: any }) {
   }
 
   return (
-    <div className={`${isFullscreen ? 'fixed inset-0 z-50' : 'min-h-screen'} bg-gray-50 flex flex-col`}>
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-purple-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 flex-shrink-0">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
+      <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 px-6 py-4 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-4">
             <button
-              onClick={() => router.push("/candidate/road-map")}
-              className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Recommendations
-            </button>
-            <h1 className="text-2xl font-bold text-gray-900 capitalize">{roadmapData.name} (Flow View)</h1>
-            <button
-              onClick={() => setIsFullscreen(!isFullscreen)}
+              onClick={() => router.back()}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+              <ArrowLeft className="w-5 h-5 text-gray-600" />
             </button>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-[#7cb3fb] to-[#20619a] bg-clip-text text-transparent capitalize">
+              {roadmapData.name}
+            </h1>
           </div>
         </div>
       </div>
 
-      {/* Control Panel */}
-      <div className="bg-white border-b border-gray-200 flex-shrink-0">
-        <div className="max-w-7xl mx-auto px-6 py-3">
-          <div className="flex flex-wrap gap-4 items-center justify-between">
-            <div className="flex gap-4 items-center">
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-gray-700">Spacing X:</label>
-                <input
-                  type="range"
-                  min="250"
-                  max="600"
-                  value={layoutConfig.nodeSpacingX}
-                  onChange={(e) => setLayoutConfig({ ...layoutConfig, nodeSpacingX: parseInt(e.target.value) })}
-                  className="w-32"
-                />
-                <span className="text-xs text-gray-600 w-12">{layoutConfig.nodeSpacingX}px</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-gray-700">Spacing Y:</label>
-                <input
-                  type="range"
-                  min="150"
-                  max="350"
-                  value={layoutConfig.nodeSpacingY}
-                  onChange={(e) => setLayoutConfig({ ...layoutConfig, nodeSpacingY: parseInt(e.target.value) })}
-                  className="w-32"
-                />
-                <span className="text-xs text-gray-600 w-12">{layoutConfig.nodeSpacingY}px</span>
-              </div>
-            </div>
-
-            {/* Save and Reset buttons */}
-            <div className="flex gap-3 items-center">
-              <button
-                onClick={savePreferences}
-                disabled={isSaving}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Save className="w-4 h-4" />
-                {isSaving ? 'Saving...' : 'Save'}
-              </button>
-
-              <button
-                onClick={resetPreferences}
-                className="flex items-center gap-2 px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
-              >
-                <RotateCcw className="w-4 h-4" />
-                Reset
-              </button>
-            </div>
-          </div>
-
-          {/* Info text */}
-          <div className="mt-2 text-xs text-gray-600">
-            💡 Click on topics to expand/collapse subtopics. Drag to pan, scroll to zoom.
-          </div>
-        </div>
-      </div>
-
-      {/* React Flow Canvas */}
-      <div className="flex-1 relative">
+      {/* Canvas */}
+      <div className="h-[calc(100vh-73px)] relative bg-gradient-to-br from-slate-50 to-blue-50">
         <ReactFlow
-          nodes={nodes}
-          edges={edges}
+          nodes={reactFlowNodes}
+          edges={reactFlowEdges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
-          nodeTypes={nodeTypes}
           fitView
-          attributionPosition="bottom-left"
+          className="bg-gradient-to-br from-slate-50 to-blue-50"
         >
-          <Background variant={BackgroundVariant.Dots} gap={16} size={1} color="#e5e7eb" />
-          <Controls />
           <MiniMap
+            className="bg-white/90 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200"
             nodeColor={(node) => {
-              if (node.type === 'topicNode') return '#fbbf24';
-              if (node.type === 'subtopicNode') return '#fdba74';
-              return '#e5e7eb';
+              if (node.type === 'default') return '#20619a';
+              return '#fbbf24';
             }}
-            maskColor="rgba(0, 0, 0, 0.1)"
+          />
+          <Controls className="bg-white/90 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200" />
+          <Background
+            variant={BackgroundVariant.Dots}
+            gap={16}
+            size={1}
+            color="#cbd5e1"
           />
         </ReactFlow>
-      </div>
 
-      {/* Side Detail Panel */}
-      <div
-        className={`fixed top-0 right-0 h-full w-full md:w-[480px] bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-50 ${
-          showDetailPanel ? 'translate-x-0' : 'translate-x-full'
-        }`}
-      >
-        {/* Panel Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 flex items-center justify-between">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <BookOpen className="w-6 h-6 flex-shrink-0" />
-            <h2 className="text-xl font-bold truncate">
-              {isLoadingDetail ? "Loading..." : detailContent?.name}
-            </h2>
-          </div>
-          <button
-            onClick={() => setShowDetailPanel(false)}
-            className="p-2 hover:bg-white/20 rounded-lg transition-colors flex-shrink-0 ml-2"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Panel Content */}
-        <div className="p-6 overflow-y-auto h-[calc(100vh-88px)]">
-          {isLoadingDetail ? (
-            <div className="text-center py-12">
-              <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-3" />
-              <p className="text-sm text-gray-600">Đang tải thông tin...</p>
+        {/* Detail Panel */}
+        {showDetailPanel && (
+          <div className="absolute top-0 right-0 w-96 h-full bg-white shadow-2xl z-20 overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-900">Chi tiết Topic</h2>
+              <button
+                onClick={() => setShowDetailPanel(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-          ) : detailContent ? (
-            <>
-              {detailContent.description && (
-                <div className="mb-6">
-                  <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide flex items-center gap-2">
-                    <div className="w-1 h-4 bg-blue-600 rounded"></div>
-                    Description
-                  </h3>
-                  <p className="text-gray-700 leading-relaxed text-sm">{detailContent.description}</p>
+
+            <div className="p-6">
+              {isLoadingDetail ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 text-[#20619a] animate-spin" />
                 </div>
-              )}
-              
-              {detailContent.resources.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide flex items-center gap-2">
-                    <div className="w-1 h-4 bg-blue-600 rounded"></div>
-                    Resources
-                  </h3>
-                  <div className="space-y-3">
-                    {detailContent.resources.map((url, idx) => (
-                      <a
-                        key={idx}
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-start gap-3 p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors group border border-blue-200"
-                      >
-                        <ExternalLink className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                        <span className="text-sm text-blue-700 group-hover:text-blue-800 break-all flex-1">{url}</span>
-                      </a>
-                    ))}
+              ) : detailContent ? (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                      {detailContent.name}
+                    </h3>
+                    <p className="text-gray-600 leading-relaxed">
+                      {detailContent.description}
+                    </p>
                   </div>
-                </div>
-              )}
 
-              {!detailContent.description && detailContent.resources.length === 0 && (
-                <div className="text-center py-12 text-gray-500">
-                  <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-sm">No additional information available</p>
+                  {detailContent.resources && detailContent.resources.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <BookOpen className="w-4 h-4" />
+                        Tài nguyên học tập
+                      </h4>
+                      <ul className="space-y-2">
+                        {detailContent.resources.map((resource, idx) => (
+                          <li key={idx}>
+                            <a
+                              href={resource}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-start gap-2 text-[#20619a] hover:text-[#20619ab8] hover:underline group"
+                            >
+                              <ExternalLink className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                              <span className="text-sm truncate" title={resource}>{resource}</span>
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                      <BookOpen className="w-4 h-4" />
+                      Khóa học cho Topic này
+                    </h4>
+                    {detailContent.courses && detailContent.courses.length > 0 ? (
+                      <ul className="space-y-2">
+                        {detailContent.courses.map((course) => (
+                          <li key={course.id}>
+                            <a
+                              href={course.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-start gap-2 text-[#20619a] hover:text-[#20619ab8] hover:underline group"
+                            >
+                              <ExternalLink className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                              <span className="text-sm font-medium truncate" title={course.title}>{course.title}</span>
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-gray-500 italic">Không có nội dung</p>
+                    )}
+                  </div>
+
+                  {detailContent.subtopics && detailContent.subtopics.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-3">Lessons (Subtopics)</h4>
+                      <div className="space-y-2">
+                        {detailContent.subtopics.map((subtopic, idx) => (
+                          <div key={subtopic.id} className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+                            <button
+                              onClick={() => toggleSubtopic(idx)}
+                              className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-7 h-7 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                                  {idx + 1}
+                                </div>
+                                {expandedSubtopics.has(idx) ? (
+                                  <ChevronDown className="w-4 h-4 text-gray-600" />
+                                ) : (
+                                  <ChevronRight className="w-4 h-4 text-gray-600" />
+                                )}
+                                <span className="font-medium text-gray-800 text-left">{subtopic.name}</span>
+                              </div>
+                              <span className="text-xs text-gray-500">
+                                {subtopic.courses?.length || 0} khóa học
+                              </span>
+                            </button>
+                            
+                            {expandedSubtopics.has(idx) && (
+                              <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 space-y-4">
+                                {subtopic.description && (
+                                  <div>
+                                    <h6 className="text-xs font-bold text-gray-700 mb-2 uppercase">Description</h6>
+                                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                                      {subtopic.description}
+                                    </p>
+                                  </div>
+                                )}
+                                
+                                {subtopic.resources && subtopic.resources.length > 0 && (
+                                  <div>
+                                    <h6 className="text-xs font-bold text-gray-700 mb-2 uppercase">Learning Resources</h6>
+                                    <div className="space-y-2">
+                                      {subtopic.resources.map((url, resIdx) => (
+                                        <a
+                                          key={resIdx}
+                                          href={url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="flex items-start gap-2 p-2 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors group"
+                                        >
+                                          <ExternalLink className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5 group-hover:text-blue-700" />
+                                          <span className="text-sm text-blue-700 group-hover:text-blue-900 truncate flex-1" title={url}>
+                                            {url}
+                                          </span>
+                                        </a>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                <div>
+                                  <h6 className="text-xs font-bold text-gray-700 mb-2 uppercase">Khóa học</h6>
+                                  {subtopic.courses && subtopic.courses.length > 0 ? (
+                                    <ul className="space-y-2">
+                                      {subtopic.courses.map((course) => (
+                                        <li key={course.id}>
+                                          <a
+                                            href={course.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-start gap-2 text-[#20619a] hover:text-[#20619ab8] hover:underline group"
+                                          >
+                                            <ExternalLink className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                                            <span className="text-sm truncate" title={course.title}>
+                                              {course.title}
+                                            </span>
+                                          </a>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  ) : (
+                                    <p className="text-sm text-gray-500 italic">Không có nội dung</p>
+                                  )}
+                                </div>
+                                
+                                {!subtopic.description && (!subtopic.resources || subtopic.resources.length === 0) && (!subtopic.courses || subtopic.courses.length === 0) && (
+                                  <div className="text-center py-6 text-gray-500">
+                                    <BookOpen className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                                    <p className="text-xs">No information available</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </>
-          ) : null}
-        </div>
+              ) : null}
+            </div>
+          </div>
+        )}
       </div>
-
-      {/* Overlay backdrop when panel is open */}
-      {showDetailPanel && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-30 z-40 transition-opacity duration-300"
-          onClick={() => setShowDetailPanel(false)}
-        ></div>
-      )}
     </div>
   );
 }

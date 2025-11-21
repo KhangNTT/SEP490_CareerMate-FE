@@ -1,66 +1,4 @@
 import api from './api';
-import { useAuthStore } from '@/store/use-auth-store';
-
-// Check authentication using the same store as the main API
-const isAuthenticated = (): boolean => {
-    try {
-        if (typeof window === 'undefined') return false;
-
-        const { accessToken, isAuthenticated: storeAuth } = useAuthStore.getState();
-        const tokenExists = !!accessToken && accessToken !== 'null';
-
-        console.log('🔍 Auth check - Store auth:', storeAuth, 'Token exists:', tokenExists);
-        console.log('🔍 Access token preview:', accessToken ? `${accessToken.substring(0, 30)}...` : 'null');
-
-        // Also check localStorage directly
-        const localStorageToken = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
-        console.log('🔍 LocalStorage token:', localStorageToken ? `${localStorageToken.substring(0, 30)}...` : 'null');
-
-        return storeAuth && tokenExists;
-    } catch {
-        return false;
-    }
-};
-
-// Check if user is admin (check JWT token for admin role)
-const isAdmin = (): boolean => {
-    try {
-        if (typeof window === 'undefined') return false;
-
-        const { accessToken } = useAuthStore.getState();
-
-        if (!accessToken) {
-            console.log('❌ No access token found in store');
-            return false;
-        }
-
-        // Decode JWT token to check for admin role
-        try {
-            const payload = JSON.parse(atob(accessToken.split('.')[1]));
-            console.log('🔍 JWT payload:', payload);
-            console.log('🔍 JWT scope:', payload.scope);
-            console.log('🔍 JWT exp:', new Date(payload.exp * 1000));
-            console.log('🔍 JWT now:', new Date());
-
-            // Check if token is expired
-            if (payload.exp && payload.exp * 1000 < Date.now()) {
-                console.log('❌ Token is expired!');
-                return false;
-            }
-
-            const isAdminRole = payload.scope === 'ROLE_ADMIN';
-            console.log('🔍 Is admin role:', isAdminRole);
-
-            return isAdminRole;
-        } catch (error) {
-            console.error('❌ Error decoding JWT:', error);
-            return false;
-        }
-    } catch (error) {
-        console.error('❌ Error decoding JWT token:', error);
-        return false;
-    }
-};
 
 export interface FileUploadResponse {
     code: number;
@@ -131,21 +69,9 @@ class FileUploadApiService {
             throw new Error(validationError);
         }
 
-        // Debug authentication state
-        console.log('🔍 Checking authentication for image upload...');
-        const authCheck = isAuthenticated();
-        const adminCheck = isAdmin();
-        console.log('🔍 Authenticated:', authCheck, 'Admin:', adminCheck);
-
-        // Check authentication first
-        if (!authCheck) {
-            throw new Error('Please log in first to upload images. Go to /auth/sign-in to log in.');
-        }
-
-        if (!adminCheck) {
-            throw new Error('Admin privileges required to upload images. Only admin users can upload images.');
-        }
-
+        // Use main API instance for upload which handles authentication and token refresh automatically
+        console.log('📤 Starting image upload with automatic authentication...');
+        
         const formData = new FormData();
         // ⚠️ CRITICAL: Backend expects field name to be 'image' not 'file'
         formData.append('image', file);
@@ -157,10 +83,6 @@ class FileUploadApiService {
         console.log('   - File size:', file.size, 'bytes');
         console.log('   - File type:', file.type);
         console.log('   - Endpoint:', `${api.defaults.baseURL}/api/upload/image`);
-
-        // Get token from store for debugging
-        const { accessToken } = useAuthStore.getState();
-        console.log('   - Has token:', !!accessToken);
 
         // Log FormData contents for debugging
         console.log('📤 FormData contents:');
@@ -234,9 +156,15 @@ class FileUploadApiService {
                 
                 throw new Error(`Upload failed: ${backendError}`);
             } else if (error.response?.status === 401) {
-                throw new Error('Authentication expired. Please log in again as admin.');
+                throw new Error('Authentication expired. Please refresh the page and log in again as admin.');
             } else if (error.response?.status === 403) {
-                throw new Error('Access denied. Admin privileges required for image upload.');
+                // More specific error message for admin privileges
+                const backendMessage = error.response?.data?.message;
+                if (backendMessage?.includes('Admin') || backendMessage?.includes('privilege')) {
+                    throw new Error('Admin privileges required. Your session may have expired - please refresh the page and try again.');
+                } else {
+                    throw new Error('Access denied. Admin privileges required for image upload.');
+                }
             } else if (error.response?.status === 413) {
                 throw new Error('File too large. Please choose a smaller image.');
             } else if (error.response?.status >= 500) {

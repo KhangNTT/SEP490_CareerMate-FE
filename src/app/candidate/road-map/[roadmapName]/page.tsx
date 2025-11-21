@@ -184,13 +184,6 @@ export default function RoadmapDetailPage() {
                 Online Courses
               </button>
               <button
-                onClick={() => router.push(`/candidate/road-map-learning/${encodeURIComponent(roadmapName)}`)}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg text-sm font-medium"
-              >
-                <GraduationCap className="w-4 h-4" />
-                Learning View
-              </button>
-              <button
                 onClick={() => router.push(`/candidate/road-map-flow/${encodeURIComponent(roadmapName)}`)}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
               >
