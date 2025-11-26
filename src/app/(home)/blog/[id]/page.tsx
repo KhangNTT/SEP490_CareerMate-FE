@@ -272,8 +272,15 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
             return;
         }
 
+        // Validate rating value
+        if (newRating < 1 || newRating > 5) {
+            toast.error('Rating must be between 1 and 5 stars');
+            return;
+        }
+
         setSubmittingRating(true);
         try {
+            console.log('Submitting rating:', { blogId, rating: newRating });
             const ratingData = await blogApi.createOrUpdateRating(blogId, {
                 rating: newRating
             });
@@ -290,7 +297,16 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
             }
         } catch (error: any) {
             console.error('Error submitting rating:', error);
-            toast.error('Failed to submit rating');
+            console.error('Error response:', error.response?.data);
+            
+            const errorMessage = error.response?.data?.message || error.message || 'Failed to submit rating';
+            if (error.response?.status === 401) {
+                toast.error('Please sign in to rate this blog');
+            } else if (error.response?.status === 400) {
+                toast.error(`Invalid rating: ${errorMessage}`);
+            } else {
+                toast.error(errorMessage);
+            }
         } finally {
             setSubmittingRating(false);
         }
@@ -382,7 +398,7 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
                                         <User className="w-6 h-6 text-white" />
                                     </div>
                                     <div>
-                                        <p className="font-medium text-gray-900">{blog.author.username}</p>
+                                        <p className="font-medium text-gray-900">{blog.authorName || 'Unknown Author'}</p>
                                         <p className="text-sm text-gray-500">Content Creator</p>
                                     </div>
                                 </div>
@@ -540,7 +556,7 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
                                         <User className="w-6 h-6 text-white" />
                                     </div>
                                     <div className="flex-1">
-                                        <h3 className="text-lg font-semibold text-gray-900 mb-1">{blog.author.username}</h3>
+                                        <h3 className="text-lg font-semibold text-gray-900 mb-1">{blog.authorName || 'Unknown Author'}</h3>
                                         <p className="text-sm text-gray-600 mb-3">Content Creator</p>
                                         <p className="text-sm text-gray-500 leading-relaxed">
                                             {blog.category === 'Technology'

@@ -98,9 +98,9 @@ export function getDefaultRedirectPath(role: string | null | undefined): string 
     case 'ADMIN':
       return '/admin';
     case 'RECRUITER':
-      return '/recruiter/dashboard';
+      return '/recruiter';
     case 'CANDIDATE':
-      return '/jobs';
+      return '/candidate';
     default:
       return '/';
   }

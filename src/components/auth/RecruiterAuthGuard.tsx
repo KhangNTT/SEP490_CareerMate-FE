@@ -19,10 +19,18 @@ export default function RecruiterAuthGuard({
   redirectIfGuest = "/sign-in",
   redirectIfNotRecruiter = "/",
 }: RecruiterAuthGuardProps) {
-  // First, check localStorage immediately (synchronous)
+  // ✅ ALWAYS call ALL hooks at the top - unconditionally
+  const hasHydrated = useAuthHydration();
+  const router = useRouter();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isLoading = useAuthStore((s) => s.isLoading);
+  const role = useAuthStore((s) => s.role);
+  const accessToken = useAuthStore((s) => s.accessToken);
+
+  // Now check localStorage (after hooks)
   const storedToken =
     typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-  
+
   // Decode role from JWT instead of reading from localStorage
   const tokenRole = storedToken ? getRoleFromToken(storedToken) : null;
   const hasRecruiterAccess = canAccessRecruiter(tokenRole);
@@ -48,16 +56,6 @@ export default function RecruiterAuthGuard({
     return <>{children}</>;
   }
 
-  // 1) Đảm bảo store đã rehydrate từ localStorage *trước khi* kiểm tra gì thêm
-  const hasHydrated = useAuthHydration();
-  const router = useRouter();
-
-  // 2) Đọc state từ store (reactive)
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const isLoading = useAuthStore((s) => s.isLoading);
-  const role = useAuthStore((s) => s.role);
-  const accessToken = useAuthStore((s) => s.accessToken);
-
   const hasRecruiterRole = canAccessRecruiter(role);
 
   // 3) Điều hướng sau khi đã hydrate + hết loading
@@ -72,7 +70,7 @@ export default function RecruiterAuthGuard({
       typeof window !== "undefined"
         ? localStorage.getItem("access_token")
         : null;
-    
+
     // Get role from token instead of localStorage (security)
     const currentTokenRole = storedToken ? getRoleFromToken(storedToken) : null;
 

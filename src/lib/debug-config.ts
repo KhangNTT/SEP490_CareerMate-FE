@@ -108,9 +108,10 @@ export const safeLog = {
    */
   error: (label: string, error: any) => {
     console.error(label, {
-      message: error?.message,
+      message: error?.message || String(error),
       status: error?.response?.status,
-      // NEVER log: error.response.data (might contain tokens)
+      statusText: error?.response?.statusText,
+      type: typeof error,
     });
   },
 };

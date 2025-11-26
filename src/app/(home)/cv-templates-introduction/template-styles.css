@@ -1,0 +1,73 @@
+/* Template Image Container Styles */
+.cv-template-container {
+  width: 384px;
+  height: 512px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  transform-style: preserve-3d;
+  perspective: 1000px;
+  background-color: white;
+}
+
+.cv-template-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain !important;
+  transition: all 0.8s ease-out;
+  transform-origin: center center;
+  max-width: 384px;
+  max-height: 512px;
+}
+
+/* Add 3D effect when hovering or switching templates */
+.cv-template-container:hover .cv-template-image {
+  transform: translateZ(10px);
+}
+
+/* Template scaling fixes */
+.template-left .cv-template-container,
+.template-right .cv-template-container {
+  transform: scale(1);
+}
+
+.template-center .cv-template-container {
+  transform: scale(1);
+}
+
+/* Add smooth transition effect when templates change */
+@keyframes templateSwitch {
+  0% { opacity: 0.3; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.cv-template-image {
+  animation: templateSwitch 0.8s ease-out;
+}
+
+/* Animations for template transitions */
+.template-fade-enter {
+  opacity: 0;
+}
+
+.template-fade-enter-active {
+  opacity: 1;
+  transition: opacity 500ms;
+}
+
+.template-fade-exit {
+  opacity: 1;
+}
+
+.template-fade-exit-active {
+  opacity: 0;
+  transition: opacity 500ms;
+}
+
+/* Ensure template info section has consistent heights */
+.template-info {
+  height: 80px;
+}

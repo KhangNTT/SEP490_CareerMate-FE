@@ -1,0 +1,140 @@
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { storage } from "@/lib/firebase";
+
+// Constants for storage paths
+const CV_ROOT = 'careermate-files/candidates';
+
+/**
+ * Generate CV storage path
+ */
+function getCvStoragePath(candidateId: string, filename: string): string {
+  return `${CV_ROOT}/${candidateId}/cv/${filename}`;
+}
+
+/**
+ * Upload avatar to Firebase Storage (public)
+ * Path: /careermate-files/candidates/{userId}/profile/{fileName}
+ */
+export async function uploadAvatar(userId: string, file: File): Promise<string> {
+  try {
+    const fileName = `${Date.now()}_${file.name}`;
+    const fileRef = ref(storage, `careermate-files/candidates/${userId}/profile/${fileName}`);
+    
+    await uploadBytes(fileRef, file);
+    const downloadURL = await getDownloadURL(fileRef);
+    
+    return downloadURL;
+  } catch (error) {
+    console.error("Error uploading avatar:", error);
+    throw new Error("Failed to upload avatar");
+  }
+}
+
+/**
+ * Upload CV to Firebase Storage (private)
+ * Path: /careermate-files/candidates/{userId}/cv/{fileName}
+ */
+export async function uploadCV(userId: string, file: File): Promise<string> {
+  try {
+    const fileName = `${Date.now()}_${file.name}`;
+    const fileRef = ref(storage, `careermate-files/candidates/${userId}/cv/${fileName}`);
+    
+    await uploadBytes(fileRef, file);
+    const downloadURL = await getDownloadURL(fileRef);
+    
+    return downloadURL;
+  } catch (error) {
+    console.error("Error uploading CV:", error);
+    throw new Error("Failed to upload CV");
+  }
+}
+
+/**
+ * Upload CV PDF from Blob to Firebase Storage (private)
+ * Used after generating PDF with Puppeteer
+ * Path: /careermate-files/candidates/{userId}/cv/{fileName}
+ */
+export async function uploadCVPDF(
+  userId: string, 
+  pdfBlob: Blob, 
+  customFileName?: string
+): Promise<string> {
+  try {
+    const timestamp = Date.now();
+    const fileName = customFileName 
+      ? `${timestamp}_${customFileName}.pdf`
+      : `cv_${timestamp}.pdf`;
+    
+    const fileRef = ref(storage, `careermate-files/candidates/${userId}/cv/${fileName}`);
+    
+    // Upload blob với metadata
+    await uploadBytes(fileRef, pdfBlob, {
+      contentType: "application/pdf",
+      customMetadata: {
+        uploadedAt: new Date().toISOString(),
+        type: "generated-cv",
+      },
+    });
+    
+    const downloadURL = await getDownloadURL(fileRef);
+    
+    console.log("✅ CV PDF uploaded successfully:", downloadURL);
+    return downloadURL;
+  } catch (error) {
+    console.error("❌ Error uploading CV PDF:", error);
+    throw new Error("Failed to upload CV PDF to Firebase");
+  }
+}
+
+/**
+ * Delete file from Firebase Storage
+ */
+export async function deleteFile(fileUrl: string): Promise<void> {
+  try {
+    const fileRef = ref(storage, fileUrl);
+    await deleteObject(fileRef);
+  } catch (error) {
+    console.error("Error deleting file:", error);
+    throw new Error("Failed to delete file");
+  }
+}
+
+/**
+ * Upload CV file to Firebase Storage with metadata
+ * Path: careermate-files/candidates/{candidateId}/cv/{generatedFilename}
+ * @param candidateId - The candidate's ID
+ * @param file - The CV file to upload
+ * @returns Metadata object (does NOT include File/Blob)
+ */
+export async function uploadCvFile(candidateId: string, file: File) {
+  try {
+    // Extract file extension
+    const ext = file.name.split('.').pop() || 'pdf';
+    
+    // Generate unique filename using crypto.randomUUID()
+    const filename = crypto.randomUUID() + '.' + ext;
+    
+    // Build storage path using helper function
+    const path = getCvStoragePath(candidateId, filename);
+    
+    // Upload to Firebase Storage
+    const storageRef = ref(storage, path);
+    await uploadBytes(storageRef, file);
+    const downloadUrl = await getDownloadURL(storageRef);
+    
+    // Return ONLY metadata (no File/Blob)
+    return {
+      id: filename,
+      candidateId,
+      storagePath: path,
+      downloadUrl,
+      type: 'UPLOADED' as const,
+      status: 'READY' as const,
+      isDefault: false,
+      updatedAt: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error("Error uploading CV file:", error);
+    throw new Error("Failed to upload CV file");
+  }
+}

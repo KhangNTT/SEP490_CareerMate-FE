@@ -1,0 +1,65 @@
+/* 
+  FIX SIZE TEMPLATES
+  File này đảm bảo tất cả các template CV đều có cùng kích thước
+  bất kể nội dung bên trong là gì
+*/
+
+/* Đảm bảo các container có kích thước cố định */
+.cv-template-container {
+  box-sizing: content-box;
+  padding: 0 !important;
+  margin: 0 auto !important;
+  width: 384px !important;
+  height: 512px !important;
+  background-color: white !important;
+  overflow: hidden !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Ép tất cả các ảnh có cùng kích thước */
+.cv-template-container img,
+.cv-template-image {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-position: top center;
+}
+
+/* Reset các scale và transform */
+.template-left .cv-template-image,
+.template-right .cv-template-image,
+.template-center .cv-template-image {
+  transform: none !important;
+}
+
+/* Ensure scale transformations are properly applied */
+.template-left,
+.template-right {
+  width: 384px;
+  height: 512px;
+}
+
+/* Fix for template positioning */
+.template-left, .template-right, .template-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Đảm bảo hình ảnh template chính có kích thước cố định */
+.main-template-image {
+  width: 384px !important;
+  height: 512px !important;
+  object-fit: contain !important;
+}
+
+/* Đặc biệt xử lý cho template chính */
+.template-center .cv-template-container {
+  transform: scale(1) !important;
+}

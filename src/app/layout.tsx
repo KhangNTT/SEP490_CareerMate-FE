@@ -1,15 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { AuthProvider } from "@/store/auth-provider";
-import { Toaster } from "react-hot-toast";
-import { Analytics } from "@vercel/analytics/react";
-import AuthGuard from "@/components/auth/auth-guard";
-import HomeBg from "@/components/home-bg";
-import { LayoutProvider } from "@/contexts/LayoutContext";
-import { AuthCleanup } from "@/components/auth/AuthCleanup";
-import { PostLoginRedirect } from "@/components/auth/PostLoginRedirect";
-import { SecurityCleanup } from "@/components/auth/SecurityCleanup";
+import { ClientProviders } from "@/components/provider/ClientProviders";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,21 +29,11 @@ export default function RootLayout({
         suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
-        <AuthProvider>
-          <LayoutProvider>
-            {/* Security cleanup on app load */}
-            <SecurityCleanup />
+        {/* Server component - no client bundle pollution */}
+        {children}
 
-            {/* Temporarily disabled PostLoginRedirect to debug infinite loop */}
-            {/* <PostLoginRedirect> */}
-            {/* <AuthCleanup /> */}
-            <HomeBg>{children}</HomeBg>
-            {/* </PostLoginRedirect> */}
-
-            <Toaster position="top-center" toastOptions={{ duration: 2500 }} />
-            <Analytics />
-          </LayoutProvider>
-        </AuthProvider>
+        {/* Client utilities loaded separately to avoid blocking SSR */}
+        <ClientProviders />
       </body>
     </html>
   );

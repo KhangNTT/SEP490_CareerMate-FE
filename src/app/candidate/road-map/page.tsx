@@ -1,0 +1,388 @@
+"use client";
+
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import CVSidebar from "@/components/layout/CVSidebar";
+import { useLayout } from "@/contexts/LayoutContext";
+import { useRouter } from "next/navigation";
+import {
+  Target,
+  Loader2,
+  AlertCircle,
+  RefreshCw,
+  ChevronRight,
+  BookOpen,
+  TrendingUp,
+} from "lucide-react";
+import { fetchCurrentCandidateProfile } from "@/lib/candidate-profile-api";
+import { getRoadmapRecommendations, RoadmapRecommendation } from "@/lib/roadmap-api";
+import toast from "react-hot-toast";
+
+// Skeleton Loading Component
+function SkeletonCard() {
+  return (
+    <div className="border border-gray-200 rounded-lg p-4 animate-pulse">
+      <div className="flex items-center gap-4">
+        <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
+        <div className="flex-1 space-y-2">
+          <div className="h-5 bg-gray-200 rounded w-3/4"></div>
+          <div className="h-2 bg-gray-200 rounded w-full"></div>
+        </div>
+        <div className="w-24 h-10 bg-gray-200 rounded-lg"></div>
+      </div>
+    </div>
+  );
+}
+
+export default function RoadMapPage() {
+  const router = useRouter();
+  const { headerHeight } = useLayout();
+  const [headerH, setHeaderH] = useState(headerHeight || 0);
+  const [professionalTitle, setProfessionalTitle] = useState<string>("");
+  const [recommendations, setRecommendations] = useState<RoadmapRecommendation[]>([]);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
+  const [error, setError] = useState<string>("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedHeight = localStorage.getItem("headerHeight");
+      if (savedHeight && !headerHeight) {
+        setHeaderH(parseInt(savedHeight));
+      } else if (headerHeight) {
+        setHeaderH(headerHeight);
+      }
+    }
+  }, [headerHeight]);
+
+  // Fetch candidate profile on mount to get professional title
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = useCallback(async () => {
+    try {
+      setIsLoadingProfile(true);
+      setError("");
+      
+      console.log('🔵 [ROADMAP PAGE] Fetching candidate profile...');
+      
+      const profile = await fetchCurrentCandidateProfile();
+      
+      console.log('✅ [ROADMAP PAGE] Profile fetched:', profile);
+      console.log('✅ [ROADMAP PAGE] Professional title:', profile.title);
+      
+      if (profile.title) {
+        setProfessionalTitle(profile.title);
+        console.log('✅ [ROADMAP PAGE] Will fetch recommendations for:', profile.title);
+        // Automatically fetch recommendations when we have a title
+        fetchRecommendations(profile.title);
+      } else {
+        console.warn('⚠️ [ROADMAP PAGE] No professional title found in profile');
+        setError("Bạn chưa cập nhật Professional Title. Vui lòng cập nhật trong CM Profile.");
+        setIsLoadingProfile(false);
+      }
+    } catch (error: any) {
+      console.error("❌ [ROADMAP PAGE] Error fetching profile:", error);
+      if (error.message === "PROFILE_NOT_FOUND") {
+        setError("Bạn chưa có profile. Vui lòng tạo profile trong CM Profile.");
+      } else {
+        setError("Không thể tải thông tin profile. Vui lòng thử lại.");
+      }
+      setIsLoadingProfile(false);
+    }
+  }, []);
+
+  const fetchRecommendations = useCallback(async (role: string) => {
+    try {
+      setIsLoadingRecommendations(true);
+      setError("");
+      
+      console.log('🔵 [ROADMAP PAGE] Fetching recommendations for role:', role);
+      
+      const response = await getRoadmapRecommendations(role);
+      
+      console.log('✅ [ROADMAP PAGE] API Response:', response);
+      console.log('✅ [ROADMAP PAGE] Response result:', response.result);
+      console.log('✅ [ROADMAP PAGE] Result length:', response.result?.length);
+      
+      if (response.code === 200 && response.result) {
+        console.log('✅ [ROADMAP PAGE] Setting recommendations:', response.result);
+        setRecommendations(response.result);
+        
+        if (response.result.length > 0) {
+          toast.success(`Tìm thấy ${response.result.length} roadmap phù hợp!`);
+        } else {
+          toast("Không tìm thấy roadmap phù hợp với chuyên môn của bạn.");
+        }
+      } else {
+        console.warn('⚠️ [ROADMAP PAGE] Unexpected response format:', response);
+        setRecommendations([]);
+        toast("Không tìm thấy roadmap phù hợp với chuyên môn của bạn.");
+      }
+    } catch (error: any) {
+      console.error("❌ [ROADMAP PAGE] Error fetching recommendations:", error);
+      setError("Không thể tải danh sách roadmap. Vui lòng thử lại.");
+      toast.error("Lỗi khi tải roadmap recommendations");
+      setRecommendations([]);
+    } finally {
+      setIsLoadingProfile(false);
+      setIsLoadingRecommendations(false);
+    }
+  }, []);
+
+  const handleRefreshRecommendations = useCallback(() => {
+    if (professionalTitle) {
+      fetchRecommendations(professionalTitle);
+    }
+  }, [professionalTitle, fetchRecommendations]);
+
+  const getSimilarityColor = (score: number): string => {
+    if (score >= 0.9) return "text-green-600 bg-green-100 border-green-200";
+    if (score >= 0.7) return "text-blue-600 bg-blue-100 border-blue-200";
+    if (score >= 0.5) return "text-yellow-600 bg-yellow-100 border-yellow-200";
+    return "text-gray-600 bg-gray-100 border-gray-200";
+  };
+
+  const getSimilarityBadge = (score: number): string => {
+    if (score >= 0.9) return "Rất phù hợp";
+    if (score >= 0.7) return "Phù hợp";
+    if (score >= 0.5) return "Khá phù hợp";
+    return "Ít phù hợp";
+  };
+
+  // Loading state with skeleton
+  if (isLoadingProfile) {
+    return (
+      <div className="bg-gray-50">
+        <div className="mx-auto max-w-7xl px-4 py-6 md:px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-[16rem_minmax(0,1fr)] gap-6 items-start">
+            <aside className="hidden lg:block sticky top-24 self-start">
+              <CVSidebar activePage="road-map" />
+            </aside>
+            <section className="min-w-0 space-y-6">
+              {/* Header Skeleton */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-pulse">
+                <div className="h-8 bg-gray-200 rounded w-1/3 mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              </div>
+              
+              {/* Cards Skeleton */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-3">
+                <SkeletonCard />
+                <SkeletonCard />
+                <SkeletonCard />
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error && !professionalTitle) {
+    return (
+      <div className="bg-gray-50">
+        <div className="mx-auto max-w-7xl px-4 py-6 md:px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-[16rem_minmax(0,1fr)] gap-6 items-start">
+            <aside className="hidden lg:block sticky top-24 self-start">
+              <CVSidebar activePage="road-map" />
+            </aside>
+            <section className="min-w-0">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <AlertCircle className="w-8 h-8 text-red-600" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">Thiếu thông tin</h3>
+                  <p className="text-gray-600 mb-6">{error}</p>
+                  <div className="flex gap-3 justify-center">
+                    <a
+                      href="/candidate/cm-profile"
+                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
+                    >
+                      Cập nhật Profile
+                    </a>
+                    <button
+                      onClick={fetchProfile}
+                      className="px-6 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
+                    >
+                      Thử lại
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-gray-50">
+      <div className="mx-auto max-w-7xl px-4 py-6 md:px-6">
+        <div 
+          className="grid grid-cols-1 lg:grid-cols-[16rem_minmax(0,1fr)] gap-6 items-start transition-all duration-300"
+          style={{
+            ["--sticky-offset" as any]: `${headerH}px`,
+            ["--content-pad" as any]: "24px",
+          }}
+        >
+          {/* Sidebar */}
+          <aside className="hidden lg:block sticky [top:calc(var(--sticky-offset)+var(--content-pad))] self-start transition-all duration-300">
+            <CVSidebar activePage="road-map" />
+          </aside>
+
+          {/* Main Content */}
+          <section className="space-y-6 min-w-0 lg:mt-[var(--sticky-offset)] transition-all duration-300">
+            {/* Header Card */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900 mb-1">Career Road Map</h1>
+                  <p className="text-gray-600 text-sm">Roadmap recommendations based on your professional title</p>
+                </div>
+                {professionalTitle && (
+                  <button
+                    onClick={handleRefreshRecommendations}
+                    disabled={isLoadingRecommendations}
+                    className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isLoadingRecommendations ? 'animate-spin' : ''}`} />
+                    Làm mới
+                  </button>
+                )}
+              </div>
+
+              {/* Professional Title */}
+              {professionalTitle && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Target className="w-5 h-5 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-900">Your Professional Title</span>
+                  </div>
+                  <p className="text-lg font-bold text-blue-900">{professionalTitle}</p>
+                  <p className="text-sm text-blue-700 mt-1">
+                    {recommendations.length} roadmap{recommendations.length !== 1 ? 's' : ''} found
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Loading Recommendations với Skeleton */}
+            {isLoadingRecommendations && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="h-6 bg-gray-200 rounded w-1/4 mb-4 animate-pulse"></div>
+                <div className="space-y-3">
+                  <SkeletonCard />
+                  <SkeletonCard />
+                  <SkeletonCard />
+                </div>
+              </div>
+            )}
+
+            {/* Recommendations List */}
+            {!isLoadingRecommendations && recommendations.length > 0 && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h2 className="text-lg font-bold text-gray-900 mb-4">Recommended Roadmaps</h2>
+                <div className="space-y-3">
+                  {recommendations.map((roadmap, index) => (
+                    <div
+                      key={index}
+                      className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:bg-blue-50 transition-all group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4 flex-1">
+                          {/* Rank */}
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm ${
+                            index === 0 ? 'bg-yellow-100 text-yellow-700' :
+                            index === 1 ? 'bg-gray-100 text-gray-600' :
+                            index === 2 ? 'bg-orange-100 text-orange-600' :
+                            'bg-gray-50 text-gray-500'
+                          }`}>
+                            #{index + 1}
+                          </div>
+
+                          {/* Content */}
+                          <div className="flex-1">
+                            <h3 className="font-bold text-gray-900 mb-1 capitalize">{roadmap.title}</h3>
+                            
+                            {/* Progress Bar */}
+                            <div className="flex items-center gap-3">
+                              <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                <div
+                                  className="bg-blue-600 h-2 rounded-full transition-all"
+                                  style={{ width: `${roadmap.similarityScore * 100}%` }}
+                                />
+                              </div>
+                              <span className="text-sm font-semibold text-gray-700 min-w-[50px]">
+                                {Math.round(roadmap.similarityScore * 100)}%
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Action Button */}
+                        <button 
+                          onClick={() => router.push(`/candidate/road-map/${encodeURIComponent(roadmap.title)}`)}
+                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium ml-4"
+                        >
+                          <BookOpen className="w-4 h-4" />
+                          View
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!isLoadingRecommendations && recommendations.length === 0 && professionalTitle && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Target className="w-8 h-8 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Không tìm thấy roadmap</h3>
+                <p className="text-gray-600 mb-6">
+                  Chưa có roadmap phù hợp với "{professionalTitle}". Vui lòng thử lại sau.
+                </p>
+                <button
+                  onClick={handleRefreshRecommendations}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center gap-2 text-sm font-medium"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Thử lại
+                </button>
+              </div>
+            )}
+
+            {/* Tips Section */}
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+              <h3 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-blue-600" />
+                Tips for Using Road Maps
+              </h3>
+              <ul className="space-y-2 text-sm text-gray-700">
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-600 mt-0.5">•</span>
+                  <span>Choose a roadmap that best matches your current career goals and skills</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-600 mt-0.5">•</span>
+                  <span>Follow the recommended learning path step by step for optimal results</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-600 mt-0.5">•</span>
+                  <span>Update your Professional Title in CM Profile to get more accurate recommendations</span>
+                </li>
+              </ul>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}

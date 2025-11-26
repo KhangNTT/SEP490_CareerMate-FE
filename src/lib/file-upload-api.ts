@@ -1,76 +1,15 @@
 import api from './api';
-import { useAuthStore } from '@/store/use-auth-store';
-
-// Check authentication using the same store as the main API
-const isAuthenticated = (): boolean => {
-    try {
-        if (typeof window === 'undefined') return false;
-
-        const { accessToken, isAuthenticated: storeAuth } = useAuthStore.getState();
-        const tokenExists = !!accessToken && accessToken !== 'null';
-
-        console.log('🔍 Auth check - Store auth:', storeAuth, 'Token exists:', tokenExists);
-        console.log('🔍 Access token preview:', accessToken ? `${accessToken.substring(0, 30)}...` : 'null');
-
-        // Also check localStorage directly
-        const localStorageToken = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
-        console.log('🔍 LocalStorage token:', localStorageToken ? `${localStorageToken.substring(0, 30)}...` : 'null');
-
-        return storeAuth && tokenExists;
-    } catch {
-        return false;
-    }
-};
-
-// Check if user is admin (check JWT token for admin role)
-const isAdmin = (): boolean => {
-    try {
-        if (typeof window === 'undefined') return false;
-
-        const { accessToken } = useAuthStore.getState();
-
-        if (!accessToken) {
-            console.log('❌ No access token found in store');
-            return false;
-        }
-
-        // Decode JWT token to check for admin role
-        try {
-            const payload = JSON.parse(atob(accessToken.split('.')[1]));
-            console.log('🔍 JWT payload:', payload);
-            console.log('🔍 JWT scope:', payload.scope);
-            console.log('🔍 JWT exp:', new Date(payload.exp * 1000));
-            console.log('🔍 JWT now:', new Date());
-
-            // Check if token is expired
-            if (payload.exp && payload.exp * 1000 < Date.now()) {
-                console.log('❌ Token is expired!');
-                return false;
-            }
-
-            const isAdminRole = payload.scope === 'ROLE_ADMIN';
-            console.log('🔍 Is admin role:', isAdminRole);
-
-            return isAdminRole;
-        } catch (error) {
-            console.error('❌ Error decoding JWT:', error);
-            return false;
-        }
-    } catch (error) {
-        console.error('❌ Error decoding JWT token:', error);
-        return false;
-    }
-};
 
 export interface FileUploadResponse {
     code: number;
     message: string;
     result: {
-        imageUrl: string;
+        imageUrl: string; // Primary URL field from backend
         publicId: string; // Firebase storage path
-        fileName: string;
         fileSize: number;
         originalName: string;
+        width: number;
+        height: number;
     };
 }
 
@@ -130,38 +69,33 @@ class FileUploadApiService {
             throw new Error(validationError);
         }
 
-        // Debug authentication state
-        console.log('🔍 Checking authentication for image upload...');
-        const authCheck = isAuthenticated();
-        const adminCheck = isAdmin();
-        console.log('🔍 Authenticated:', authCheck, 'Admin:', adminCheck);
-
-        // Check authentication first
-        if (!authCheck) {
-            throw new Error('Please log in first to upload images. Go to /auth/sign-in to log in.');
-        }
-
-        if (!adminCheck) {
-            throw new Error('Admin privileges required to upload images. Only admin users can upload images.');
-        }
-
+        // Use main API instance for upload which handles authentication and token refresh automatically
+        console.log('📤 Starting image upload with automatic authentication...');
+        
         const formData = new FormData();
+        // ⚠️ CRITICAL: Backend expects field name to be 'image' not 'file'
         formData.append('image', file);
-        if (folder) {
-            formData.append('folder', folder);
+        
+        // Note: Backend doesn't use 'folder' parameter - images go to default Firebase location
+
+        console.log('📤 Uploading image to Firebase:');
+        console.log('   - File name:', file.name);
+        console.log('   - File size:', file.size, 'bytes');
+        console.log('   - File type:', file.type);
+        console.log('   - Endpoint:', `${api.defaults.baseURL}/api/upload/image`);
+
+        // Log FormData contents for debugging
+        console.log('📤 FormData contents:');
+        for (const [key, value] of formData.entries()) {
+            console.log(`   - ${key}:`, value instanceof File ? `File(${value.name})` : value);
         }
-
-        console.log('📤 Uploading image to Firebase:', file.name, 'Size:', file.size, 'Folder:', folder || 'root');
-        console.log('📤 Will upload to:', `${api.defaults.baseURL}/api/upload/image`);
-
-        // Get token from store for debugging
-        const { accessToken } = useAuthStore.getState();
-        console.log('📤 Using token:', accessToken ? `${accessToken.substring(0, 50)}...` : 'null');
+        console.log('   ⚠️  Field name MUST be "image" for backend to accept it');
 
         try {
             const response = await api.post<FileUploadResponse>('/api/upload/image', formData, {
                 headers: {
-                    'Content-Type': 'multipart/form-data',
+                    // IMPORTANT: Delete the default Content-Type and let browser set it with boundary
+                    'Content-Type': undefined as any, // This tells axios to let the browser set multipart/form-data with boundary
                 },
                 timeout: 60000, // 60 seconds timeout for file uploads
                 onUploadProgress: (progressEvent) => {
@@ -178,27 +112,59 @@ class FileUploadApiService {
                 throw new Error(response.data.message);
             }
 
+            // Use the backend response format
             const imageUrl = response.data.result.imageUrl;
             const publicId = response.data.result.publicId;
             console.log('✅ Image uploaded to Firebase successfully:', imageUrl);
             console.log('📁 Firebase storage path:', publicId);
+            console.log('📏 Image dimensions:', `${response.data.result.width}x${response.data.result.height}`);
+            console.log('💾 File size:', response.data.result.fileSize, 'bytes');
 
             // Return Firebase URL directly (no processing needed)
             return imageUrl;
         } catch (error: any) {
             console.error('❌ Upload error:', error.response?.status, error.response?.data);
+            console.error('❌ Full error object:', {
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                data: error.response?.data,
+                headers: error.response?.headers,
+                config: {
+                    url: error.config?.url,
+                    method: error.config?.method,
+                    headers: error.config?.headers
+                }
+            });
 
             if (error.response?.status === 400) {
                 // Handle backend validation errors
                 const backendError = error.response?.data?.message || 'Server validation error';
+                console.error('❌ 400 Bad Request details:', {
+                    message: backendError,
+                    code: error.response?.data?.code,
+                    fullResponse: error.response?.data
+                });
+                
                 if (backendError.includes('large') || backendError.includes('size')) {
                     throw new Error('File size exceeds server limits. Please choose a smaller image (max 5MB).');
                 }
+                
+                // More specific error messages
+                if (backendError.includes('Uncategorized')) {
+                    throw new Error(`Upload failed: The backend couldn't process the file. Please ensure the file is a valid image (JPG, PNG, GIF, WebP) and try again.`);
+                }
+                
                 throw new Error(`Upload failed: ${backendError}`);
             } else if (error.response?.status === 401) {
-                throw new Error('Authentication expired. Please log in again as admin.');
+                throw new Error('Authentication expired. Please refresh the page and log in again as admin.');
             } else if (error.response?.status === 403) {
-                throw new Error('Access denied. Admin privileges required for image upload.');
+                // More specific error message for admin privileges
+                const backendMessage = error.response?.data?.message;
+                if (backendMessage?.includes('Admin') || backendMessage?.includes('privilege')) {
+                    throw new Error('Admin privileges required. Your session may have expired - please refresh the page and try again.');
+                } else {
+                    throw new Error('Access denied. Admin privileges required for image upload.');
+                }
             } else if (error.response?.status === 413) {
                 throw new Error('File too large. Please choose a smaller image.');
             } else if (error.response?.status >= 500) {
