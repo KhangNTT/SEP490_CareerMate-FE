@@ -54,6 +54,22 @@ export async function POST(request: NextRequest) {
         }
       );
 
+      // ✅ CRITICAL: Set access_token cookie for SSE authentication
+      const accessToken = result?.accessToken || result?.token;
+      if (accessToken) {
+        console.log("🍪 [LOGIN] Setting access_token cookie:", accessToken.substring(0, 20) + "...");
+        nextResponse.cookies.set({
+          name: "access_token",
+          value: accessToken,
+          httpOnly: false, // Must be false for JavaScript to read it
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          path: "/",
+          maxAge: result?.expiresIn || 900, // Use expiresIn from backend or default 15 minutes
+        });
+        console.log("✅ [LOGIN] access_token cookie set successfully");
+      }
+
       // Forward any refresh token cookie
       console.log(
         "🔍 [LOGIN] Response headers set-cookie:",
@@ -87,7 +103,7 @@ export async function POST(request: NextRequest) {
               maxAge: 60 * 60 * 24 * 7, // 7 days
             });
 
-            console.log("🔍 [LOGIN] Cookie set successfully");
+            console.log("🔍 [LOGIN] refreshToken cookie set successfully");
             break;
           }
         }

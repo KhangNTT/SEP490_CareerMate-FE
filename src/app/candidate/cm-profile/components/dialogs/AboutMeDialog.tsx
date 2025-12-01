@@ -17,7 +17,7 @@ export default function AboutMeDialog({
     value,
     onChange,
     onSave,
-    maxLength = 2500
+    maxLength = 256
 }: AboutMeDialogProps) {
     const charCount = value.length;
 

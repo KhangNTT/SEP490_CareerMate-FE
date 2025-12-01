@@ -4,10 +4,16 @@ import { useState, useEffect } from "react";
 import CVSidebar from "@/components/layout/CVSidebar";
 import Link from "next/link";
 import { useLayout } from "@/contexts/LayoutContext";
+import { useAuthStore } from "@/store/use-auth-store";
 
 const SettingsPage = () => {
   // Sử dụng context thay vì useEffect
   const { headerHeight } = useLayout();
+  const { user } = useAuthStore();
+
+  // Get display name and email from user object
+  const displayName = user?.fullName || user?.name || user?.email?.split('@')[0] || 'User';
+  const displayEmail = user?.email || 'user@example.com';
 
   // Backup solution nếu context chưa hoạt động
   const [headerH, setHeaderH] = useState(headerHeight || 0);
@@ -51,7 +57,7 @@ const SettingsPage = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email:</label>
                   <div className="flex items-center">
-                    <span className="text-gray-900">user@example.com</span>
+                    <span className="text-gray-900">{displayEmail}</span>
                     <div className="ml-2 text-xs text-gray-500 flex items-center">
                       <svg className="w-4 h-4 mr-1 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -64,7 +70,7 @@ const SettingsPage = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Full name:</label>
                   <div className="flex items-center">
-                    <span className="text-gray-900">Lê Quang Anh</span>
+                    <span className="text-gray-900">{displayName}</span>
                     <div className="ml-2 text-xs text-gray-500 flex items-center">
                       <svg className="w-4 h-4 mr-1 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

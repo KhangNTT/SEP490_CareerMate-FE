@@ -504,8 +504,35 @@ export const viewJob = async (candidateId: number, jobId: number): Promise<void>
 };
 
 /**
+ * Fetch liked jobs for a candidate
+ * GET /api/job-feedback/candidate/{candidateId}/type/like
+ */
+export const fetchLikedJobs = async (candidateId: number): Promise<SavedJobFeedback[]> => {
+  try {
+    console.log('📡 Fetching liked jobs for candidate:', candidateId);
+    
+    const response = await api.get<SavedJobsResponse>(
+      `/api/job-feedback/candidate/${candidateId}/type/LIKE`
+    );
+
+    console.log('✅ Liked jobs response:', response.data);
+
+    if (response.data.code === 200 || response.data.code === 1073741824) {
+      return response.data.result || [];
+    }
+
+    console.warn('⚠️ Unexpected response code:', response.data.code);
+    return [];
+  } catch (error: any) {
+    console.error('❌ Error fetching liked jobs:', error);
+    console.error('Error details:', error.response?.data || error.message);
+    return [];
+  }
+};
+
+/**
  * Fetch viewed jobs for a candidate
- * GET /api/job-feedback/candidate/{candidateId}/type/view
+ * GET /api/job-feedback/candidate/{candidateId}/type/VIEW
  */
 export const fetchViewedJobs = async (candidateId: number): Promise<SavedJobFeedback[]> => {
   try {

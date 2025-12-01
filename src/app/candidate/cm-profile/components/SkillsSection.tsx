@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { FiEdit } from "react-icons/fi";
 import { SkillGroup, SkillItem } from "./types";
 
@@ -9,6 +9,8 @@ interface SkillsSectionProps {
     onAddSoftSkills: () => void;
     onEditCoreSkills?: (group: SkillGroup) => void;
     onEditSoftSkills?: () => void;
+    onDeleteCoreSkills?: () => void;
+    onDeleteSoftSkills?: () => void;
     popoverOpen: boolean;
     setPopoverOpen: (open: boolean) => void;
 }
@@ -20,6 +22,8 @@ export default function SkillsSection({
     onAddSoftSkills,
     onEditCoreSkills,
     onEditSoftSkills,
+    onDeleteCoreSkills,
+    onDeleteSoftSkills,
     popoverOpen,
     setPopoverOpen
 }: SkillsSectionProps) {
@@ -82,15 +86,26 @@ export default function SkillsSection({
                         <div key={group.id} className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <div className="font-semibold text-gray-900">Core Skills</div>
-                                {onEditCoreSkills && (
-                                    <button
-                                        onClick={() => onEditCoreSkills(group)}
-                                        className="text-gray-400 hover:text-blue-600 p-1.5"
-                                        title="Edit core skills"
-                                    >
-                                        <FiEdit className="w-4 h-4" />
-                                    </button>
-                                )}
+                                <div className="flex items-center gap-1">
+                                    {onEditCoreSkills && (
+                                        <button
+                                            onClick={() => onEditCoreSkills(group)}
+                                            className="text-gray-400 hover:text-blue-600 p-1.5"
+                                            title="Edit core skills"
+                                        >
+                                            <FiEdit className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                    {onDeleteCoreSkills && (
+                                        <button
+                                            onClick={onDeleteCoreSkills}
+                                            className="text-gray-400 hover:text-red-600 p-1.5"
+                                            title="Delete all core skills"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                             {/* Gray divider line */}
                             <div className="border-t border-gray-200"></div>
@@ -120,15 +135,26 @@ export default function SkillsSection({
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <div className="font-semibold text-gray-900">Soft Skills</div>
-                                {onEditSoftSkills && (
-                                    <button
-                                        onClick={onEditSoftSkills}
-                                        className="text-gray-400 hover:text-blue-600 p-1.5"
-                                        title="Edit soft skills"
-                                    >
-                                        <FiEdit className="w-4 h-4" />
-                                    </button>
-                                )}
+                                <div className="flex items-center gap-1">
+                                    {onEditSoftSkills && (
+                                        <button
+                                            onClick={onEditSoftSkills}
+                                            className="text-gray-400 hover:text-blue-600 p-1.5"
+                                            title="Edit soft skills"
+                                        >
+                                            <FiEdit className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                    {onDeleteSoftSkills && (
+                                        <button
+                                            onClick={onDeleteSoftSkills}
+                                            className="text-gray-400 hover:text-red-600 p-1.5"
+                                            title="Delete all soft skills"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                             {/* Gray divider line */}
                             <div className="border-t border-gray-200"></div>

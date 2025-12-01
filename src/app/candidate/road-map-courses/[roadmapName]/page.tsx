@@ -331,13 +331,13 @@ function CourseGroup({
         onClick={onToggleExpand}
         className="w-full flex items-center gap-3 p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
       >
-        <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
           allCompleted ? 'bg-green-500' : 'bg-gray-300'
         }`}>
           {allCompleted ? (
-            <CheckCircle2 className="w-4 h-4 text-white" />
+            <CheckCircle2 className="w-7 h-7 text-white" />
           ) : (
-            <Circle className="w-4 h-4 text-white" />
+            <Circle className="w-7 h-7 text-white" />
           )}
         </div>
         
@@ -642,10 +642,12 @@ export default function RoadmapCoursesPage() {
   }, [roadmapName]);
 
   const fetchAllTopicDetails = async (topics: Topic[]) => {
+    console.log('🔵 fetchAllTopicDetails - topics:', topics);
     const detailsMap = new Map();
     const subtopicDetailsMap = new Map();
     
     for (const topic of topics) {
+      console.log(`🔵 Processing topic ${topic.id}: ${topic.name}, subtopics:`, topic.subtopics);
       try {
         const detail = await getTopicDetail(topic.id);
         detailsMap.set(topic.id, {
@@ -654,21 +656,30 @@ export default function RoadmapCoursesPage() {
         });
         
         // Fetch subtopic details
-        for (const subtopic of topic.subtopics) {
-          try {
-            const subDetail = await getSubtopicDetail(subtopic.id);
-            subtopicDetailsMap.set(subtopic.id, {
-              description: subDetail.description,
-              resources: subDetail.resourceResponses.map(r => r.url).filter(url => url),
-            });
-          } catch (error) {
-            console.error(`Error fetching detail for subtopic ${subtopic.id}:`, error);
+        if (topic.subtopics && topic.subtopics.length > 0) {
+          for (const subtopic of topic.subtopics) {
+            console.log(`🔵 Fetching subtopic ${subtopic.id}: ${subtopic.name}`);
+            try {
+              const subDetail = await getSubtopicDetail(subtopic.id);
+              console.log(`✅ Subtopic ${subtopic.id} detail:`, subDetail);
+              subtopicDetailsMap.set(subtopic.id, {
+                description: subDetail.description,
+                resources: subDetail.resourceResponses.map(r => r.url).filter(url => url),
+              });
+            } catch (error) {
+              console.error(`Error fetching detail for subtopic ${subtopic.id}:`, error);
+            }
           }
+        } else {
+          console.log(`⚠️ Topic ${topic.id} has no subtopics`);
         }
       } catch (error) {
         console.error(`Error fetching detail for topic ${topic.id}:`, error);
       }
     }
+    
+    console.log('🔵 Final detailsMap size:', detailsMap.size);
+    console.log('🔵 Final subtopicDetailsMap size:', subtopicDetailsMap.size);
     
     setTopicDetails(detailsMap);
     setSubtopicDetails(subtopicDetailsMap);
@@ -701,14 +712,24 @@ export default function RoadmapCoursesPage() {
   }, []);
 
   const handleCourseClick = useCallback((topic: Topic, duration?: string) => {
+    console.log('🔵 handleCourseClick - Topic:', topic);
+    console.log('🔵 handleCourseClick - Topic subtopics:', topic.subtopics);
+    console.log('🔵 handleCourseClick - subtopicDetails map size:', subtopicDetails.size);
+    
     const details = topicDetails.get(topic.id);
     const tags = topic.tags ? [topic.tags] : [];
     
     // Add resources to subtopics
-    const subtopicsWithResources = (topic.subtopics || []).map(subtopic => ({
-      ...subtopic,
-      resources: subtopicDetails.get(subtopic.id)?.resources || [],
-    }));
+    const subtopicsWithResources = (topic.subtopics || []).map(subtopic => {
+      const subDetails = subtopicDetails.get(subtopic.id);
+      console.log(`🔵 Subtopic ${subtopic.id} (${subtopic.name}):`, subDetails);
+      return {
+        ...subtopic,
+        resources: subDetails?.resources || [],
+      };
+    });
+    
+    console.log('🔵 subtopicsWithResources:', subtopicsWithResources);
     
     setSelectedCourse({
       name: topic.name,
@@ -719,19 +740,6 @@ export default function RoadmapCoursesPage() {
       subtopics: subtopicsWithResources,
     });
   }, [topicDetails, subtopicDetails]);
-
-  const calculateDuration = (index: number): string => {
-    const durations = [
-      "45m - 1h",
-      "1h - 1h 15m",
-      "20m",
-      "1h 15m - 1h 30m",
-      "1h 15m - 1h 30m",
-      "30m - 45m",
-      "30m",
-    ];
-    return durations[index % durations.length];
-  };
 
   const calculateProgress = () => {
     if (!roadmapData) return 0;
@@ -771,7 +779,6 @@ export default function RoadmapCoursesPage() {
   const courses = roadmapData.topics.map((topic, index) => ({
     id: topic.id,
     name: topic.name,
-    duration: calculateDuration(index),
     type: "Online Course",
   }));
 
@@ -780,13 +787,34 @@ export default function RoadmapCoursesPage() {
       {/* Header with gradient */}
       <div className="bg-gradient-to-r from-teal-500 via-blue-600 to-gray-800 text-white">
         <div className="max-w-6xl mx-auto px-6 py-12">
-          <button
-            onClick={() => router.push("/candidate/road-map")}
-            className="flex items-center gap-2 text-white hover:text-gray-200 text-sm font-medium mb-6"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </button>
+          <div className="flex items-center justify-between mb-6">
+            <button
+              onClick={() => router.push("/candidate/road-map")}
+              className="flex items-center gap-2 text-white hover:text-gray-200 text-sm font-medium"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </button>
+            
+            {/* Toggle Buttons */}
+            <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-lg p-1">
+              <button
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors bg-white text-blue-600 shadow-sm"
+              >
+                <BookOpen className="w-4 h-4" />
+                Online Course
+              </button>
+              <button
+                onClick={() => router.push(`/candidate/road-map-flow/${encodeURIComponent(roadmapData.name)}`)}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors text-white hover:bg-white/20"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+                Road Map Flow
+              </button>
+            </div>
+          </div>
 
           <div className="mb-2">
             <span className="text-sm opacity-90">Curriculum</span>
@@ -865,8 +893,7 @@ export default function RoadmapCoursesPage() {
           onCourseClick={(courseId) => {
             const topic = roadmapData.topics.find(t => t.id === courseId);
             if (topic) {
-              const course = courses.find(c => c.id === courseId);
-              handleCourseClick(topic, course?.duration);
+              handleCourseClick(topic);
             }
           }}
           coursesResources={topicDetails}

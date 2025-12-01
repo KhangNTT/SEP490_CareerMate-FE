@@ -1,3 +1,3 @@
-import AdminDashboard from '@/modules/admin/dashboard/components/AdminDashboardClean';
+import AdminDashboard from '@/modules/admin/dashboard/components/AdminDashboard';
 
 export default AdminDashboard;

@@ -27,6 +27,7 @@ interface PersonalDetailDialogProps {
     onProfileLinkChange: (value: string) => void;
     onProfileImageChange: (value: string) => void;
     onSave: () => void;
+    onGetRecommendRole?: () => void;
 }
 
 export default function PersonalDetailDialog({
@@ -48,12 +49,13 @@ export default function PersonalDetailDialog({
     onProfileAddressChange,
     onProfileLinkChange,
     onProfileImageChange,
-    onSave
+    onSave,
+    onGetRecommendRole
 }: PersonalDetailDialogProps) {
     const [isUploading, setIsUploading] = useState(false);
     const [previewImage, setPreviewImage] = useState<string>(profileImage);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const { user } = useAuthStore();
+    const { candidateId } = useAuthStore();
 
     // Update preview when profileImage prop changes
     useEffect(() => {
@@ -80,13 +82,19 @@ export default function PersonalDetailDialog({
         try {
             setIsUploading(true);
 
-            // Upload to Firebase Storage
-            const userId = user?.id?.toString() || 'anonymous';
-            const downloadURL = await uploadAvatar(userId, file);
+            // Upload to Firebase Storage using candidateId instead of email
+            if (!candidateId) {
+                toast.error('Unable to get candidate ID. Please try again later.');
+                return;
+            }
+            
+            // Upload returns both storagePath and downloadUrl
+            // We use downloadUrl for immediate display, but could store storagePath for future
+            const result = await uploadAvatar(candidateId.toString(), file);
 
-            // Update preview and form state
-            setPreviewImage(downloadURL);
-            onProfileImageChange(downloadURL);
+            // Update preview and form state with the download URL
+            setPreviewImage(result.downloadUrl);
+            onProfileImageChange(result.downloadUrl);
 
             toast.success('Avatar uploaded successfully!');
         } catch (error) {
@@ -187,9 +195,20 @@ export default function PersonalDetailDialog({
                         </div>
 
                         <div className="col-span-2">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Professional Title
-                            </label>
+                            <div className="flex items-center justify-between mb-1">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Professional Title
+                                </label>
+                                {onGetRecommendRole && (
+                                    <button
+                                        type="button"
+                                        onClick={onGetRecommendRole}
+                                        className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                                    >
+                                        Get Recommend Role
+                                    </button>
+                                )}
+                            </div>
                             <Input
                                 value={profileTitle}
                                 onChange={(e) => onProfileTitleChange(e.target.value)}
@@ -210,7 +229,7 @@ export default function PersonalDetailDialog({
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Date of Birth
+                                Date of Birth <span className="text-red-500">*</span>
                             </label>
                             <Input
                                 type="date"
@@ -237,7 +256,7 @@ export default function PersonalDetailDialog({
 
                         <div className="col-span-2">
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Current Province/City <span className="text-red-500">*</span>
+                                Current Province/City
                             </label>
                             <Input
                                 value={profileAddress}
@@ -246,7 +265,7 @@ export default function PersonalDetailDialog({
                             />
                         </div>
 
-                        <div className="col-span-2">
+                        {/* <div className="col-span-2">
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Address (Street, district,...)
                             </label>
@@ -255,7 +274,7 @@ export default function PersonalDetailDialog({
                                 onChange={(e) => onProfileAddressChange(e.target.value)}
                                 placeholder="Enter your detailed address"
                             />
-                        </div>
+                        </div> */}
 
                         <div className="col-span-2">
                             <label className="block text-sm font-medium text-gray-700 mb-1">

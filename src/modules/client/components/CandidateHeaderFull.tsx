@@ -7,6 +7,7 @@ import { useAuthStore } from "@/store/use-auth-store";
 import { decodeJWT } from "@/lib/auth-admin";
 import toast from "react-hot-toast";
 import CandidateMenuList from "@/components/layout/CandidateMenuList";
+import { NotificationBell } from "@/components/notifications";
 
 export function CandidateHeader() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -184,6 +185,9 @@ export function CandidateHeader() {
                         <Link href="/recruiter" className="hidden sm:block text-gray-300 hover:text-white transition-colors">
                             For Employers a
                         </Link>
+
+                        {/* Notification Bell */}
+                        {isAuthenticated && userInfo && <NotificationBell />}
 
                         {/* Authentication State */}
                         {isAuthenticated && userInfo ? (

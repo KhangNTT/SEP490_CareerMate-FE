@@ -24,7 +24,7 @@ const passwordSchema = z
 export const signUpCandidateFormSchema = z.object({
   username: z
     .string()
-    .min(3, { message: "Username must be at least 3 characters" }),
+    .min(3, { message: "Full name must be at least 3 characters" }),
   dob: z
     .string()
     .min(1, { message: "Date of birth is required" })
@@ -70,22 +70,16 @@ const useSignUpCandidateHook = () => {
   const onSubmit = async (values: SignUpCandidateFormValues) => {
     try {
       const payload = {
-        username: values.username,
+        fullName: values.username,
         email: values.email,
         password: values.password,
-        role: "CANDIDATE", // Set role as candidate
+        dateOfBirth: values.dob, // Format: "2005-11-24"
       };
 
-      const response = await api.post("/api/users", payload);
+      const response = await api.post("/api/users/sign-up", payload);
 
       if (response.status >= 200 && response.status < 300) {
         toast.success("Candidate account created successfully!");
-        
-        // Store DoB and role in localStorage
-        if (typeof window !== "undefined") {
-          localStorage.setItem("pending_profile_dob", values.dob);
-          localStorage.setItem("pending_profile_role", "CANDIDATE");
-        }
         
         form.reset({
           username: "",

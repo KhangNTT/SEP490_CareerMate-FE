@@ -7,6 +7,7 @@
 
 import axios from "axios";
 import { useAuthStore } from "@/store/use-auth-store";
+import { setCookie } from "@/lib/cookies";
 
 // Single shared refresh promise to prevent concurrent refreshes
 let refreshPromise: Promise<string | null> | null = null;
@@ -89,6 +90,11 @@ async function doActualRefresh(): Promise<string | null> {
     if (typeof window !== "undefined") {
       localStorage.setItem("access_token", accessToken);
       localStorage.setItem("token_expires_at", expiresAt.toString());
+      
+      // ✅ ALSO store in cookie for SSE EventSource
+      setCookie('access_token', accessToken);
+      
+      console.debug("✅ [unifiedRefresh] Token refreshed and stored in localStorage AND cookies");
     }
 
     // Update Zustand store

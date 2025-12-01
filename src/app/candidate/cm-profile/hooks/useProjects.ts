@@ -28,8 +28,9 @@ export function useProjects(resumeId: number | null) {
   };
 
   const saveProject = async () => {
-    if (!editingProject || !editingProject.name || !editingProject.startYear || !editingProject.description) {
-      toast.error("Please fill in all required fields.");
+    // Only name and start date are required
+    if (!editingProject || !editingProject.name || !editingProject.startYear) {
+      toast.error("Please fill in project name and start year.");
       return;
     }
 
@@ -58,13 +59,14 @@ export function useProjects(resumeId: number | null) {
         endDate = startDate;
       }
 
+      // description and projectUrl are optional - send empty string if not provided
       const data: HighlightProjectData = {
         resumeId,
         name: editingProject.name,
         startDate,
         endDate,
-        description: editingProject.description,
-        ...(editingProject.url && { projectUrl: editingProject.url })
+        description: editingProject.description || "",
+        projectUrl: editingProject.url || ""
       };
 
       if (editingProject.id && editingProject.id !== '0') {

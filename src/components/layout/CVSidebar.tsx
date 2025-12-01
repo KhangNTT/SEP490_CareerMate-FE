@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import React, { memo } from "react";
+import React, { memo, useEffect, useState } from "react";
 import { PiHandWavingLight } from "react-icons/pi";
 import { candidateMenuItems } from "@/lib/candidate-menu-item";
+import { useAuthStore } from "@/store/use-auth-store";
+import api from "@/lib/api";
 
 type Item = {
   href: string;
@@ -21,6 +23,27 @@ interface CVSidebarProps {
 
 const CVSidebar: React.FC<CVSidebarProps> = memo(({ activePage }) => {
   const pathname = usePathname();
+  const { user } = useAuthStore();
+  const [realName, setRealName] = useState<string>("");
+
+  // Fetch real name from profile API
+  useEffect(() => {
+    const fetchRealName = async () => {
+      try {
+        const response = await api.get("/api/candidates/profiles/current");
+        if (response.data?.result?.fullName) {
+          setRealName(response.data.result.fullName);
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile for sidebar:", error);
+      }
+    };
+
+    fetchRealName();
+  }, []);
+
+  // Get display name: prioritize fetched realName, then user.fullName, then user.name, then user.email
+  const displayName = realName || user?.fullName || user?.name || user?.email?.split('@')[0] || 'User';
 
   const items: Item[] = candidateMenuItems;
 
@@ -34,18 +57,18 @@ const CVSidebar: React.FC<CVSidebarProps> = memo(({ activePage }) => {
   };
 
   return (
-    <aside className="lg:w-64 bg-white shadow-sm rounded-xl border border-gray-200 flex flex-col max-h-[calc(100vh-var(--sticky-offset,80px)-var(--content-pad,24px)*2)] overflow-hidden">
+    <aside className="lg:w-64 bg-white shadow-sm rounded-xl border border-gray-200 flex flex-col max-h-[calc(100vh-var(--sticky-offset,80px)-var(--content-pad,24px)*2)] overflow-hidden isolate pointer-events-auto">
       <div className="p-6 flex-shrink-0 border-b border-gray-100">
         <div className="flex items-center space-x-2 mb-1">
           <PiHandWavingLight className="w-5 h-5 text-gray-500" />
           <p className="text-xs text-gray-500">Welcome</p>
         </div>
         <div>
-          <p className="font-medium">Lê Quang Anh</p>
+          <p className="font-medium">{displayName}</p>
         </div>
       </div>
 
-      <nav className="space-y-1 px-3 py-4 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400">
+      <nav className="space-y-1 px-3 py-4 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400 pointer-events-auto">
         {items.map((item) => {
           const active = isActive(item.href, item.key);
           return (

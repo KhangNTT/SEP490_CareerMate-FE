@@ -647,15 +647,18 @@ strong {
   gap: 0;
   padding: 20mm;
   background: #ffffff;
+  align-items: start; /* Prevent columns from stretching */
 }
 
 .vintage-template .vintage-left {
   padding-right: 20px;
   border-right: 2px solid #e5e5e5;
+  height: fit-content; /* Only as tall as content */
 }
 
 .vintage-template .vintage-right {
   padding-left: 20px;
+  height: fit-content; /* Only as tall as content */
 }
 
 /* Vintage Header */

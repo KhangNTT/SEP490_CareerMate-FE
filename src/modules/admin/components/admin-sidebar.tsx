@@ -16,7 +16,8 @@ import {
     ChevronRight,
     Brain,
     BookUser,
-    Shield
+    Shield,
+    Bell
 } from "lucide-react";
 
 export interface NavItem {
@@ -38,13 +39,18 @@ const NAV_ITEMS: NavItem[] = [
         icon: LayoutGrid,
     },
     {
+        label: "Notifications",
+        href: "/admin/notifications",
+        icon: Bell,
+    },
+    {
         label: "Blog Management",
         href: "/admin/blog",
         icon: BookOpen,
         subItems: [
             { label: "All Blogs", href: "/admin/blog" },
             { label: "Create Blog", href: "/admin/blog/create" },
-            { label: "Moderation", href: "/admin/moderation" },
+            { label: "Comment Moderation", href: "/admin/moderation" },
         ],
     },
     {
@@ -218,7 +224,7 @@ export function AdminSidebar() {
     return (
         <aside
             className={cn(
-                "fixed left-0 z-40 h-screen border-r bg-white shadow-sm transition-all duration-300 ease-in-out pt-16",
+                "fixed left-0 z-40 h-screen border-r bg-white shadow-sm transition-all duration-300 ease-in-out pt-10",
                 isOpen ? "w-64" : "w-16"
             )}
             onMouseEnter={handleMouseEnter}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Building2 } from "lucide-react";
 import { VscRemoteExplorer } from 'react-icons/vsc';
 import { TbArrowsExchange } from 'react-icons/tb';
@@ -123,4 +123,5 @@ const JobCard: React.FC<JobCardProps> = ({
   );
 };
 
-export default JobCard;
+// ✅ Wrap with React.memo to prevent unnecessary re-renders when props don't change
+export default memo(JobCard);

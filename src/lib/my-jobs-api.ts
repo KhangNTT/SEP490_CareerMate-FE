@@ -1,4 +1,10 @@
 import api from '@/lib/api';
+import { JobApplicationStatus } from '@/types/status';
+import {
+  getStatusColor as getStatusColorUtil,
+  getStatusText as getStatusTextUtil,
+  normalizeStatus,
+} from '@/lib/status-utils';
 
 // API Response Interfaces
 export interface JobApplication {
@@ -13,8 +19,14 @@ export interface JobApplication {
   phoneNumber: string;
   preferredWorkLocation: string;
   coverLetter: string;
-  status: 'SUBMITTED' | 'REVIEWED' | 'INTERVIEW' | 'REJECTED' | 'ACCEPTED';
+  status: JobApplicationStatus;
   createAt: string;
+  // Contact info - only populated when status >= APPROVED
+  companyName?: string;
+  companyEmail?: string;
+  recruiterPhone?: string;
+  companyAddress?: string;
+  contactPerson?: string;
 }
 
 export interface MyJobsResponse {
@@ -50,42 +62,20 @@ export const fetchMyJobApplications = async (candidateId: number): Promise<JobAp
 
 /**
  * Get status badge color based on application status
+ * @deprecated Use getStatusColor from @/lib/status-utils instead
  */
-export const getStatusColor = (status: JobApplication['status']): string => {
-  switch (status) {
-    case 'SUBMITTED':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'REVIEWED':
-      return 'bg-blue-100 text-blue-800';
-    case 'INTERVIEW':
-      return 'bg-purple-100 text-purple-800';
-    case 'ACCEPTED':
-      return 'bg-green-100 text-green-800';
-    case 'REJECTED':
-      return 'bg-red-100 text-red-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
+export const getStatusColor = (status: JobApplicationStatus | string): string => {
+  const normalized = normalizeStatus(status as string);
+  return getStatusColorUtil(normalized);
 };
 
 /**
  * Get status display text
+ * @deprecated Use getStatusText from @/lib/status-utils instead
  */
-export const getStatusText = (status: JobApplication['status']): string => {
-  switch (status) {
-    case 'SUBMITTED':
-      return 'Awaiting review';
-    case 'REVIEWED':
-      return 'Reviewed';
-    case 'INTERVIEW':
-      return 'Interview scheduled';
-    case 'ACCEPTED':
-      return 'Accepted';
-    case 'REJECTED':
-      return 'Rejected';
-    default:
-      return status;
-  }
+export const getStatusText = (status: JobApplicationStatus | string): string => {
+  const normalized = normalizeStatus(status as string);
+  return getStatusTextUtil(normalized);
 };
 
 /**

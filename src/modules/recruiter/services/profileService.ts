@@ -40,20 +40,17 @@ export class ProfileService {
         return this.getOrganizationProfile();
     }
 
-    static async getRecruiterAccount(email: string): Promise<Recruiter | null> {
+    static async getRecruiterAccount(email?: string): Promise<Recruiter | null> {
         try {
+            // Use the recruiter's own profile endpoint (gets current user from JWT)
             const response = await api.get<{
                 code: number;
                 message: string;
-                result: Recruiter[];
-            }>("/api/admin/recruiters");
+                result: Recruiter;
+            }>("/api/recruiter/profile");
 
             if (response.data.code === 200 && response.data.result) {
-                // Tìm recruiter theo email
-                const recruiter = response.data.result.find(
-                    (r) => r.email === email
-                );
-                return recruiter || null;
+                return response.data.result;
             }
             return null;
         } catch (error) {

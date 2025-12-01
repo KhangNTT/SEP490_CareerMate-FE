@@ -2,7 +2,12 @@
 const MAX_AGE = 30 * 24 * 60 * 60 // 30 days
 
 export function setCookie(name: string, value: string) {
-  document.cookie = `${name}=${value}; path=/; max-age=${MAX_AGE}; Secure; SameSite=Strict`
+  // Don't use Secure flag on localhost (http://)
+  const isSecure = window.location.protocol === 'https:';
+  const secureFlag = isSecure ? '; Secure' : '';
+  
+  document.cookie = `${name}=${value}; path=/; max-age=${MAX_AGE}${secureFlag}; SameSite=Lax`;
+  console.log(`🍪 [setCookie] Set cookie: ${name} (secure: ${isSecure})`);
 }
 
 export function removeCookie(name: string) {

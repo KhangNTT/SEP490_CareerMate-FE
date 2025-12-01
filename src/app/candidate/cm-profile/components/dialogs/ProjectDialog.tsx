@@ -34,7 +34,7 @@ export default function ProjectDialog({
             <DialogContent className="max-w-2xl bg-white">
                 <DialogHeader>
                     <DialogTitle>
-                        {!editingProject?.id || editingProject.id === '0' ? 'Add Project' : 'Edit Project'}
+                        {!editingProject?.id || editingProject.id === '0' ? 'Add Highlight Project' : 'Edit Project'}
                     </DialogTitle>
                 </DialogHeader>
 

@@ -18,12 +18,17 @@ export interface AdminCommentResponse {
     isHidden: boolean;
     createdAt: string;
     updatedAt: string;
+    // Auto-flagging moderation fields
+    isFlagged?: boolean;
+    flagReason?: string;
+    flaggedAt?: string;
+    reviewedByAdmin?: boolean;
 }
 
 export interface AdminCommentFilters {
     page?: number;
     size?: number;
-    sortBy?: 'createdAt' | 'updatedAt';
+    sortBy?: 'createdAt' | 'updatedAt' | 'flaggedAt';
     sortDirection?: 'ASC' | 'DESC';
     blogId?: number;
     userEmail?: string;
@@ -46,6 +51,18 @@ export interface CommentStatistics {
         userName: string;
         commentCount: number;
     }>;
+}
+
+// Auto-Flagging Moderation Types
+export interface ModerationStatistics {
+    totalFlaggedComments: number;
+    pendingReviewComments: number;
+    reviewedComments: number;
+    automationRules: {
+        totalProfanityWords: number;
+        totalControversialKeywords: number;
+        totalSuspiciousPatterns: number;
+    };
 }
 
 // Admin Rating Types
@@ -206,6 +223,126 @@ class AdminModerationApiService {
         }
 
         return responseData.result || responseData;
+    }
+
+    // ===== AUTO-FLAGGING MODERATION =====
+
+    /**
+     * Get flagged comments pending review (priority queue)
+     */
+    async getFlaggedCommentsPendingReview(filters: AdminCommentFilters = {}): Promise<PagedResponse<AdminCommentResponse>> {
+        const params = new URLSearchParams();
+        
+        if (filters.page !== undefined) params.append('page', filters.page.toString());
+        if (filters.size !== undefined) params.append('size', filters.size.toString());
+        if (filters.sortBy) params.append('sortBy', filters.sortBy);
+        if (filters.sortDirection) params.append('sortDirection', filters.sortDirection);
+        if (filters.userEmail) params.append('userEmail', filters.userEmail);
+        if (filters.blogId) params.append('blogId', filters.blogId.toString());
+
+        const response = await api.get(`/api/admin/comment-moderation/flagged?${params.toString()}`);
+        const responseData = response.data;
+
+        console.log('⚠️ Flagged Comments Response:', responseData);
+
+        if (responseData.code && (responseData.code < 200 || responseData.code >= 300)) {
+            console.error('❌ Backend error:', responseData);
+            throw new Error(responseData.message || 'Failed to fetch flagged comments');
+        }
+
+        return responseData.result || responseData;
+    }
+
+    /**
+     * Get all flagged comments (including reviewed)
+     */
+    async getAllFlaggedComments(filters: AdminCommentFilters = {}): Promise<PagedResponse<AdminCommentResponse>> {
+        const params = new URLSearchParams();
+        
+        if (filters.page !== undefined) params.append('page', filters.page.toString());
+        if (filters.size !== undefined) params.append('size', filters.size.toString());
+
+        const response = await api.get(`/api/admin/comment-moderation/flagged/all?${params.toString()}`);
+        const responseData = response.data;
+
+        if (responseData.code && (responseData.code < 200 || responseData.code >= 300)) {
+            throw new Error(responseData.message || 'Failed to fetch all flagged comments');
+        }
+
+        return responseData.result || responseData;
+    }
+
+    /**
+     * Approve flagged comment (unflag + show)
+     */
+    async approveComment(commentId: number): Promise<AdminCommentResponse> {
+        const response = await api.post(`/api/admin/comment-moderation/${commentId}/approve`);
+        const responseData = response.data;
+
+        if (responseData.code && (responseData.code < 200 || responseData.code >= 300)) {
+            throw new Error(responseData.message || 'Failed to approve comment');
+        }
+
+        return responseData.result || responseData;
+    }
+
+    /**
+     * Reject flagged comment (hide comment)
+     */
+    async rejectComment(commentId: number): Promise<AdminCommentResponse> {
+        const response = await api.post(`/api/admin/comment-moderation/${commentId}/reject`);
+        const responseData = response.data;
+
+        if (responseData.code && (responseData.code < 200 || responseData.code >= 300)) {
+            throw new Error(responseData.message || 'Failed to reject comment');
+        }
+
+        return responseData.result || responseData;
+    }
+
+    /**
+     * Unflag comment (mark as false positive)
+     */
+    async unflagComment(commentId: number): Promise<AdminCommentResponse> {
+        const response = await api.post(`/api/admin/comment-moderation/${commentId}/unflag`);
+        const responseData = response.data;
+
+        if (responseData.code && (responseData.code < 200 || responseData.code >= 300)) {
+            throw new Error(responseData.message || 'Failed to unflag comment');
+        }
+
+        return responseData.result || responseData;
+    }
+
+    /**
+     * Get moderation statistics
+     */
+    async getModerationStatistics(): Promise<ModerationStatistics> {
+        try {
+            const response = await api.get('/api/admin/comment-moderation/moderation-statistics');
+            const responseData = response.data;
+
+            console.log('📊 Moderation Statistics Response:', responseData);
+
+            if (responseData.code && (responseData.code < 200 || responseData.code >= 300)) {
+                throw new Error(responseData.message || 'Failed to fetch moderation statistics');
+            }
+
+            return responseData.result || responseData;
+        } catch (error: any) {
+            console.warn('⚠️ Moderation statistics endpoint not available:', error.message);
+            // Return mock data if endpoint doesn't exist
+            return {
+                totalFlaggedComments: 0,
+                pendingReviewComments: 0,
+                reviewedComments: 0,
+                automationRules: {
+                    totalProfanityWords: 0,
+                    totalControversialKeywords: 0,
+                    totalSuspiciousPatterns: 0
+                }
+            };
+        }
     }
 
     // ===== RATING MANAGEMENT =====

@@ -60,28 +60,33 @@ export const submitJobApplication = async (
       }
     }
 
-    // ✅ Log request data BEFORE sending
-    console.log('📝 ===== JOB APPLICATION REQUEST =====');
-    console.log('📝 Endpoint: POST /api/job-apply');
-    console.log('📝 Request Data:', JSON.stringify({
+    // ✅ Ensure coverLetter is always a string (never null/undefined)
+    const requestPayload: JobApplicationRequest = {
       jobPostingId: data.jobPostingId,
       candidateId: data.candidateId,
       fullName: data.fullName,
       phoneNumber: data.phoneNumber,
       preferredWorkLocation: data.preferredWorkLocation,
-      coverLetter: data.coverLetter ? `${data.coverLetter.substring(0, 50)}...` : 'N/A',
-      cvFilePath: data.cvFilePath,
-      status: data.status
-    }, null, 2));
+      cvFilePath: data.cvFilePath || "",
+      coverLetter: data.coverLetter ?? "", // Use "" if null/undefined
+      status: data.status || "PENDING"
+    };
+
+    // ✅ Log request data BEFORE sending
+    console.log('📝 ===== JOB APPLICATION REQUEST =====');
+    console.log('📝 Endpoint: POST /api/job-apply');
+    console.log('📝 Full URL:', `${api.defaults.baseURL}/api/job-apply`);
+    console.log('📝 Request Payload:', JSON.stringify(requestPayload, null, 2));
 
     // ✅ Send as JSON (not FormData)
     const response = await api.post<JobApplicationResponse>(
       '/api/job-apply',
-      data,  // axios automatically sends this as JSON with Content-Type: application/json
+      requestPayload,  // Use sanitized payload
       {
         headers: {
-          'Content-Type': 'application/json'  // Explicitly set
-        }
+          'Content-Type': 'application/json'
+        },
+        timeout: 30000 // 30 seconds timeout
       }
     );
 
@@ -107,6 +112,8 @@ export const submitJobApplication = async (
   } catch (error: any) {
     console.error('❌ ===== JOB APPLICATION ERROR =====');
     console.error('❌ Error Type:', error.constructor.name);
+    console.error('❌ Error Code:', error.code);
+    console.error('❌ Error Message:', error.message);
     
     // ✅ Extract detailed error information
     if (error.response) {
@@ -114,6 +121,12 @@ export const submitJobApplication = async (
       console.error('❌ Response Status:', error.response.status);
       console.error('❌ Response Data:', JSON.stringify(error.response.data, null, 2));
       console.error('❌ Response Headers:', error.response.headers);
+      
+      // Handle 401 Unauthorized specifically
+      if (error.response.status === 401) {
+        console.error('❌ 401 Unauthorized - Token may be missing or expired');
+        throw new Error('Session expired. Please login again.');
+      }
       
       // Extract the actual backend error message
       const backendMessage = 
@@ -125,13 +138,29 @@ export const submitJobApplication = async (
       
     } else if (error.request) {
       // Request was made but no response
-      console.error('❌ No response received');
-      console.error('❌ Request:', error.request);
-      throw new Error('No response from server. Please check your connection.');
+      console.error('❌ No response received - possible causes:');
+      console.error('   1. Server not running at', api.defaults.baseURL);
+      console.error('   2. CORS blocking the request');
+      console.error('   3. Network connectivity issue');
+      console.error('   4. Request timeout');
+      console.error('❌ Request config:', {
+        url: error.config?.url,
+        method: error.config?.method,
+        baseURL: error.config?.baseURL,
+        timeout: error.config?.timeout,
+        headers: error.config?.headers
+      });
+      
+      // Check if it's a timeout
+      if (error.code === 'ECONNABORTED') {
+        throw new Error('Request timeout. Server is taking too long to respond.');
+      }
+      
+      throw new Error('Cannot connect to server. Please check if backend is running.');
       
     } else {
       // Error in request setup
-      console.error('❌ Error Message:', error.message);
+      console.error('❌ Request setup error:', error.message);
       throw new Error(error.message || 'Failed to submit job application');
     }
   }

@@ -20,6 +20,10 @@ import {
   FileText,
 } from "lucide-react";
 import { useAuthStore } from "@/store/use-auth-store";
+import { getMyInvoice } from "@/lib/invoice-api";
+import { getRecruiterInvoice } from "@/lib/recruiter-invoice-api";
+import { PremiumAvatar } from "@/components/ui/premium-avatar";
+import { NotificationBell } from "@/components/notifications";
 
 interface ProfileDropdownProps {
   userName?: string;
@@ -40,6 +44,44 @@ export function ProfileDropdown({
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const { isAuthenticated, accessToken, logout, isLoading } = useAuthStore();
   const router = useRouter();
+  const [isPremium, setIsPremium] = useState(false);
+
+  // Normalize role - handle both "RECRUITER" and "ROLE_RECRUITER" formats
+  // Must be defined before useEffect
+  const normalizedRole =
+    role?.toUpperCase().includes("CANDIDATE")
+      ? "ROLE_CANDIDATE"
+      : role?.toUpperCase().includes("RECRUITER")
+        ? "ROLE_RECRUITER"
+        : role?.toUpperCase().includes("ADMIN")
+          ? "ROLE_ADMIN"
+          : "ROLE_USER";
+
+  const isCandidate = normalizedRole === "ROLE_CANDIDATE";
+  const isRecruiter = normalizedRole === "ROLE_RECRUITER";
+
+  // Check if user has PREMIUM package (Candidate or Recruiter)
+  useEffect(() => {
+    const checkPremiumStatus = async () => {
+      try {
+        if (isCandidate) {
+          const invoice = await getMyInvoice();
+          setIsPremium(invoice?.packageName === 'PREMIUM');
+        } else if (isRecruiter) {
+          const invoice = await getRecruiterInvoice();
+          // For recruiter: PREMIUM package with Active status
+          setIsPremium(invoice?.packageName === 'PREMIUM');
+        }
+      } catch (error) {
+        // User doesn't have any active package
+        setIsPremium(false);
+      }
+    };
+
+    if (isAuthenticated) {
+      checkPremiumStatus();
+    }
+  }, [isAuthenticated, isCandidate, isRecruiter]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -71,19 +113,6 @@ export function ProfileDropdown({
     }
   };
 
-  // Normalize role - handle both "RECRUITER" and "ROLE_RECRUITER" formats
-  const normalizedRole =
-    role?.toUpperCase().includes("CANDIDATE")
-      ? "ROLE_CANDIDATE"
-      : role?.toUpperCase().includes("RECRUITER")
-        ? "ROLE_RECRUITER"
-        : role?.toUpperCase().includes("ADMIN")
-          ? "ROLE_ADMIN"
-          : "ROLE_USER";
-
-  const isCandidate = normalizedRole === "ROLE_CANDIDATE";
-  const isRecruiter = normalizedRole === "ROLE_RECRUITER";
-
   // Debug log
   console.log("🔍 ProfileDropdown Props:", {
     userName,
@@ -92,6 +121,7 @@ export function ProfileDropdown({
     normalizedRole,
     isCandidate,
     isRecruiter,
+    isPremium,
   });
 
   return (
@@ -109,17 +139,8 @@ export function ProfileDropdown({
         )}
       </button>
 
-      {/* Notifications Button */}
-      <button
-        className="relative p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-white"
-        title="Notifications"
-      >
-        <Bell className="w-5 h-5" />
-        {/* Notification Badge */}
-        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[18px] h-[18px] flex items-center justify-center">
-          3
-        </span>
-      </button>
+      {/* Notifications Button - Real implementation */}
+      <NotificationBell />
 
       {/* Profile Dropdown */}
       <div className="relative" ref={dropdownRef}>
@@ -145,19 +166,14 @@ export function ProfileDropdown({
             <>
               {/* Avatar */}
               <div className="relative">
-                {userAvatar ? (
-                  <img
-                    src="https://encrypted-tbn1.gstatic.com/licensed-image?q=tbn:ANd9GcTPMg7sLIhRN7k0UrPxSsHzujqgLqdTq67Pj4uVqKmr4sFR0eH4h4h-sWjxVvi3vKOl47pyShZMal8qcNuipNE4fbSfblUL99EfUtDrBto"
-                    alt={userName}
-                    className="w-8 h-8 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                    <User className="w-4 h-4 text-white" />
-                  </div>
-                )}
+                <PremiumAvatar
+                  src={userAvatar}
+                  alt={userName || 'User'}
+                  size="sm"
+                  isPremium={isPremium}
+                />
                 {/* Online indicator */}
-                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
+                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white z-10"></div>
               </div>
 
               {/* User Name */}
@@ -181,18 +197,13 @@ export function ProfileDropdown({
             <div className="px-4 py-3 border-b border-gray-100">
               <div className="flex items-center gap-3">
                 <div className="relative">
-                  {userAvatar ? (
-                    <img
-                      src={userAvatar}
-                      alt={userName}
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                      <User className="w-5 h-5 text-gray-500" />
-                    </div>
-                  )}
-                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
+                  <PremiumAvatar
+                    src={userAvatar}
+                    alt={userName || 'User'}
+                    size="md"
+                    isPremium={isPremium}
+                  />
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white z-10"></div>
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">{userName || userEmail || "User"}</p>

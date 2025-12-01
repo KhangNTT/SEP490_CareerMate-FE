@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronDown, Menu, X, User, LogOut } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useAuthStore } from "@/store/use-auth-store";
 import { useClientAuth } from "@/hooks/useClientAuth";
@@ -152,7 +151,7 @@ export default function CandidateHeader() {
                   className="h-14 w-auto"
                 />
                 <span className="text-xl font-bold text-[#ffffff]">
-                  Home Header
+                  CareerMate
                 </span>
               </Link>
             </div>
@@ -183,6 +182,12 @@ export default function CandidateHeader() {
               className="text-[#ffffff] hover:text-[#c8c8c8]"
             >
               CV Templates
+            </Link>
+            <Link
+              href="/candidate/pricing"
+              className="text-[#ffffff] hover:text-[#c8c8c8]"
+            >
+              Upgrade Package
             </Link>
           </nav>
 

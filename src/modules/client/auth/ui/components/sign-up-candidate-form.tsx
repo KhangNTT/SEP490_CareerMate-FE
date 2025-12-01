@@ -63,7 +63,7 @@ export default function SignUpCandidateForm() {
 
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
-                  {/* Username */}
+                  {/* Full Name */}
                   <div className="mb-6">
                     <FormField
                       control={form.control}
@@ -71,14 +71,14 @@ export default function SignUpCandidateForm() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-dark mb-2 block text-sm dark:text-white">
-                            Username <span className="text-destructive">*</span>
+                            Full Name <span className="text-destructive">*</span>
                           </FormLabel>
                           <FormControl>
                             <Input
                               {...field}
                               id="username"
-                              placeholder="Enter your username"
-                              autoComplete="username"
+                              placeholder="Enter your full name"
+                              autoComplete="name"
                               className={cn(
                                 "border-stroke rounded-xs border bg-[#f8f8f8] px-6 py-3 text-base text-body-color dark:text-body-color-dark dark:shadow-two dark:border-transparent dark:bg-[#2C303B] focus:border-primary dark:focus:border-primary transition-all duration-300",
                                 form.formState.errors.username &&

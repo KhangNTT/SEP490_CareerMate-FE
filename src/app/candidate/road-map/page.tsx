@@ -12,9 +12,13 @@ import {
   ChevronRight,
   BookOpen,
   TrendingUp,
+  Lock,
+  X,
+  Sparkles,
 } from "lucide-react";
 import { fetchCurrentCandidateProfile } from "@/lib/candidate-profile-api";
 import { getRoadmapRecommendations, RoadmapRecommendation } from "@/lib/roadmap-api";
+import { checkRoadmapRecommendationAccess } from "@/lib/entitlement-api";
 import toast from "react-hot-toast";
 
 // Skeleton Loading Component
@@ -42,6 +46,10 @@ export default function RoadMapPage() {
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
   const [error, setError] = useState<string>("");
+  const [hasAccess, setHasAccess] = useState<boolean>(true);
+  const [accessCode, setAccessCode] = useState<number | null>(null);
+  const [accessResult, setAccessResult] = useState<any>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -65,6 +73,13 @@ export default function RoadMapPage() {
       setError("");
       
       console.log('🔵 [ROADMAP PAGE] Fetching candidate profile...');
+      
+      // Check access first
+      const accessRes = await checkRoadmapRecommendationAccess();
+      setHasAccess(!!accessRes.hasAccess);
+      setAccessCode(accessRes.code ?? null);
+      setAccessResult(accessRes.result ?? null);
+      console.log('🔵 [ROADMAP PAGE] Roadmap recommendation access:', accessRes);
       
       const profile = await fetchCurrentCandidateProfile();
       
@@ -324,8 +339,14 @@ export default function RoadMapPage() {
                         </div>
 
                         {/* Action Button */}
-                        <button 
-                          onClick={() => router.push(`/candidate/road-map/${encodeURIComponent(roadmap.title)}`)}
+                        <button
+                          onClick={() => {
+                            if (!hasAccess) {
+                              setShowUpgradeModal(true);
+                              return;
+                            }
+                            router.push(`/candidate/road-map-flow/${encodeURIComponent(roadmap.title)}`);
+                          }}
                           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium ml-4"
                         >
                           <BookOpen className="w-4 h-4" />
@@ -383,6 +404,93 @@ export default function RoadMapPage() {
           </section>
         </div>
       </div>
+
+      {/* Upgrade Modal */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div 
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="relative p-6 border-b border-gray-200">
+              <button
+                onClick={() => setShowUpgradeModal(false)}
+                className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-yellow-100 to-orange-100 rounded-2xl flex items-center justify-center">
+                  <Lock className="h-6 w-6 text-orange-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">Premium Feature</h3>
+                  <p className="text-sm text-gray-500">Unlock full access</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              <div className="mb-6">
+                <div className="flex items-start gap-3 mb-4">
+                  <Sparkles className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-gray-900 font-medium mb-2">
+                      Please upgrade to the Premium plan to access this feature.
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Roadmap Recommendation is a feature exclusive to Premium members. Upgrade now to access personalized career roadmaps!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
+                  <p className="text-sm font-semibold text-blue-900 mb-2">Premium Benefits:</p>
+                  <ul className="space-y-1.5 text-sm text-blue-800">
+                    <li className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-600"></div>
+                      <span>Unlimited Roadmap Recommendations</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-600"></div>
+                      <span>Personalized Career Paths</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-600"></div>
+                      <span>Priority Support</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-600"></div>
+                      <span>Access to All Premium Features</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowUpgradeModal(false)}
+                  className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium text-sm"
+                >
+                  Later
+                </button>
+                <button
+                  onClick={() => {
+                    setShowUpgradeModal(false);
+                    router.push('/candidate/pricing');
+                  }}
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl transition-all font-semibold text-sm shadow-lg hover:shadow-xl"
+                >
+                  Upgrade Now
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

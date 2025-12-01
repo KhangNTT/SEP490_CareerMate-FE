@@ -128,6 +128,9 @@ export function middleware(request: NextRequest) {
     }
 
     if (!isAdmin(refreshToken!)) {
+      safeLog.middleware('❌ [MIDDLEWARE] Not an admin', {
+        path: request.nextUrl.pathname,
+      });
       return NextResponse.redirect(new URL('/unauthorized', request.url));
     }
 
@@ -142,6 +145,17 @@ export function middleware(request: NextRequest) {
       path: request.nextUrl.pathname,
     });
 
+    // ✨ Allow unauthenticated access to payment result pages (VNPay redirect)
+    if (
+      request.nextUrl.pathname.startsWith('/recruiter/payment-success') ||
+      request.nextUrl.pathname.startsWith('/recruiter/payment-failure')
+    ) {
+      safeLog.middleware('✅ [MIDDLEWARE] Recruiter payment result page - allowing access', {
+        path: request.nextUrl.pathname,
+      });
+      return NextResponse.next();
+    }
+
     if (!validateToken(refreshToken)) {
       return NextResponse.redirect(
         new URL(
@@ -152,7 +166,20 @@ export function middleware(request: NextRequest) {
       );
     }
 
+    // 🚫 Explicitly reject non-recruiter roles
+    if (isAdmin(refreshToken!) || isCandidate(refreshToken!)) {
+      safeLog.middleware('❌ [MIDDLEWARE] Wrong role accessing recruiter route', {
+        path: request.nextUrl.pathname,
+        isAdmin: isAdmin(refreshToken!),
+        isCandidate: isCandidate(refreshToken!),
+      });
+      return NextResponse.redirect(new URL('/unauthorized', request.url));
+    }
+
     if (!isRecruiter(refreshToken!)) {
+      safeLog.middleware('❌ [MIDDLEWARE] Not a recruiter', {
+        path: request.nextUrl.pathname,
+      });
       return NextResponse.redirect(new URL('/unauthorized', request.url));
     }
 
@@ -166,6 +193,19 @@ export function middleware(request: NextRequest) {
     // ✨ Allow unauthenticated access to print pages (for PDF export)
     if (request.nextUrl.pathname.startsWith('/candidate/cv/print/')) {
       safeLog.middleware('✅ [MIDDLEWARE] Print page - allowing unauthenticated access', {
+        path: request.nextUrl.pathname,
+      });
+      return NextResponse.next();
+    }
+
+    // ✨ Allow unauthenticated access to payment result pages (VNPay redirect)
+    // VNPay redirects may not include cookies due to SameSite restrictions
+    if (
+      request.nextUrl.pathname.startsWith('/candidate/pricing/success') ||
+      request.nextUrl.pathname.startsWith('/candidate/pricing/failure') ||
+      request.nextUrl.pathname.startsWith('/candidate/pricing/return')
+    ) {
+      safeLog.middleware('✅ [MIDDLEWARE] Candidate payment result page - allowing access', {
         path: request.nextUrl.pathname,
       });
       return NextResponse.next();
@@ -185,12 +225,55 @@ export function middleware(request: NextRequest) {
       );
     }
 
+    // 🚫 Explicitly reject non-candidate roles
+    if (isAdmin(refreshToken!) || isRecruiter(refreshToken!)) {
+      safeLog.middleware('❌ [MIDDLEWARE] Wrong role accessing candidate route', {
+        path: request.nextUrl.pathname,
+        isAdmin: isAdmin(refreshToken!),
+        isRecruiter: isRecruiter(refreshToken!),
+      });
+      return NextResponse.redirect(new URL('/unauthorized', request.url));
+    }
+
     if (!isCandidate(refreshToken!)) {
+      safeLog.middleware('❌ [MIDDLEWARE] Not a candidate', {
+        path: request.nextUrl.pathname,
+      });
       return NextResponse.redirect(new URL('/unauthorized', request.url));
     }
 
     if (DEBUG.MIDDLEWARE) {
       safeLog.middleware('✅ [MIDDLEWARE] Candidate access granted', {});
+    }
+  }
+
+  // 💳 Payment pages - allow access for both candidate and recruiter
+  if (request.nextUrl.pathname.startsWith('/payment')) {
+    safeLog.middleware('🔍 [MIDDLEWARE] Payment route accessed:', {
+      path: request.nextUrl.pathname,
+    });
+
+    // Allow access without authentication for success/failure/return pages
+    // These pages don't contain sensitive data and need to be accessible after payment redirect
+    // VNPay redirects may not include cookies due to SameSite restrictions
+    if (
+      request.nextUrl.pathname.startsWith('/payment/success') ||
+      request.nextUrl.pathname.startsWith('/payment/failure') ||
+      request.nextUrl.pathname.startsWith('/payment/return')
+    ) {
+      safeLog.middleware('✅ [MIDDLEWARE] Payment result page - allowing access', {
+        path: request.nextUrl.pathname,
+      });
+      return NextResponse.next();
+    }
+
+    // For other payment routes, check if user has valid token
+    if (!validateToken(refreshToken)) {
+      return NextResponse.redirect(new URL('/sign-in', request.url));
+    }
+
+    if (DEBUG.MIDDLEWARE) {
+      safeLog.middleware('✅ [MIDDLEWARE] Payment access granted', {});
     }
   }
 
@@ -206,5 +289,6 @@ export const config = {
     '/candidate/:path*',
     '/recruiter/:path*',
     '/recruiter2/:path*',
+    '/payment/:path*',
   ],
 };

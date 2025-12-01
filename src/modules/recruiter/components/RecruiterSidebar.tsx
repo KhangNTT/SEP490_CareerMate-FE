@@ -11,6 +11,7 @@ import {
     Sparkles,
     IdCard,
     LifeBuoy,
+    Calendar,
     ChevronDown,
     ChevronRight,
 } from "lucide-react";
@@ -41,6 +42,17 @@ const NAV_ITEMS: NavItem[] = [
             { label: "Job applications", href: "/recruiter/recruiter-feature/candidates/applications" },
             { label: "Saved candidates", href: "/recruiter/recruiter-feature/candidates/saved" },
             { label: "Tag management", href: "/recruiter/recruiter-feature/candidates/tags" },
+        ],
+    },
+    {
+        label: "Schedule",
+        href: "/recruiter/calendar",
+        icon: Calendar,
+        subItems: [
+            { label: "Calendar", href: "/recruiter/calendar" },
+            { label: "Calendar Settings", href: "/recruiter/calendar/settings" },
+            { label: "Interviews", href: "/recruiter/interviews" },
+            { label: "Employments", href: "/recruiter/employments" },
         ],
     },
     {
@@ -239,7 +251,7 @@ export function RecruiterSidebar() {
     return (
         <aside
             className={cn(
-                "fixed left-0 top-[73px] z-40 h-[calc(100vh-73px)] border-r bg-white shadow-sm transition-all duration-300 ease-in-out",
+                "fixed left-0 z-40 h-screen border-r bg-white shadow-sm transition-all duration-300 ease-in-out pt-10",
                 isOpen ? "w-64" : "w-16"
             )}
             onMouseEnter={handleMouseEnter}

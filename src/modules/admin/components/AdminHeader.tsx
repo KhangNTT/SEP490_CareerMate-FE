@@ -6,6 +6,7 @@ import { ProfileDropdown } from "@/components/profile/ProfileDropdown";
 import { useAuthStore } from "@/store/use-auth-store";
 import { decodeJWT } from "@/lib/auth-admin";
 import { getCurrentUser } from "@/lib/user-api";
+import { NotificationBell } from "@/components/notifications";
 
 interface AdminHeaderProps {
   sidebarOpen?: boolean;
@@ -14,17 +15,20 @@ interface AdminHeaderProps {
 export function AdminHeader({ sidebarOpen = false }: AdminHeaderProps) {
   const { user } = useAuthStore();
   const { isAuthenticated, accessToken, logout, role } = useAuthStore();
-  const [isOpen, setIsOpen] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("admin-sidebar-open") === "true";
-    }
-    return sidebarOpen;
-  });
+  const [isOpen, setIsOpen] = useState(false);
   const [userInfo, setUserInfo] = useState<{
     name: string;
     email: string;
     username?: string;
   } | null>(null);
+
+  // Load sidebar state from localStorage after mount
+  useEffect(() => {
+    const savedState = localStorage.getItem("admin-sidebar-open");
+    if (savedState) {
+      setIsOpen(savedState === "true");
+    }
+  }, []);
 
   // Fetch current user info from API
   useEffect(() => {

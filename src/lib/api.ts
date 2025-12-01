@@ -1,6 +1,7 @@
 import axios from "axios";
 import { useAuthStore } from "@/store/use-auth-store";
 import { unifiedRefresh } from "./refresh-manager";
+import { setCookie } from "@/lib/cookies";
 
 // Debug the API URL being used
 const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
@@ -231,6 +232,11 @@ const _legacySafeRefreshToken = async (): Promise<string | null> => {
       if (typeof window !== 'undefined') {
         localStorage.setItem("access_token", accessToken);
         localStorage.setItem("token_expires_at", expiresAt.toString());
+        
+        // ✅ ALSO store in cookie for SSE EventSource
+        setCookie('access_token', accessToken);
+        
+        console.debug("✅ [api interceptor] Token refreshed and stored in cookies for SSE");
       }
       
       useAuthStore.setState({
@@ -367,7 +373,18 @@ api.interceptors.request.use(async (config) => {
   // ✅ CASE 4: Add token if available
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
+    console.log('🔑 [Interceptor] Token attached to request:', config.url);
+  } else {
+    console.warn('⚠️ [Interceptor] NO TOKEN for request:', config.url);
   }
+
+  // Log final request config for debugging
+  console.log('📤 [Interceptor] Final request config:', {
+    url: config.url,
+    method: config.method,
+    baseURL: config.baseURL,
+    hasAuth: !!config.headers.Authorization
+  });
 
   return config;
 });

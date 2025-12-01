@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getUserByEmail } from '@/lib/user-api';
+import { getCurrentUser } from '@/lib/user-api';
 import { useAuthStore } from '@/store/use-auth-store';
 
 export const useUserProfile = () => {
@@ -22,11 +22,11 @@ export const useUserProfile = () => {
         return;
       }
 
-      // Nếu không, fetch từ API
+      // Nếu không, fetch từ API using getCurrentUser (uses /api/users/current)
       console.log('🔄 [useUserProfile] Fetching username from API for:', user.email);
       setLoading(true);
       try {
-        const userData = await getUserByEmail(user.email);
+        const userData = await getCurrentUser();
         console.log('📦 [useUserProfile] API Response:', userData);
         if (userData?.username) {
           console.log('✅ [useUserProfile] Username from API:', userData.username);

@@ -6,6 +6,7 @@ import { ProfileDropdown } from "@/components/profile/ProfileDropdown";
 import { useAuthStore } from "@/store/use-auth-store";
 import { decodeJWT } from "@/lib/auth-admin";
 import { getCurrentUser } from "@/lib/user-api";
+import { NotificationBell } from "@/components/notifications";
 
 interface RecruiterHeaderProps {
   sidebarOpen?: boolean;

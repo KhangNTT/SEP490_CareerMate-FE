@@ -44,6 +44,7 @@ interface ExportRequest {
   templateId: string;
   cvData: any; // CV data object to be serialized
   fileName?: string;
+  userPackage?: string; // User's package (FREE, BASIC, PLUS, PREMIUM)
 }
 
 // ========================================
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
     // ========================================
     
     const body: ExportRequest = await req.json();
-    const { templateId, cvData, fileName } = body;
+    const { templateId, cvData, fileName, userPackage } = body;
 
     // Validate required fields
     if (!cvData) {
@@ -165,10 +166,13 @@ export async function POST(req: NextRequest) {
     // ========================================
     
     // Construct absolute print URL with base64-encoded data
-    const printUrl = `${BASE_URL}/candidate/cv/print/${templateId}?data=${encodeURIComponent(encodedData)}`;
+    // Include package param to control watermark display
+    const packageParam = userPackage ? `&package=${encodeURIComponent(userPackage)}` : '';
+    const printUrl = `${BASE_URL}/candidate/cv/print/${templateId}?data=${encodeURIComponent(encodedData)}${packageParam}`;
     console.log("🌐 Attempting to navigate to print page");
     console.log("🔍 Base URL resolved to:", BASE_URL);
     console.log("🔍 Template:", templateId);
+    console.log("🔍 User Package:", userPackage || "not specified (will show watermark)");
 
     try {
       // Navigate to the print page with extended timeout

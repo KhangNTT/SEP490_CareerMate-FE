@@ -11,8 +11,12 @@ export function ClientFooter() {
                     {/* Company Info */}
                     <div className="col-span-1 md:col-span-2">
                         <div className="flex items-center space-x-2 mb-4">
-                            <div className="w-8 h-8 bg-red-600 rounded flex items-center justify-center">
-                                <span className="text-white font-bold text-sm">H</span>
+                            <div className="w-8 h-auto items-center justify-center">
+                                <span className="text-white font-bold text-sm"><img
+                                    src="/images/general/newlogo.png"
+                                    alt="Logo"
+                                    className="h-auto w-auto"
+                                /></span>
                             </div>
                             <span className="text-xl font-bold">CareerMate</span>
                         </div>

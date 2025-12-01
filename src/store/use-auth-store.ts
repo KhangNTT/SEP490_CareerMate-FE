@@ -1,5 +1,6 @@
 "use client";
 import { create } from "zustand";
+import { setCookie, removeCookie } from "@/lib/cookies";
 import axios from "axios";
 
 // ===== Storage keys =====
@@ -34,6 +35,7 @@ type DecodedJWT = {
   roles?: string[];
   authorities?: string[];
   sub?: string;
+  userId?: number;  // Numeric user ID from backend
   email?: string;
   name?: string;
   [k: string]: any;
@@ -165,6 +167,11 @@ function getInitialAuthState() {
     if (!isAuthenticated) {
       localStorage.removeItem(ACCESS_TOKEN_KEY);
       localStorage.removeItem(TOKEN_EXPIRES_AT_KEY);
+      
+      // ✅ ALSO remove from cookie
+      removeCookie('access_token');
+      
+      console.debug("✅ [clearTokens] Tokens cleared from localStorage AND cookies");
       return {
         accessToken: null,
         isAuthenticated: false,
@@ -182,9 +189,22 @@ function getInitialAuthState() {
       const decoded = decodeJwt(accessToken);
       if (decoded) {
         // Extract user info
+        // Try to get numeric userId first, fallback to parsing sub
+        let numericId: number | null = null;
+        
+        if (decoded.userId && typeof decoded.userId === 'number') {
+          numericId = decoded.userId;
+        } else if (decoded.sub) {
+          // Try to parse sub as number if it's a numeric string
+          const parsed = parseInt(decoded.sub);
+          if (!isNaN(parsed)) {
+            numericId = parsed;
+          }
+        }
+        
         userInfo = {
-          id: decoded.sub ?? null,
-          email: decoded.email ?? null,
+          id: numericId,
+          email: decoded.email ?? decoded.sub ?? null,
           name: decoded.name ?? decoded.email ?? null,
           username: decoded.username ?? null,
         };
@@ -241,6 +261,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (accessToken && tokenExpiresAt && isAuthenticated) {
         localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
         localStorage.setItem(TOKEN_EXPIRES_AT_KEY, String(tokenExpiresAt));
+        
+        // ✅ ALSO store in cookie for SSE EventSource authentication
+        setCookie('access_token', accessToken);
+        
+        console.debug("✅ [setTokens] Tokens stored in localStorage AND cookies");
       } else {
         localStorage.removeItem(ACCESS_TOKEN_KEY);
         localStorage.removeItem(TOKEN_EXPIRES_AT_KEY);

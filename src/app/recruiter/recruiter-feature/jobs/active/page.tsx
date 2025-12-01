@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   Eye,
   BarChart3,
@@ -12,6 +13,9 @@ import {
   X,
   Users,
   Star,
+  Mail,
+  Copy,
+  Check,
 } from "lucide-react";
 import { 
   getRecruiterJobPostings, 
@@ -21,11 +25,13 @@ import {
   JobPostingStats,
   getJobRecommendations,
   CandidateRecommendation,
-  RecommendationsResult
+  RecommendationsResult,
+  checkAIMatchingEntitlement
 } from "@/lib/recruiter-api";
 import toast from "react-hot-toast";
 
 export default function ActiveJobsPage() {
+  const router = useRouter();
   const [jobs, setJobs] = useState<RecruiterJobPosting[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedJob, setSelectedJob] = useState<RecruiterJobPosting | null>(null);
@@ -42,6 +48,17 @@ export default function ActiveJobsPage() {
   const [maxCandidates, setMaxCandidates] = useState(5);
   const [minMatchScore, setMinMatchScore] = useState(0);
   
+  // Contact modal state
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState<CandidateRecommendation | null>(null);
+  const [contactMessage, setContactMessage] = useState('');
+  const [contactSubject, setContactSubject] = useState('');
+  const [isCopied, setIsCopied] = useState(false);
+  
+  // AI matching entitlement
+  const [hasAIAccess, setHasAIAccess] = useState(false);
+  const [isCheckingAIAccess, setIsCheckingAIAccess] = useState(true);
+  
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize, setPageSize] = useState(5);
@@ -51,7 +68,24 @@ export default function ActiveJobsPage() {
   // Fetch jobs on component mount
   useEffect(() => {
     fetchJobs();
+    checkAIEntitlement();
   }, [currentPage, pageSize]);
+
+  const checkAIEntitlement = async () => {
+    try {
+      setIsCheckingAIAccess(true);
+      const response = await checkAIMatchingEntitlement();
+      if (response.code === 200) {
+        setHasAIAccess(response.result);
+        console.log('✅ AI Matching Access:', response.result);
+      }
+    } catch (error: any) {
+      console.error("Error checking AI entitlement:", error);
+      setHasAIAccess(false);
+    } finally {
+      setIsCheckingAIAccess(false);
+    }
+  };
 
   const fetchJobs = async () => {
     try {
@@ -268,13 +302,31 @@ export default function ActiveJobsPage() {
 
                     <td className="px-6 py-4 text-right text-sm font-medium">
                       <div className="flex justify-end items-center gap-3">
-                        <button
-                          onClick={() => openModal(job, "recommendations")}
-                          className="text-[#3c679a] hover:text-[#2a4a6f]"
-                          title="View AI Recommendations"
-                        >
-                          <Users className="h-4.5 w-4.5" />
-                        </button>
+                        {hasAIAccess && (
+                          <button
+                            onClick={() => openModal(job, "recommendations")}
+                            className="text-[#3c679a] hover:text-[#2a4a6f] relative group"
+                            title="View AI Recommendations"
+                          >
+                            <Users className="h-4.5 w-4.5" />
+                            <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                          </button>
+                        )}
+                        {!hasAIAccess && !isCheckingAIAccess && (
+                          <button
+                            onClick={() => {
+                              toast.error("Upgrade your package to access AI Recommendations", {
+                                duration: 4000,
+                                icon: "🔒"
+                              });
+                            }}
+                            className="text-gray-300 hover:text-gray-400 cursor-not-allowed relative"
+                            title="Upgrade to access AI Recommendations"
+                          >
+                            <Users className="h-4.5 w-4.5" />
+                            <span className="absolute -top-0.5 -right-0.5 text-xs">🔒</span>
+                          </button>
+                        )}
                         <button
                           onClick={() => openModal(job, "stats")}
                           className="text-gray-500 hover:text-gray-700"
@@ -577,10 +629,24 @@ export default function ActiveJobsPage() {
                         </div>
 
                         <div className="mt-3 pt-3 border-t flex justify-end gap-2">
-                          <button className="px-4 py-2 bg-[#3c679a] text-white text-sm font-medium rounded-md hover:bg-[#2a4a6f] transition-colors">
+                          <button 
+                            onClick={() => router.push(`/candidate/cm-profile?userId=${candidate.candidateId}`)}
+                            className="px-4 py-2 bg-[#3c679a] text-white text-sm font-medium rounded-md hover:bg-[#2a4a6f] transition-colors flex items-center gap-2"
+                          >
+                            <Eye className="h-4 w-4" />
                             View Profile
                           </button>
-                          <button className="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors">
+                          <button 
+                            onClick={() => {
+                              setSelectedCandidate(candidate);
+                              setContactSubject(`Job Opportunity: ${recommendations?.jobTitle || 'Position'}`);
+                              setContactMessage(`Hi ${candidate.candidateName || 'there'},\n\nI found your profile and am impressed with your ${candidate.totalYearsExperience} years of experience and ${candidate.projectsCount} projects.\n\nI would like to discuss a job opportunity for ${recommendations?.jobTitle || 'this position'} with you.\n\nBest regards`);
+                              setShowContactModal(true);
+                              setIsCopied(false);
+                            }}
+                            className="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors flex items-center gap-2"
+                          >
+                            <Mail className="h-4 w-4" />
                             Contact
                           </button>
                         </div>
@@ -683,6 +749,128 @@ export default function ActiveJobsPage() {
               <option value={20}>20</option>
               <option value={50}>50</option>
             </select>
+          </div>
+        </div>
+      )}
+
+      {/* Contact Modal */}
+      {showContactModal && selectedCandidate && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                  <Mail className="h-6 w-6 text-[#3c679a]" />
+                  Contact Candidate
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  Compose your message to {selectedCandidate.candidateName || 'the candidate'}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowContactModal(false);
+                  setSelectedCandidate(null);
+                  setIsCopied(false);
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Candidate Info */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-gray-900">{selectedCandidate.candidateName || 'Anonymous'}</h3>
+                  <div className="flex items-center gap-1">
+                    <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                    <span className="text-sm font-bold text-[#3c679a]">
+                      {(selectedCandidate.matchScore * 100).toFixed(1)}% Match
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Mail className="h-4 w-4" />
+                  <span className="font-medium">{selectedCandidate.email}</span>
+                </div>
+              </div>
+
+              {/* Email Subject */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Subject
+                </label>
+                <input
+                  type="text"
+                  value={contactSubject}
+                  onChange={(e) => setContactSubject(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3c679a] focus:border-transparent"
+                  placeholder="Enter email subject"
+                />
+              </div>
+
+              {/* Email Message */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Message
+                </label>
+                <textarea
+                  value={contactMessage}
+                  onChange={(e) => setContactMessage(e.target.value)}
+                  rows={8}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3c679a] focus:border-transparent resize-none"
+                  placeholder="Write your message here..."
+                />
+              </div>
+
+              {/* Instructions */}
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <h4 className="text-sm font-semibold text-amber-800 mb-2">📧 How to send this email:</h4>
+                <ol className="text-sm text-amber-700 space-y-1 list-decimal list-inside">
+                  <li>Click "Copy Email Details" button below</li>
+                  <li>Open your email client (Gmail, Outlook, etc.)</li>
+                  <li>Create a new email and paste the details</li>
+                  <li>Send directly from your email to avoid spam filters</li>
+                </ol>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => {
+                    const emailContent = `To: ${selectedCandidate.email}\nSubject: ${contactSubject}\n\n${contactMessage}`;
+                    navigator.clipboard.writeText(emailContent);
+                    setIsCopied(true);
+                    toast.success('Email details copied to clipboard!');
+                    setTimeout(() => setIsCopied(false), 3000);
+                  }}
+                  className="flex-1 px-6 py-3 bg-[#3c679a] text-white font-medium rounded-lg hover:bg-[#2a4a6f] transition-colors flex items-center justify-center gap-2"
+                >
+                  {isCopied ? (
+                    <>
+                      <Check className="h-5 w-5" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-5 w-5" />
+                      Copy Email Details
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    window.open(`https://mail.google.com/mail/?view=cm&to=${selectedCandidate.email}&su=${encodeURIComponent(contactSubject)}&body=${encodeURIComponent(contactMessage)}`, '_blank');
+                  }}
+                  className="flex-1 px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Mail className="h-5 w-5" />
+                  Open Gmail
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

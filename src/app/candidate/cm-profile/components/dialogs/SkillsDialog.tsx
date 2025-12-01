@@ -158,7 +158,7 @@ export default function SkillsDialog({
                     </Button>
                     <Button
                         onClick={onSave}
-                        disabled={!skillType || skills.length === 0}
+                        disabled={!skillType || (skills.length === 0 && !isEditMode)}
                         className="bg-gray-700 hover:bg-gray-800 text-white px-6"
                     >
                         Save

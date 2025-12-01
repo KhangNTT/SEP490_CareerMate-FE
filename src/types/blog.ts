@@ -142,6 +142,11 @@ export interface Comment {
     content: string;
     createdAt: string;
     updatedAt: string;
+    // Auto-flagging moderation fields (admin only)
+    isFlagged?: boolean;
+    flagReason?: string;
+    flaggedAt?: string;
+    reviewedByAdmin?: boolean;
 }
 
 export interface CommentCreateRequest {

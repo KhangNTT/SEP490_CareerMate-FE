@@ -1,14 +1,25 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import JobCard from "../../../components/JobCard";
-import { RiMoneyDollarCircleLine } from 'react-icons/ri';
-import { FiMapPin, FiSearch, FiX, FiStar } from 'react-icons/fi';
-import { IoFilterOutline } from 'react-icons/io5';
-import { AiFillStar, AiFillLike, AiOutlineLike } from 'react-icons/ai';
-import { fetchJobPostings, transformJobPosting, toggleSaveJob, toggleLikeJob, viewJob, type JobPosting } from '@/lib/job-api';
-import { useAuthStore } from '@/store/use-auth-store';
-import toast from 'react-hot-toast';
+import JobRecommendModal from "../../../components/JobRecommendModal";
+import { RiMoneyDollarCircleLine } from "react-icons/ri";
+import { FiMapPin, FiSearch, FiX, FiStar } from "react-icons/fi";
+import { IoFilterOutline } from "react-icons/io5";
+import { AiFillStar, AiFillLike, AiOutlineLike } from "react-icons/ai";
+import {
+  fetchJobPostings,
+  transformJobPosting,
+  toggleSaveJob,
+  toggleLikeJob,
+  viewJob,
+  fetchSavedJobs,
+  fetchLikedJobs,
+  type JobPosting,
+} from "@/lib/job-api";
+import { useAuthStore } from "@/store/use-auth-store";
+import toast from "react-hot-toast";
+import { JobCardSkeleton, JobDetailSkeleton } from "@/components/skeletons";
 
 interface JobListing {
   id: number;
@@ -25,9 +36,9 @@ interface JobListing {
   highlights: string[];
   description: string[];
   // NEW
-  salaryRange?: string;           // dải lương hiển thị chip + meta bar
-  benefitSummary?: string[];      // tóm tắt 3–4 quyền lợi cho meta bar
-  benefits?: string[];            // danh sách chi tiết cho block “Compensation & Benefits”
+  salaryRange?: string; // dải lương hiển thị chip + meta bar
+  benefitSummary?: string[]; // tóm tắt 3–4 quyền lợi cho meta bar
+  benefits?: string[]; // danh sách chi tiết cho block “Compensation & Benefits”
   isHot?: boolean;
   isNegotiable?: boolean;
   companyType?: string;
@@ -211,7 +222,8 @@ const jobs: JobListing[] = [
 
 export default function JobsDetailPage() {
   const router = useRouter();
-  const { isAuthenticated, candidateId, fetchCandidateProfile } = useAuthStore();
+  const { isAuthenticated, candidateId, fetchCandidateProfile } =
+    useAuthStore();
 
   const [jobs, setJobs] = useState<JobListing[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -221,21 +233,25 @@ export default function JobsDetailPage() {
 
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
-  const [isBookmarked, setIsBookmarked] = useState<boolean>(false);
-  const [isLiked, setIsLiked] = useState<boolean>(false);
+  
+  // ✅ Use maps to track saved/liked status per job
+  const [savedMap, setSavedMap] = useState<Record<number, boolean>>({});
+  const [likedMap, setLikedMap] = useState<Record<number, boolean>>({});
+  
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isLiking, setIsLiking] = useState<boolean>(false);
   const [searchKeyword, setSearchKeyword] = useState<string>("");
   const [searchLocation, setSearchLocation] = useState<string>("All Cities");
   const [currentPage, setCurrentPage] = useState<number>(0);
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
+  const [showJobRecommendModal, setShowJobRecommendModal] = useState<boolean>(false);
 
   // ✅ Fetch candidateId if authenticated but missing
   useEffect(() => {
     if (isAuthenticated && !candidateId) {
-      console.log('📝 Candidate ID missing, fetching user profile...');
+      console.log("📝 Candidate ID missing, fetching user profile...");
       fetchCandidateProfile().catch((err) => {
-        console.error('❌ Failed to fetch candidate profile:', err);
+        console.error("❌ Failed to fetch candidate profile:", err);
       });
     }
   }, [isAuthenticated, candidateId, fetchCandidateProfile]);
@@ -250,12 +266,13 @@ export default function JobsDetailPage() {
           keyword: searchKeyword,
           page: currentPage,
           size: jobsPerPage,
-          sortBy: 'createAt',
-          sortDir: 'desc'
+          sortBy: "createAt",
+          sortDir: "desc",
         });
 
         if (response.code === 200 && response.result.content) {
-          const transformedJobs = response.result.content.map(transformJobPosting);
+          const transformedJobs =
+            response.result.content.map(transformJobPosting);
           setJobs(transformedJobs);
           setTotalPages(response.result.totalPages);
           setTotalElements(response.result.totalElements);
@@ -266,7 +283,7 @@ export default function JobsDetailPage() {
           }
         }
       } catch (err) {
-        setError('Failed to load job postings');
+        setError("Failed to load job postings");
         console.error(err);
       } finally {
         setLoading(false);
@@ -276,127 +293,195 @@ export default function JobsDetailPage() {
     loadJobs();
   }, [currentPage, searchKeyword]);
 
-  const selectedJob = jobs.find((job) => job.id === selectedJobId) || jobs[0];
+  // ✅ Fetch saved and liked jobs when authenticated
+  useEffect(() => {
+    const loadSavedAndLikedJobs = async () => {
+      if (!isAuthenticated || !candidateId) return;
 
-  const handleJobSelect = (jobId: number) => {
+      try {
+        // Fetch saved jobs
+        const savedJobs = await fetchSavedJobs(candidateId);
+        const savedJobIds = savedJobs.reduce((acc, job) => {
+          acc[job.jobId] = true;
+          return acc;
+        }, {} as Record<number, boolean>);
+        setSavedMap(savedJobIds);
+
+        // Fetch liked jobs
+        const likedJobs = await fetchLikedJobs(candidateId);
+        const likedJobIds = likedJobs.reduce((acc, job) => {
+          acc[job.jobId] = true;
+          return acc;
+        }, {} as Record<number, boolean>);
+        setLikedMap(likedJobIds);
+
+        console.log('✅ Loaded saved/liked jobs:', { savedJobIds, likedJobIds });
+      } catch (error) {
+        console.error('❌ Error loading saved/liked jobs:', error);
+      }
+    };
+
+    loadSavedAndLikedJobs();
+  }, [isAuthenticated, candidateId]);
+
+  // ✅ Memoize selectedJob to avoid recalculation on every render
+  const selectedJob = useMemo(() => 
+    jobs.find((job) => job.id === selectedJobId) || jobs[0],
+    [jobs, selectedJobId]
+  );
+  
+  // ✅ Memoize computed values for current job's saved/liked status
+  const isBookmarked = useMemo(() => 
+    selectedJobId ? (savedMap[selectedJobId] ?? false) : false,
+    [selectedJobId, savedMap]
+  );
+  
+  const isLiked = useMemo(() => 
+    selectedJobId ? (likedMap[selectedJobId] ?? false) : false,
+    [selectedJobId, likedMap]
+  );
+
+  // ✅ Memoize handlers with useCallback
+  const handleJobSelect = useCallback((jobId: number) => {
     setSelectedJobId(jobId);
 
     // Track job view
     if (candidateId) {
       viewJob(candidateId, jobId).catch((err) => {
-        console.error('Failed to track job view:', err);
+        console.error("Failed to track job view:", err);
       });
     }
-  };
+  }, [candidateId]);
 
-  const handleApplyNow = () => {
+  const handleApplyNow = useCallback(() => {
     if (!isAuthenticated) {
       setShowLoginModal(true);
       return;
     }
-    router.push(`/candidate/jobs/${selectedJobId}/apply`);
-  };
+    // Navigate directly to the apply page (skip redirect stub)
+    router.push(`/jobs-detail/${selectedJobId}/apply`);
+  }, [isAuthenticated, selectedJobId, router]);
 
-  const handleToggleSave = async () => {
+  const handleToggleSave = useCallback(async () => {
     // Check authentication
     if (!isAuthenticated) {
-      toast.error('Please login to save jobs');
+      toast.error("Please login to save jobs");
       setShowLoginModal(true);
       return;
     }
 
     // Check candidateId
     if (!candidateId) {
-      toast.error('Candidate ID not found. Please login again.');
+      toast.error("Candidate ID not found. Please login again.");
       return;
     }
 
     // Check job ID
     if (!selectedJobId) {
-      toast.error('No job selected');
+      toast.error("No job selected");
       return;
     }
 
+    const currentlySaved = savedMap[selectedJobId] ?? false;
+    
     setIsSaving(true);
     try {
-      const newSavedStatus = await toggleSaveJob(candidateId, selectedJobId, isBookmarked);
-      setIsBookmarked(newSavedStatus);
+      const newSavedStatus = await toggleSaveJob(
+        candidateId,
+        selectedJobId,
+        currentlySaved
+      );
+      // ✅ Update the map for this specific job
+      setSavedMap(prev => ({ ...prev, [selectedJobId]: newSavedStatus }));
 
       if (newSavedStatus) {
-        toast.success('Job saved successfully! 💾');
+        toast.success("Job saved successfully! 💾");
       } else {
-        toast.success('Job unsaved');
+        toast.success("Job unsaved");
       }
     } catch (error: any) {
-      console.error('Error toggling save status:', error);
-      toast.error(error?.response?.data?.message || 'Failed to save job. Please try again.');
+      console.error("Error toggling save status:", error);
+      toast.error(
+        error?.response?.data?.message ||
+          "Failed to save job. Please try again."
+      );
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [isAuthenticated, candidateId, selectedJobId, savedMap]);
 
-  const handleToggleLike = async () => {
+  const handleToggleLike = useCallback(async () => {
     // Check authentication
     if (!isAuthenticated) {
-      toast.error('Please login to like jobs');
+      toast.error("Please login to like jobs");
       setShowLoginModal(true);
       return;
     }
 
     // Check candidateId
     if (!candidateId) {
-      toast.error('Candidate ID not found. Please login again.');
+      toast.error("Candidate ID not found. Please login again.");
       return;
     }
 
     // Check job ID
     if (!selectedJobId) {
-      toast.error('No job selected');
+      toast.error("No job selected");
       return;
     }
 
+    const currentlyLiked = likedMap[selectedJobId] ?? false;
+
     setIsLiking(true);
     try {
-      const newLikedStatus = await toggleLikeJob(candidateId, selectedJobId, isLiked);
-      setIsLiked(newLikedStatus);
+      const newLikedStatus = await toggleLikeJob(
+        candidateId,
+        selectedJobId,
+        currentlyLiked
+      );
+      // ✅ Update the map for this specific job
+      setLikedMap(prev => ({ ...prev, [selectedJobId]: newLikedStatus }));
 
       if (newLikedStatus) {
-        toast.success('You like this job! 👍');
+        toast.success("You like this job! 👍");
       } else {
-        toast.success('Job unliked');
+        toast.success("Job unliked");
       }
     } catch (error: any) {
-      console.error('Error toggling like status:', error);
-      toast.error(error?.response?.data?.message || 'Failed to like job. Please try again.');
+      console.error("Error toggling like status:", error);
+      toast.error(
+        error?.response?.data?.message ||
+          "Failed to like job. Please try again."
+      );
     } finally {
       setIsLiking(false);
     }
-  };
+  }, [isAuthenticated, candidateId, selectedJobId, likedMap]);
 
-  const handleLoginRedirect = () => {
+  const handleLoginRedirect = useCallback(() => {
     setShowLoginModal(false);
     // Save the intended destination to localStorage
     if (selectedJobId) {
-      localStorage.setItem('redirectAfterLogin', `/candidate/jobs/${selectedJobId}/apply`);
+      localStorage.setItem('redirectAfterLogin', `/jobs-detail/${selectedJobId}/apply`);
     }
-    router.push('/sign-in');
-  };
+    router.push("/sign-in");
+  }, [selectedJobId, router]);
 
-  const handleSearch = () => {
-    console.log('🔍 Searching for:', searchKeyword);
+  const handleSearch = useCallback(() => {
+    console.log("🔍 Searching for:", searchKeyword);
     setCurrentPage(0); // Reset to first page on search
     // The useEffect will automatically re-fetch with the new keyword
-  };
+  }, [searchKeyword]);
 
-  const handlePageChange = (newPage: number) => {
+  const handlePageChange = useCallback((newPage: number) => {
     setCurrentPage(newPage);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
 
-  const clearSearch = () => {
+  const clearSearch = useCallback(() => {
     setSearchKeyword("");
     setCurrentPage(0); // Reset page when clearing search
-  };
+  }, []);
 
   return (
     <>
@@ -413,14 +498,24 @@ export default function JobsDetailPage() {
                     onChange={(e) => setSearchLocation(e.target.value)}
                     className="appearance-none w-full md:w-64 pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white cursor-pointer text-gray-700"
                   >
-                    <option value="All Cities">All Cities</option>
+git add src/app/(home)/jobs-detail/page.tsx
                     <option value="Ho Chi Minh">Ho Chi Minh</option>
                     <option value="Ha Noi">Ha Noi</option>
                     <option value="Da Nang">Da Nang</option>
                   </select>
                   <FiMapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
-                  <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  <svg
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
                   </svg>
                 </div>
 
@@ -457,9 +552,7 @@ export default function JobsDetailPage() {
               <div className="flex flex-wrap items-center gap-3 mt-4">
                 {/* Level Dropdown */}
                 <div className="relative">
-                  <select
-                    className="appearance-none pl-4 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white cursor-pointer text-gray-700 text-sm"
-                  >
+                  <select className="appearance-none pl-4 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white cursor-pointer text-gray-700 text-sm">
                     <option>Level</option>
                     <option>Intern</option>
                     <option>Fresher</option>
@@ -468,31 +561,47 @@ export default function JobsDetailPage() {
                     <option>Senior</option>
                     <option>Leader</option>
                   </select>
-                  <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  <svg
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
                   </svg>
                 </div>
 
                 {/* Working Model Dropdown */}
                 <div className="relative">
-                  <select
-                    className="appearance-none pl-4 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white cursor-pointer text-gray-700 text-sm"
-                  >
+                  <select className="appearance-none pl-4 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white cursor-pointer text-gray-700 text-sm">
                     <option>Working Model</option>
                     <option>Remote</option>
                     <option>Hybrid</option>
                     <option>Onsite</option>
                   </select>
-                  <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  <svg
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
                   </svg>
                 </div>
 
                 {/* Salary Dropdown */}
                 <div className="relative">
-                  <select
-                    className="appearance-none pl-4 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white cursor-pointer text-gray-700 text-sm"
-                  >
+                  <select className="appearance-none pl-4 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white cursor-pointer text-gray-700 text-sm">
                     <option>Salary</option>
                     <option>Dưới 10 triệu</option>
                     <option>10-15 triệu</option>
@@ -501,16 +610,24 @@ export default function JobsDetailPage() {
                     <option>30-50 triệu</option>
                     <option>Trên 50 triệu</option>
                   </select>
-                  <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  <svg
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
                   </svg>
                 </div>
 
                 {/* Job Domain Dropdown */}
                 <div className="relative">
-                  <select
-                    className="appearance-none pl-4 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white cursor-pointer text-gray-700 text-sm"
-                  >
+                  <select className="appearance-none pl-4 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white cursor-pointer text-gray-700 text-sm">
                     <option>Job Domain</option>
                     <option>Backend</option>
                     <option>Frontend</option>
@@ -520,8 +637,18 @@ export default function JobsDetailPage() {
                     <option>AI/ML</option>
                     <option>Data Science</option>
                   </select>
-                  <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  <svg
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
                   </svg>
                 </div>
 
@@ -541,15 +668,36 @@ export default function JobsDetailPage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               <aside className="lg:col-span-5">
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-6">
-                    Available Jobs{" "}
-                    <span className="text-blue-600">({totalElements})</span>
-                  </h2>
+                  {/* Header Section: Title + Job Recommend Button */}
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-semibold text-gray-900">
+                      Available Jobs{" "}
+                      <span className="text-blue-600">({totalElements})</span>
+                    </h2>
+
+                    <button
+                      onClick={() => setShowJobRecommendModal(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300 rounded-lg text-sm font-medium transition-all duration-200"
+                    >
+                      {/* Icon Sparkles */}
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="w-4 h-4"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813a3.75 3.75 0 002.576-2.576l.813-2.846A.75.75 0 019 4.5z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      Job Recommend
+                    </button>
+                  </div>
 
                   {loading ? (
-                    <div className="flex justify-center items-center py-12">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
-                    </div>
+                    <JobCardSkeleton count={5} />
                   ) : error ? (
                     <div className="text-center py-12">
                       <p className="text-red-500 mb-4">{error}</p>
@@ -603,31 +751,35 @@ export default function JobsDetailPage() {
                           </button>
 
                           <div className="flex gap-2">
-                            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                              let page;
-                              if (totalPages <= 5) {
-                                page = i;
-                              } else if (currentPage < 3) {
-                                page = i;
-                              } else if (currentPage > totalPages - 3) {
-                                page = totalPages - 5 + i;
-                              } else {
-                                page = currentPage - 2 + i;
-                              }
+                            {Array.from(
+                              { length: Math.min(totalPages, 5) },
+                              (_, i) => {
+                                let page;
+                                if (totalPages <= 5) {
+                                  page = i;
+                                } else if (currentPage < 3) {
+                                  page = i;
+                                } else if (currentPage > totalPages - 3) {
+                                  page = totalPages - 5 + i;
+                                } else {
+                                  page = currentPage - 2 + i;
+                                }
 
-                              return (
-                                <button
-                                  key={page}
-                                  onClick={() => handlePageChange(page)}
-                                  className={`px-4 py-2 rounded-lg ${currentPage === page
-                                    ? 'bg-red-500 text-white'
-                                    : 'border border-gray-300 hover:bg-gray-50'
+                                return (
+                                  <button
+                                    key={page}
+                                    onClick={() => handlePageChange(page)}
+                                    className={`px-4 py-2 rounded-lg ${
+                                      currentPage === page
+                                        ? "bg-red-500 text-white"
+                                        : "border border-gray-300 hover:bg-gray-50"
                                     }`}
-                                >
-                                  {page + 1}
-                                </button>
-                              );
-                            })}
+                                  >
+                                    {page + 1}
+                                  </button>
+                                );
+                              }
+                            )}
                           </div>
 
                           <button
@@ -694,7 +846,9 @@ export default function JobsDetailPage() {
                               <circle cx="12" cy="10" r="3"></circle>
                             </svg>
                             {selectedJob.location} ·{" "}
-                            <span className="text-blue-600">{selectedJob.jobType}</span>{" "}
+                            <span className="text-blue-600">
+                              {selectedJob.jobType}
+                            </span>{" "}
                             · {selectedJob.postedAgo}
                           </p>
                         </div>
@@ -703,7 +857,8 @@ export default function JobsDetailPage() {
                       <div className="flex gap-3 mb-4">
                         <button
                           onClick={handleApplyNow}
-                          className="flex-1 bg-gradient-to-r from-[#3a4660] to-gray-400 text-white px-6 py-2 rounded-md font-medium hover:bg-gradient-to-r hover:from-[#3a4660] hover:to-[#3a4660] transition-colors">
+                          className="flex-1 bg-gradient-to-r from-[#3a4660] to-gray-400 text-white px-6 py-2 rounded-md font-medium hover:bg-gradient-to-r hover:from-[#3a4660] hover:to-[#3a4660] transition-colors"
+                        >
                           Apply Now
                         </button>
 
@@ -712,12 +867,13 @@ export default function JobsDetailPage() {
                           <button
                             onClick={handleToggleLike}
                             disabled={isLiking}
-                            className={`p-3 border-2 rounded-md transition-colors ${isLiking
-                              ? 'border-gray-200 cursor-not-allowed opacity-50'
-                              : isLiked
-                                ? 'border-blue-500 bg-blue-50'
-                                : 'border-gray-300 hover:border-blue-500'
-                              }`}
+                            className={`p-3 border-2 rounded-md transition-colors ${
+                              isLiking
+                                ? "border-gray-200 cursor-not-allowed opacity-50"
+                                : isLiked
+                                ? "border-blue-500 bg-blue-50"
+                                : "border-gray-300 hover:border-blue-500"
+                            }`}
                           >
                             {isLiked ? (
                               <AiFillLike className="w-6 h-6 text-blue-500" />
@@ -729,7 +885,11 @@ export default function JobsDetailPage() {
                           {/* Tooltip */}
                           <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block">
                             <div className="bg-gray-800 text-white text-sm px-3 py-1.5 rounded whitespace-nowrap">
-                              {isLiking ? 'Processing...' : (isLiked ? 'Liked' : 'You like this job')}
+                              {isLiking
+                                ? "Processing..."
+                                : isLiked
+                                ? "Liked"
+                                : "You like this job"}
                             </div>
                             <div className="w-3 h-3 bg-gray-800 transform rotate-45 absolute -bottom-1 right-4"></div>
                           </div>
@@ -740,12 +900,13 @@ export default function JobsDetailPage() {
                           <button
                             onClick={handleToggleSave}
                             disabled={isSaving}
-                            className={`p-3 border-2 rounded-md transition-colors ${isSaving
-                              ? 'border-gray-200 cursor-not-allowed opacity-50'
-                              : isBookmarked
-                                ? 'border-yellow-500 bg-yellow-50'
-                                : 'border-gray-300 hover:border-yellow-500'
-                              }`}
+                            className={`p-3 border-2 rounded-md transition-colors ${
+                              isSaving
+                                ? "border-gray-200 cursor-not-allowed opacity-50"
+                                : isBookmarked
+                                ? "border-yellow-500 bg-yellow-50"
+                                : "border-gray-300 hover:border-yellow-500"
+                            }`}
                           >
                             {isBookmarked ? (
                               <AiFillStar className="w-6 h-6 text-yellow-500" />
@@ -757,7 +918,11 @@ export default function JobsDetailPage() {
                           {/* Tooltip */}
                           <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block">
                             <div className="bg-gray-800 text-white text-sm px-3 py-1.5 rounded whitespace-nowrap">
-                              {isSaving ? 'Saving...' : (isBookmarked ? 'Saved' : 'Save this job')}
+                              {isSaving
+                                ? "Saving..."
+                                : isBookmarked
+                                ? "Saved"
+                                : "Save this job"}
                             </div>
                             <div className="w-3 h-3 bg-gray-800 transform rotate-45 absolute -bottom-1 right-4"></div>
                           </div>
@@ -766,10 +931,14 @@ export default function JobsDetailPage() {
                     </div>
 
                     {/* Scrollable Content Area */}
-                    <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+                    <div
+                      className="overflow-y-auto"
+                      style={{ maxHeight: "calc(100vh - 280px)" }}
+                    >
                       <div className="p-6">
                         {/* NEW: meta bar tóm tắt compensation */}
-                        {(selectedJob.salaryRange || selectedJob.benefitSummary?.length) && (
+                        {(selectedJob.salaryRange ||
+                          selectedJob.benefitSummary?.length) && (
                           <div className="mb-6 rounded-lg border border-emerald-200 bg-gradient-to-r from-emerald-50 to-green-50 p-4 shadow-sm">
                             <ul className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm text-gray-800">
                               {selectedJob.salaryRange && (
@@ -778,42 +947,65 @@ export default function JobsDetailPage() {
                                   {selectedJob.salaryRange}
                                 </li>
                               )}
-                              {selectedJob.benefitSummary?.slice(0, 3).map((x, i) => (
-                                <li key={i}>• {x}</li>
-                              ))}
+                              {selectedJob.benefitSummary
+                                ?.slice(0, 3)
+                                .map((x, i) => (
+                                  <li key={i}>• {x}</li>
+                                ))}
                             </ul>
                           </div>
                         )}
 
                         <div className="grid md:grid-cols-2 gap-6 mb-6">
                           <div>
-                            <h3 className="font-semibold text-gray-900 mb-3">Skills:</h3>
+                            <h3 className="font-semibold text-gray-900 mb-3">
+                              Skills:
+                            </h3>
                             <div className="flex flex-wrap gap-2 mb-4">
-                              {selectedJob.skills && selectedJob.skills.length > 0 ? (
+                              {selectedJob.skills &&
+                              selectedJob.skills.length > 0 ? (
                                 selectedJob.skills.map((skill, index) => (
-                                  <span key={index} className="px-4 py-1 bg-white border border-gray-300 text-gray-700 text-sm rounded-full shadow-sm">
+                                  <span
+                                    key={index}
+                                    className="px-4 py-1 bg-white border border-gray-300 text-gray-700 text-sm rounded-full shadow-sm"
+                                  >
                                     {skill}
                                   </span>
                                 ))
                               ) : (
-                                <span className="text-sm text-gray-500">No skills listed</span>
+                                <span className="text-sm text-gray-500">
+                                  No skills listed
+                                </span>
                               )}
                             </div>
 
-                            <h3 className="font-semibold text-gray-700 mb-3">Job Expertise:</h3>
-                            <p className="text-sm text-gray-700 mb-4 ml-2">{selectedJob.expertise}</p>
+                            <h3 className="font-semibold text-gray-700 mb-3">
+                              Job Expertise:
+                            </h3>
+                            <p className="text-sm text-gray-700 mb-4 ml-2">
+                              {selectedJob.expertise}
+                            </p>
 
-                            <h3 className="font-semibold text-gray-700 mb-3">Job Domain:</h3>
+                            <h3 className="font-semibold text-gray-700 mb-3">
+                              Job Domain:
+                            </h3>
                             <div className="flex flex-wrap gap-2 mb-4">
-                              <span className="px-4 py-1 bg-white border border-gray-300 text-gray-700 text-sm rounded-full shadow-sm">{selectedJob.company}</span>
+                              <span className="px-4 py-1 bg-white border border-gray-300 text-gray-700 text-sm rounded-full shadow-sm">
+                                {selectedJob.company}
+                              </span>
                             </div>
                           </div>
 
                           <div>
-                            <h3 className="font-semibold text-gray-900 mb-4">Why you'll love working here</h3>
+                            <h3 className="font-semibold text-gray-900 mb-4">
+                              Why you'll love working here
+                            </h3>
                             <ul className="space-y-3 text-sm">
                               {selectedJob.highlights.map((item, index) => (
-                                <li key={index} className="flex items-start gap-2">
+                                <li
+                                  key={index}
+                                  className="flex items-start gap-2"
+                                >
                                   <span className="w-1.5 h-1.5 bg-red-500 rounded-full mt-2 flex-shrink-0"></span>
                                   <span className="text-gray-700">{item}</span>
                                 </li>
@@ -823,25 +1015,33 @@ export default function JobsDetailPage() {
                         </div>
 
                         {/* NEW: block Compensation & Benefits */}
-                        {selectedJob.benefits && selectedJob.benefits.length > 0 && (
-                          <div className="mb-6">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h3 className="font-semibold text-gray-900">Compensation & Benefits</h3>
+                        {selectedJob.benefits &&
+                          selectedJob.benefits.length > 0 && (
+                            <div className="mb-6">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="font-semibold text-gray-900">
+                                  Compensation & Benefits
+                                </h3>
+                              </div>
+                              <ul className="space-y-2 text-sm text-gray-700">
+                                {selectedJob.benefits.map((b, i) => (
+                                  <li
+                                    key={i}
+                                    className="flex items-start gap-2"
+                                  >
+                                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mt-2 flex-shrink-0"></span>
+                                    <span>{b}</span>
+                                  </li>
+                                ))}
+                              </ul>
                             </div>
-                            <ul className="space-y-2 text-sm text-gray-700">
-                              {selectedJob.benefits.map((b, i) => (
-                                <li key={i} className="flex items-start gap-2">
-                                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mt-2 flex-shrink-0"></span>
-                                  <span>{b}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
+                          )}
 
                         <div>
                           <div className="flex items-center gap-2 mb-4">
-                            <h3 className="font-semibold text-gray-900">Job description</h3>
+                            <h3 className="font-semibold text-gray-900">
+                              Job description
+                            </h3>
                           </div>
                           <div className="text-sm text-gray-700 leading-relaxed">
                             {selectedJob.description.map((item, index) => (
@@ -854,11 +1054,13 @@ export default function JobsDetailPage() {
                       </div>
                     </div>
                   </div>
+                ) : loading ? (
+                  <JobDetailSkeleton />
                 ) : (
                   <div className="flex items-center justify-center">
                     <div className="text-center py-20">
                       <p className="text-gray-500 text-lg">
-                        {loading ? 'Loading job details...' : 'Select a job to view details'}
+                        Select a job to view details
                       </p>
                     </div>
                   </div>
@@ -872,8 +1074,18 @@ export default function JobsDetailPage() {
             onClick={() => setIsChatOpen(true)}
             className="fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-r from-[#3a4660] to-gray-500 rounded-full shadow-lg flex items-center justify-center cursor-pointer hover:shadow-xl transition-all duration-300 z-40"
           >
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="w-8 h-8 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
             <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 border-2 border-white rounded-full"></span>
           </div>
@@ -887,21 +1099,43 @@ export default function JobsDetailPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"
+                          />
                         </svg>
                       </div>
                       <div>
                         <h3 className="font-semibold">Quiz Agent</h3>
-                        <p className="text-sm text-white/80">Practice for your interview</p>
+                        <p className="text-sm text-white/80">
+                          Practice for your interview
+                        </p>
                       </div>
                     </div>
                     <button
                       onClick={() => setIsChatOpen(false)}
                       className="text-white hover:text-gray-200 transition-colors"
                     >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      <svg
+                        className="w-6 h-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
                       </svg>
                     </button>
                   </div>
@@ -912,7 +1146,8 @@ export default function JobsDetailPage() {
                   <div className="p-4">
                     <div className="bg-white/10 text-white rounded-lg p-3 mb-6 shadow-md">
                       <p className="text-sm font-medium mb-2">
-                        Which CI/CD tool is commonly used for automating the software delivery pipeline in DevOps?
+                        Which CI/CD tool is commonly used for automating the
+                        software delivery pipeline in DevOps?
                       </p>
                     </div>
 
@@ -942,7 +1177,9 @@ export default function JobsDetailPage() {
                         <button className="w-12 h-12 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/30 focus:ring-2 focus:ring-offset-2 focus:ring-white/40 focus:outline-none">
                           <span className="text-sm">D</span>
                         </button>
-                        <span className="text-sm text-white">Visual Studio</span>
+                        <span className="text-sm text-white">
+                          Visual Studio
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -982,9 +1219,7 @@ export default function JobsDetailPage() {
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
                 Login is required
               </h2>
-              <p className="text-gray-600 mb-6">
-                Do you want to login?
-              </p>
+              <p className="text-gray-600 mb-6">Do you want to login?</p>
 
               {/* Buttons */}
               <div className="flex gap-3">
@@ -1005,6 +1240,12 @@ export default function JobsDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Job Recommend Modal */}
+      <JobRecommendModal
+        isOpen={showJobRecommendModal}
+        onClose={() => setShowJobRecommendModal(false)}
+      />
     </>
   );
 }

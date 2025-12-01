@@ -1,5 +1,7 @@
 import api from './api';
 import { RecruiterResponse } from '@/types/recruiter';
+import { JobApplicationStatus } from '@/types/status';
+import { normalizeStatus } from '@/lib/status-utils';
 
 // Skill Interface
 export interface Skill {
@@ -529,11 +531,23 @@ export const extendJobPosting = async (jobPostingId: number, newExpirationDate: 
   }
 };
 
-// Get Job Posting Statistics
+// Get Job Posting Statistics (Recruiter Dashboard Stats)
 export interface JobPostingStats {
-  jobPostingId: number;
-  views: number;
-  applicants: number;
+  totalJobPostings: number;
+  pendingJobPostings: number;
+  activeJobPostings: number;
+  rejectedJobPostings: number;
+  pausedJobPostings: number;
+  expiredJobPostings: number;
+  deletedJobPostings: number;
+  totalApplications: number;
+  submittedApplications: number;
+  reviewingApplications: number;
+  approvedApplications: number;
+  rejectedApplications: number;
+  interviewScheduledApplications: number;
+  hiredApplications: number;
+  withdrawnApplications: number;
 }
 
 export interface JobPostingStatsResponse {
@@ -542,10 +556,25 @@ export interface JobPostingStatsResponse {
   result: JobPostingStats;
 }
 
-export const getJobPostingStats = async (jobPostingId: number): Promise<JobPostingStatsResponse> => {
+// Get all recruiter stats (new endpoint)
+export const getRecruiterStats = async (): Promise<JobPostingStatsResponse> => {
+  try {
+    console.log('🔵 [GET RECRUITER STATS] Fetching...');
+    const response = await api.get('/api/jobposting/recruiter/stats');
+    console.log('✅ [GET RECRUITER STATS] Response:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('❌ [GET RECRUITER STATS] Error:', error.response?.data || error);
+    throw new Error(error.response?.data?.message || 'Failed to fetch recruiter statistics');
+  }
+};
+
+// Legacy function - for individual job posting stats (if endpoint exists)
+export const getJobPostingStats = async (jobPostingId: number): Promise<any> => {
   try {
     console.log('🔵 [GET JOB STATS] Job ID:', jobPostingId);
-    const response = await api.get(`/api/jobposting/${jobPostingId}/stats`);
+    // Try the new recruiter stats endpoint as fallback
+    const response = await api.get('/api/jobposting/recruiter/stats');
     console.log('✅ [GET JOB STATS] Response:', response.data);
     return response.data;
   } catch (error: any) {
@@ -618,6 +647,25 @@ export const getJobRecommendations = async (
   }
 };
 
+// Check if recruiter has AI matching entitlement
+export interface AIMatchingCheckerResponse {
+  code: number;
+  message: string;
+  result: boolean;
+}
+
+export const checkAIMatchingEntitlement = async (): Promise<AIMatchingCheckerResponse> => {
+  try {
+    console.log('🔵 [CHECK AI MATCHING] Checking entitlement');
+    const response = await api.get('/api/recruiter-entitlement/ai-matching-checker');
+    console.log('✅ [CHECK AI MATCHING] Response:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('❌ [CHECK AI MATCHING] Error:', error.response?.data || error);
+    throw new Error(error.response?.data?.message || 'Failed to check AI matching entitlement');
+  }
+};
+
 // Job Application APIs
 export interface JobApplication {
   id: number;
@@ -631,8 +679,20 @@ export interface JobApplication {
   phoneNumber: string;
   preferredWorkLocation: string;
   coverLetter: string;
-  status: 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'REVIEWING';
+  status: JobApplicationStatus;
   createAt: string;
+  // Additional fields that may be present
+  companyName?: string;
+  companyEmail?: string;
+  recruiterPhone?: string;
+  companyAddress?: string;
+  contactPerson?: string;
+}
+
+export interface JobApplicationResponse {
+  code: number;
+  message: string;
+  result: JobApplication;
 }
 
 export interface JobApplicationsResponse {
@@ -641,13 +701,81 @@ export interface JobApplicationsResponse {
   result: JobApplication[];
 }
 
-// Get Job Applications by Job Posting ID
-export const getJobApplications = async (jobPostingId: number): Promise<JobApplicationsResponse> => {
+// Get Single Application by ID
+export const getApplicationById = async (applicationId: number): Promise<JobApplicationResponse> => {
   try {
-    console.log('🔵 [GET APPLICATIONS] Fetching for job posting:', jobPostingId);
-    const response = await api.get(`/api/job-apply/job-posting/${jobPostingId}`);
-    console.log('✅ [GET APPLICATIONS] Response:', response.data);
+    console.log('🔵 [GET APPLICATION BY ID] Fetching:', applicationId);
+    // First get all recruiter applications and find the specific one
+    const response = await api.get('/api/job-apply/recruiter');
+    const applications = response.data.result || [];
+    const application = applications.find((app: JobApplication) => app.id === applicationId);
+    
+    if (!application) {
+      throw new Error(`Application with ID ${applicationId} not found`);
+    }
+    
+    console.log('✅ [GET APPLICATION BY ID] Found:', application);
+    return {
+      code: 200,
+      message: 'Success',
+      result: application
+    };
+  } catch (error: any) {
+    console.error('❌ [GET APPLICATION BY ID] Error:', error.response?.data || error);
+    throw new Error(error.response?.data?.message || 'Failed to fetch application');
+  }
+};
+
+// Get All Applications for Recruiter (new endpoint)
+export const getRecruiterApplications = async (): Promise<JobApplicationsResponse> => {
+  try {
+    console.log('🔵 [GET RECRUITER APPLICATIONS] Fetching all...');
+    const response = await api.get('/api/job-apply/recruiter');
+    console.log('✅ [GET RECRUITER APPLICATIONS] Response:', response.data);
     return response.data;
+  } catch (error: any) {
+    console.error('❌ [GET RECRUITER APPLICATIONS] Error:', error.response?.data || error);
+    throw new Error(error.response?.data?.message || 'Failed to fetch applications');
+  }
+};
+
+// Get Paginated/Filtered Applications for Recruiter (new endpoint)
+export const getRecruiterApplicationsFiltered = async (params?: {
+  status?: JobApplicationStatus;
+  page?: number;
+  size?: number;
+}): Promise<JobApplicationsResponse> => {
+  try {
+    console.log('🔵 [GET RECRUITER APPLICATIONS FILTERED] Params:', params);
+    const response = await api.get('/api/job-apply/recruiter/filter', { params });
+    console.log('✅ [GET RECRUITER APPLICATIONS FILTERED] Response:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('❌ [GET RECRUITER APPLICATIONS FILTERED] Error:', error.response?.data || error);
+    throw new Error(error.response?.data?.message || 'Failed to fetch filtered applications');
+  }
+};
+
+// Get Job Applications by Job Posting ID (legacy - kept for backward compatibility)
+export const getJobApplications = async (jobPostingId?: number): Promise<JobApplicationsResponse> => {
+  try {
+    // If no jobPostingId provided, get all recruiter applications
+    if (!jobPostingId) {
+      return getRecruiterApplications();
+    }
+    
+    console.log('🔵 [GET APPLICATIONS] Fetching for job posting:', jobPostingId);
+    // Try to get all recruiter applications and filter by jobPostingId
+    const response = await api.get('/api/job-apply/recruiter');
+    const allApplications = response.data.result || [];
+    const filtered = allApplications.filter((app: JobApplication) => app.jobPostingId === jobPostingId);
+    
+    console.log('✅ [GET APPLICATIONS] Filtered Response:', filtered.length, 'applications');
+    return {
+      code: 200,
+      message: 'Success',
+      result: filtered
+    };
   } catch (error: any) {
     console.error('❌ [GET APPLICATIONS] Error:', error.response?.data || error);
     throw new Error(error.response?.data?.message || 'Failed to fetch job applications');
@@ -657,7 +785,7 @@ export const getJobApplications = async (jobPostingId: number): Promise<JobAppli
 // Update Job Application Status
 export const updateJobApplicationStatus = async (
   applicationId: number, 
-  status: 'SUBMITTED' | 'REVIEWING' | 'APPROVED' | 'REJECTED'
+  status: JobApplicationStatus
 ): Promise<any> => {
   try {
     console.log(`🔵 [UPDATE APPLICATION STATUS] ID: ${applicationId}, Status: ${status}`);
