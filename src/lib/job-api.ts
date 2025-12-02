@@ -486,8 +486,15 @@ export const fetchSavedJobs = async (candidateId: number): Promise<SavedJobFeedb
 /**
  * Record a job view
  * POST /api/job-feedback
+ * 
+ * TODO: Uncomment when view job feedback feature is ready
  */
 export const viewJob = async (candidateId: number, jobId: number): Promise<void> => {
+  // Temporarily disabled - view job feedback feature not ready
+  console.log('👁️ [DISABLED] viewJob called - candidateId:', candidateId, 'jobId:', jobId);
+  return;
+  
+  /* TODO: Uncomment when view job feedback feature is ready
   try {
     console.log('👁️ Recording job view - candidateId:', candidateId, 'jobId:', jobId);
     const response = await api.post('/api/job-feedback', {
@@ -501,6 +508,7 @@ export const viewJob = async (candidateId: number, jobId: number): Promise<void>
     console.error('❌ Error recording job view:', error);
     // Don't throw error, view tracking should be silent
   }
+  */
 };
 
 /**

@@ -20,6 +20,7 @@ import toast from "react-hot-toast";
 import { useFileUrl, resolveFileUrl } from "@/lib/firebase-file";
 import { useCVStore } from "@/stores/cvStore";
 import api from "@/lib/api";
+import { downloadCVWithRetry, type ExportPDFError } from "@/lib/pdf-export-retry";
 import "./zoom-slider.css";
 
 /**
@@ -863,34 +864,27 @@ export default function CVPreview({
         awards: cvData.awards || []
       };
 
-      // Call NEW API to generate PDF using base64-encoded data
-      const response = await fetch("/api/export-pdf", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          templateId: templateId, // Pass template ID
-          cvData: printData, // Pass transformed CV data
+      // Call NEW API to generate PDF using base64-encoded data with RETRY mechanism
+      const pdfBlob = await downloadCVWithRetry(
+        resumeId || 0,
+        {
+          resumeId: resumeId || 0,
+          templateId: templateId,
+          cvData: printData,
           fileName: fileName,
-          userPackage: userPackage, // Pass user package to control watermark
-        }),
-      });
+          userPackage: userPackage,
+        }
+      );
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("❌ API Error:", errorData);
-        const errorMsg = errorData.details 
-          ? `${errorData.error}: ${errorData.details}`
-          : errorData.error || "Failed to generate PDF";
-        throw new Error(errorMsg);
+      // Validate blob before proceeding
+      if (!pdfBlob || pdfBlob.size === 0) {
+        throw new Error("Received empty PDF file");
       }
+
+      console.log("✅ PDF generated successfully, size:", pdfBlob.size, "bytes");
 
       toast.dismiss();
       toast.loading("Đang lưu CV lên Firebase...");
-
-      // Get PDF blob
-      const pdfBlob = await response.blob();
 
       // Upload to Firebase
       const downloadURL = await uploadCVPDF(userId, pdfBlob, cleanName);
@@ -946,6 +940,19 @@ export default function CVPreview({
     } catch (error) {
       console.error("❌ Error exporting and saving PDF:", error);
       toast.dismiss();
+      
+      // Handle ExportPDFError from retry mechanism
+      if (typeof error === "object" && error !== null && "type" in error) {
+        const pdfError = error as ExportPDFError;
+        if (pdfError.type === "EXPORT_PDF_FAILED") {
+          const retryInfo = pdfError.attempts > 1 
+            ? ` (đã thử ${pdfError.attempts} lần)` 
+            : "";
+          toast.error(`Không thể tạo PDF${retryInfo}. Vui lòng thử lại sau.`);
+          return;
+        }
+      }
+      
       toast.error(
         error instanceof Error
           ? error.message

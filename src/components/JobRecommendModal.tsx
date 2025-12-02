@@ -338,7 +338,7 @@ export default function JobRecommendModal({ isOpen, onClose }: JobRecommendModal
                     <button
                       onClick={() => {
                         onClose();
-                        router.push('/candidate/cv-profile');
+                        router.push('/candidate/cv-manage');
                       }}
                       className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
                     >
