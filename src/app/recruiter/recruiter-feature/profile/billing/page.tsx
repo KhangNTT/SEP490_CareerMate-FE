@@ -105,6 +105,7 @@ export default function BillingPage() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                             {packages
                                 .sort((a, b) => {
+                                    // Sort order: BASIC (FREE) -> PROFESSIONAL -> ENTERPRISE (PREMIUM)
                                     const order = { 'BASIC': 1, 'PROFESSIONAL': 2, 'ENTERPRISE': 3 };
                                     return (order[a.name as keyof typeof order] || 0) - (order[b.name as keyof typeof order] || 0);
                                 })

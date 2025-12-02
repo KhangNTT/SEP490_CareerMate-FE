@@ -523,7 +523,7 @@ git add src/app/(home)/jobs-detail/page.tsx
                 <div className="relative flex-1">
                   <input
                     type="text"
-                    placeholder="lập trình viên fullstack"
+                    placeholder="Fullstack developer, DevOps, AI..."
                     value={searchKeyword}
                     onChange={(e) => setSearchKeyword(e.target.value)}
                     className="w-full pl-4 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"

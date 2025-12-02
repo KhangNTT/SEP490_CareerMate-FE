@@ -124,17 +124,17 @@ export default function JobRecommendModal({ isOpen, onClose }: JobRecommendModal
 
   const handleSearchRecommendations = async () => {
     if (!titleInput.trim()) {
-      toast.error("Vui lòng nhập tiêu đề công việc");
+      toast.error("Please enter a job title");
       return;
     }
 
     if (!candidateId) {
-      toast.error("Không tìm thấy thông tin tài khoản");
+      toast.error("Candidate information not found");
       return;
     }
 
     if (resumeSkills.length === 0) {
-      toast.error("Không tìm thấy skills trong CV. Vui lòng cập nhật CV trước.");
+      toast.error("No skills found in resume. Please update your resume first.");
       return;
     }
 
@@ -165,13 +165,13 @@ export default function JobRecommendModal({ isOpen, onClose }: JobRecommendModal
                         (response.results.hybrid_top?.length || 0);
       
       if (totalJobs > 0) {
-        toast.success(`Tìm thấy ${totalJobs} công việc phù hợp!`);
+        toast.success(`Found ${totalJobs} suitable jobs!`);
       } else {
-        toast.success("Không tìm thấy công việc phù hợp", { icon: "ℹ️" });
+        toast.success("No suitable jobs found", { icon: "ℹ️" });
       }
     } catch (error: any) {
       console.error('Error fetching recommendations:', error);
-      toast.error("Không thể tải gợi ý công việc");
+      toast.error("Unable to load job recommendations");
       setShowInputForm(true);
     } finally {
       setLoading(false);
@@ -210,7 +210,7 @@ export default function JobRecommendModal({ isOpen, onClose }: JobRecommendModal
             </div>
             <div>
               <h2 className="text-2xl font-bold text-gray-900">Job Recommendations</h2>
-              <p className="text-sm text-gray-600">Gợi ý công việc phù hợp với hồ sơ của bạn</p>
+              <p className="text-sm text-gray-600">Job recommendations tailored to your profile</p>
             </div>
           </div>
         </div>
@@ -221,7 +221,7 @@ export default function JobRecommendModal({ isOpen, onClose }: JobRecommendModal
             <div className="flex flex-col items-center justify-center py-20">
               <Loader2 className="w-12 h-12 animate-spin text-blue-600 mb-4" />
               <p className="text-gray-600">
-                {loadingSkills ? "Đang tải skills từ CV..." : "Đang tìm kiếm công việc phù hợp..."}
+                {loadingSkills ? "Loading skills from resume..." : "Searching for suitable jobs..."}
               </p>
             </div>
           ) : showUpgradePrompt ? (
@@ -232,7 +232,7 @@ export default function JobRecommendModal({ isOpen, onClose }: JobRecommendModal
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Premium Feature</h3>
                 <p className="text-gray-600">
-                  Bạn cần nâng cấp gói Premium để sử dụng tính năng Job Recommendation
+                  You need to upgrade to the Premium plan to use the Job Recommendation feature
                 </p>
               </div>
 
@@ -269,7 +269,7 @@ export default function JobRecommendModal({ isOpen, onClose }: JobRecommendModal
                   onClick={handleUpgrade}
                   className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl transition-all font-semibold shadow-lg hover:shadow-xl"
                 >
-                  Nâng cấp ngay
+                  Upgrade Now
                 </button>
               </div>
             </div>
@@ -277,16 +277,16 @@ export default function JobRecommendModal({ isOpen, onClose }: JobRecommendModal
             /* Input Form - Title và Skills */
             <div className="p-8">
               <div className="mb-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Tìm công việc phù hợp</h3>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">Find Suitable Jobs</h3>
                 <p className="text-gray-600 text-sm">
-                  Nhập tiêu đề công việc bạn mong muốn, hệ thống sẽ phân tích dựa trên skills trong CV của bạn
+                  Enter the job title you desire, the system will analyze based on the skills in your CV
                 </p>
               </div>
 
               {/* Title Input */}
               <div className="mb-6">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Tiêu đề công việc <span className="text-red-500">*</span>
+                  Job Title <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -310,14 +310,14 @@ export default function JobRecommendModal({ isOpen, onClose }: JobRecommendModal
                 <div className="flex items-center gap-2 mb-3">
                   <Tag className="w-4 h-4 text-blue-600" />
                   <label className="text-sm font-semibold text-gray-700">
-                    Skills từ CV của bạn
+                    Skills from Your Resume
                   </label>
                 </div>
                 
                 {loadingSkills ? (
                   <div className="flex items-center gap-2 text-gray-500">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span className="text-sm">Đang tải skills...</span>
+                    <span className="text-sm">Loading skills...</span>
                   </div>
                 ) : resumeSkills.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
@@ -333,7 +333,7 @@ export default function JobRecommendModal({ isOpen, onClose }: JobRecommendModal
                 ) : (
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                     <p className="text-yellow-800 text-sm">
-                      ⚠️ Không tìm thấy skills trong CV. Vui lòng cập nhật CV trước khi tìm kiếm.
+                      ⚠️ No skills found in resume. Please update your resume before searching.
                     </p>
                     <button
                       onClick={() => {
@@ -351,12 +351,12 @@ export default function JobRecommendModal({ isOpen, onClose }: JobRecommendModal
               {/* Info Box */}
               <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-200 mb-6">
                 <p className="text-sm text-indigo-800">
-                  <strong>💡 Mẹo:</strong> Hệ thống sẽ phân tích title và skills để tìm các công việc phù hợp nhất với bạn dựa trên:
+                  <strong>💡 Tip:</strong> The system will analyze the title and skills to find the most suitable jobs for you based on:
                 </p>
                 <ul className="mt-2 text-sm text-indigo-700 space-y-1 ml-4">
-                  <li>• Content-based: Dựa trên nội dung mô tả công việc</li>
-                  <li>• Collaborative: Dựa trên hành vi của ứng viên tương tự</li>
-                  <li>• Hybrid: Kết hợp cả hai phương pháp</li>
+                  <li>• Content-based: Based on job description content</li>
+                  <li>• Collaborative: Based on behavior of similar candidates</li>
+                  <li>• Hybrid: Combination of both methods</li>
                 </ul>
               </div>
 
@@ -366,7 +366,7 @@ export default function JobRecommendModal({ isOpen, onClose }: JobRecommendModal
                   onClick={onClose}
                   className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
                 >
-                  Đóng
+                  Close
                 </button>
                 <button
                   onClick={handleSearchRecommendations}
@@ -374,7 +374,7 @@ export default function JobRecommendModal({ isOpen, onClose }: JobRecommendModal
                   className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl transition-all font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   <Search className="w-5 h-5" />
-                  Tìm kiếm công việc
+                  Search Jobs
                 </button>
               </div>
             </div>
@@ -384,17 +384,17 @@ export default function JobRecommendModal({ isOpen, onClose }: JobRecommendModal
                 <Briefcase className="w-10 h-10 text-blue-600" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">
-                Không tìm thấy công việc phù hợp
+                No suitable jobs found
               </h3>
               <p className="text-gray-600 mb-6">
-                Thử với tiêu đề công việc khác hoặc cập nhật thêm skills trong CV.
+                Try a different job title or update your skills in your resume.
               </p>
               <div className="flex gap-3 justify-center">
                 <button
                   onClick={handleBackToInput}
                   className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                 >
-                  Thử lại
+                  Try Again
                 </button>
                 <button
                   onClick={() => {
@@ -403,7 +403,7 @@ export default function JobRecommendModal({ isOpen, onClose }: JobRecommendModal
                   }}
                   className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
                 >
-                  Cập nhật CV
+                  Update Resume
                 </button>
               </div>
             </div>
@@ -414,14 +414,14 @@ export default function JobRecommendModal({ isOpen, onClose }: JobRecommendModal
                 <div className="flex items-center gap-2">
                   <Search className="w-4 h-4 text-blue-600" />
                   <span className="text-sm text-gray-700">
-                    Kết quả cho: <strong className="text-blue-700">{titleInput}</strong>
+                    Results for: <strong className="text-blue-700">{titleInput}</strong>
                   </span>
                 </div>
                 <button
                   onClick={handleBackToInput}
                   className="px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-lg transition-colors"
                 >
-                  Tìm kiếm mới
+                  New Search
                 </button>
               </div>
 
@@ -435,7 +435,7 @@ export default function JobRecommendModal({ isOpen, onClose }: JobRecommendModal
                       : 'border-transparent text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  Phù hợp nhất ({contentBasedJobs.length})
+                  Most Suitable ({contentBasedJobs.length})
                 </button>
                 <button
                   onClick={() => setActiveTab('recommended')}
@@ -531,7 +531,7 @@ export default function JobRecommendModal({ isOpen, onClose }: JobRecommendModal
                       }}
                       className="mt-3 w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium text-sm"
                     >
-                      Xem chi tiết
+                      View Details
                     </button>
                   </div>
                 ))}
@@ -686,7 +686,7 @@ export default function JobRecommendModal({ isOpen, onClose }: JobRecommendModal
                       }}
                       className="mt-3 w-full px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg transition-colors font-medium text-sm"
                     >
-                      Xem chi tiết
+                      View Details
                     </button>
                   </div>
                 ))}
@@ -695,19 +695,19 @@ export default function JobRecommendModal({ isOpen, onClose }: JobRecommendModal
                 {activeTab === 'main' && contentBasedJobs.length === 0 && (
                   <div className="text-center py-12">
                     <Briefcase className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                    <p className="text-gray-600">Không có công việc phù hợp</p>
+                    <p className="text-gray-600">No suitable jobs found</p>
                   </div>
                 )}
                 {activeTab === 'recommended' && collaborativeJobs.length === 0 && (
                   <div className="text-center py-12">
                     <Briefcase className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                    <p className="text-gray-600">Không có công việc được đề xuất</p>
+                    <p className="text-gray-600">No recommended jobs found</p>
                   </div>
                 )}
                 {activeTab === 'hot' && hotJobs.length === 0 && (
                   <div className="text-center py-12">
                     <Briefcase className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                    <p className="text-gray-600">Không có job hot</p>
+                    <p className="text-gray-600">No hot jobs found</p>
                   </div>
                 )}
               </div>

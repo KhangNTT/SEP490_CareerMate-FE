@@ -37,10 +37,10 @@ export const fetchRecruiterPackages = async (): Promise<RecruiterPackage[]> => {
     );
     
     if (response.data.code === 200) {
-      // Mark PROFESSIONAL as recommended
+      // Mark ENTERPRISE as recommended
       return response.data.result.map(pkg => ({
         ...pkg,
-        recommended: pkg.name === 'PROFESSIONAL'
+        recommended: pkg.name === 'ENTERPRISE'
       }));
     }
     
