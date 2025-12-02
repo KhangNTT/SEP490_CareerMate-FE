@@ -3,7 +3,7 @@
 import { XCircle, Home, RefreshCcw } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function OAuthErrorPage() {
+export function ErrorContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const message = searchParams.get("message") || "An error occurred during authentication";
