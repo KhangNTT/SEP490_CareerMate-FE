@@ -29,8 +29,8 @@ export default function ClientHeader() {
   const { mounted, isAuthenticated, accessToken, role } = useClientAuth();
   const { logout, user, isLoading } = useAuthStore();
   
-  // Lấy username từ database
-  const { username } = useUserProfile();
+  // Lấy username và avatar từ database
+  const { username, avatarUrl } = useUserProfile();
 
   // Debug log
   console.log("🔍 ClientHeader State:", {
@@ -249,7 +249,7 @@ export default function ClientHeader() {
                   userName={userInfo?.username || username || user?.username || userInfo?.name || "User"}
                   userEmail={userInfo?.email || user?.email}
                   role={role || undefined}
-                  userAvatar="https://encrypted-tbn1.gstatic.com/licensed-image?q=tbn:ANd9GcTPMg7sLIhRN7k0UrPxSsHzujqgLqdTq67Pj4uVqKmr4sFR0eH4h4h-sWjxVvi3vKOl47pyShZMal8qcNuipNE4fbSfblUL99EfUtDrBto"
+                  userAvatar={avatarUrl || undefined}
                 />
               </>
             ) : (

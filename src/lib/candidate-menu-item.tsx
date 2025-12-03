@@ -1,4 +1,5 @@
 import React from "react";
+import { Settings } from "lucide-react";
 
 export type MenuItem = {
   href: string;
@@ -144,23 +145,24 @@ export const candidateMenuItems: MenuItem[] = [
       </svg>
     ),
   },
-  {
-    href: "/job-invitation",
-    label: "Job Invitation",
-    key: "job-invitation",
-    icon: (
-      <svg
-        className="w-5 h-5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-      >
-        <path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" />
-        <polyline points="22,6 12,13 2,6" />
-      </svg>
-    ),
-  },
+  // Future Feature
+  // {
+  //   href: "/job-invitation",
+  //   label: "Job Invitation",
+  //   key: "job-invitation",
+  //   icon: (
+  //     <svg
+  //       className="w-5 h-5"
+  //       viewBox="0 0 24 24"
+  //       fill="none"
+  //       stroke="currentColor"
+  //       strokeWidth="2"
+  //     >
+  //       <path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" />
+  //       <polyline points="22,6 12,13 2,6" />
+  //     </svg>
+  //   ),
+  // },
   {
     href: "/road-map",
     label: "Recommend roadmap",
@@ -216,18 +218,7 @@ export const candidateMenuItems: MenuItem[] = [
     href: "/settings",
     label: "Settings",
     key: "settings",
-    icon: (
-      <svg
-        className="w-5 h-5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-      >
-        <circle cx="12" cy="12" r="3" />
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06A2 2 0 1 1 4.35 17l.06-.06A1.65 1.65 0 0 0 4.08 15H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9c-.22-.56-.2-1.2.33-1.82l.06-.06A2 2 0 1 1 7.82 4.3H9" />
-      </svg>
-    ),
+    icon: <Settings className="w-5 h-5" />,
   },
 ].map((item) => ({
   ...item,

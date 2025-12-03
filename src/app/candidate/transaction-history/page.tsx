@@ -71,7 +71,7 @@ export default function TransactionHistoryPage() {
           </aside>
 
           {/* Main Content */}
-          <section className="space-y-6 min-w-0 lg:mt-[var(--sticky-offset)] transition-all duration-300">
+          <section className="space-y-6 min-w-0 transition-all duration-300">
             {/* Header: Đơn giản hóa, dùng màu xám */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <button

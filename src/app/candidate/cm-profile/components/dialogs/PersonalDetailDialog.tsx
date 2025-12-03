@@ -203,8 +203,20 @@ export default function PersonalDetailDialog({
                                     <button
                                         type="button"
                                         onClick={onGetRecommendRole}
-                                        className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                                        className="flex items-center gap-1 text-xs px-2 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300 rounded transition-all duration-200"
                                     >
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            viewBox="0 0 24 24"
+                                            fill="currentColor"
+                                            className="w-3 h-3"
+                                        >
+                                            <path
+                                                fillRule="evenodd"
+                                                d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813a3.75 3.75 0 002.576-2.576l.813-2.846A.75.75 0 019 4.5z"
+                                                clipRule="evenodd"
+                                            />
+                                        </svg>
                                         Get Recommend Role
                                     </button>
                                 )}
@@ -295,7 +307,7 @@ export default function PersonalDetailDialog({
                     </Button>
                     <Button
                         onClick={onSave}
-                        className="bg-red-500 hover:bg-red-600 text-white"
+                        className="bg-gradient-to-r from-[#3a4660] to-gray-400 text-white rounded-lg hover:from-[#3a4660] hover:to-[#3a4660]"
                     >
                         Save
                     </Button>

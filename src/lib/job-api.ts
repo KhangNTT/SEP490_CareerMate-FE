@@ -381,12 +381,16 @@ export const likeJob = async (candidateId: number, jobId: number): Promise<SaveJ
     };
 
     console.log('👍 Liking job:', requestBody);
+    console.log('📊 candidateId type:', typeof candidateId, 'value:', candidateId);
+    console.log('📊 jobId type:', typeof jobId, 'value:', jobId);
+    
     const response = await api.post('/api/job-feedback', requestBody);
     console.log('✅ Job liked successfully:', response.data);
     
     return response.data;
   } catch (error: any) {
     console.error('❌ Error liking job:', error.response?.data || error.message);
+    console.error('❌ Full error response:', error.response);
     throw error;
   }
 };

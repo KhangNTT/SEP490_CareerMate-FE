@@ -170,24 +170,22 @@ export default function CMProfile() {
     const workExpCount = Math.min(workExpHook.workExperiences.length, 3);
     completion += workExpCount * 10;
 
-    // 4. Core Skills: +2.5% per skill (max 8 = 20%)
+    // 4. Skills (Core + Soft combined): +2% per skill (max 10 = 20%)
     const coreSkillsCount = skillsHook.coreSkillGroups.reduce(
       (total, group) => total + (group.items?.length || 0),
       0
     );
-    const coreSkillsBonus = Math.min(coreSkillsCount, 8) * 2.5;
-    completion += coreSkillsBonus;
-
-    // 5. Soft Skills: +2.5% if at least 1 exists
     const softSkillsCount = skillsHook.softSkillGroups.reduce(
       (total, group) => total + (group.items?.length || 0),
       0
     );
-    if (softSkillsCount > 0) completion += 2.5;
+    const totalSkillsCount = coreSkillsCount + softSkillsCount;
+    const skillsBonus = Math.min(totalSkillsCount, 10) * 2;
+    completion += skillsBonus;
 
-    // 6. Profile Header fields (excluding image): distribute remaining % among filled fields
-    // Total possible from above: 5+5+5+5+10+10+30+20+2.5 = 92.5%
-    // Remaining for profile fields: 7.5%
+    // 5. Profile Header fields (excluding image): distribute remaining % among filled fields
+    // Total possible from above: 5+5+5+5+10+10+30+20 = 90%
+    // Remaining for profile fields: 10%
     const profileFields = [
       profileName,
       profileTitle,
@@ -198,7 +196,7 @@ export default function CMProfile() {
       profileLink
     ];
     const filledProfileFields = profileFields.filter(field => field && field.trim().length > 0).length;
-    const profileFieldBonus = (filledProfileFields / profileFields.length) * 7.5;
+    const profileFieldBonus = (filledProfileFields / profileFields.length) * 10;
     completion += profileFieldBonus;
 
     return Math.round(completion);
@@ -219,6 +217,46 @@ export default function CMProfile() {
     profileGender,
     profileAddress,
     profileLink
+  ]);
+
+  // Section completion data for ProfileStrengthSidebar
+  const sectionCompletion = useMemo(() => {
+    const coreSkillsCount = skillsHook.coreSkillGroups.reduce(
+      (total, group) => total + (group.items?.length || 0),
+      0
+    );
+    const softSkillsCount = skillsHook.softSkillGroups.reduce(
+      (total, group) => total + (group.items?.length || 0),
+      0
+    );
+    const totalSkillsCount = coreSkillsCount + softSkillsCount;
+    
+    return {
+      workExperience: { 
+        count: workExpHook.workExperiences.length, 
+        maxCount: 3 
+      },
+      education: { 
+        hasAny: educationHook.educations.length > 0 
+      },
+      skills: { 
+        totalCount: totalSkillsCount, 
+        maxCount: 10 
+      },
+      certificates: { 
+        hasAny: certificatesHook.certificates.length > 0 
+      },
+      awards: { 
+        hasAny: awardsHook.awards.length > 0 
+      }
+    };
+  }, [
+    workExpHook.workExperiences.length,
+    educationHook.educations.length,
+    skillsHook.coreSkillGroups,
+    skillsHook.softSkillGroups,
+    certificatesHook.certificates.length,
+    awardsHook.awards.length
   ]);
 
   useEffect(() => {
@@ -759,9 +797,10 @@ export default function CMProfile() {
 
     setIsAnalyzing(true);
     try {
-      // ✅ Lưu ý: Thay đổi API_BASE thành endpoint thực tế của bạn nếu khác
-      const API_BASE = 'http://localhost:8000/api/cv-creation';
-      const response = await fetch(`${API_BASE}/recommend-roles/`, {
+      const API_BASE = process.env.NEXT_PUBLIC_PYTHON_API_URL || 'http://localhost:8000';
+      console.log('🔗 Python API URL:', API_BASE);
+      
+      const response = await fetch(`${API_BASE}/api/cv-creation/recommend-roles/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -770,7 +809,9 @@ export default function CMProfile() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to analyze text');
+        const errorData = await response.json().catch(() => null);
+        console.error('❌ Python API Error:', response.status, errorData);
+        throw new Error(errorData?.message || errorData?.detail || `Failed to analyze text (status ${response.status})`);
       }
 
       const data = await response.json();
@@ -929,7 +970,7 @@ export default function CMProfile() {
           </aside>
 
           {/* Main Content */}
-          <section className="space-y-6 min-w-0 lg:mt-[var(--sticky-offset)] transition-all duration-300">
+          <section className="space-y-6 min-w-0 transition-all duration-300">
             {isLoadingResume ? (
               /* Loading State - Skeleton Loaders */
               <div className="space-y-6">
@@ -1074,6 +1115,17 @@ export default function CMProfile() {
             expandedSections={expandedSections}
             onToggleSection={toggleSection}
             onPreviewClick={handlePreviewCV}
+            sectionCompletion={sectionCompletion}
+            onAddWorkExperience={() => workExpHook.openWorkExpDialog()}
+            onAddEducation={() => educationHook.openEducationDialog()}
+            onAddSkills={() => {
+              setSkillType('core');
+              setSkills([]);
+              setOriginalSkills([]);
+              skillsHook.setIsSkillDialogOpen(true);
+            }}
+            onAddCertificates={() => certificatesHook.openCertDialog()}
+            onAddAwards={() => awardsHook.openAwardsDialog()}
           />
         </div>
       </main>
@@ -1235,7 +1287,7 @@ export default function CMProfile() {
                 <button
                   onClick={handleAnalyzeText}
                   disabled={isAnalyzing || !inputText.trim()}
-                  className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:bg-gray-300 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-3 bg-gradient-to-r from-[#3a4660] to-gray-400 text-white rounded-lg hover:from-[#3a4660] hover:to-[#3a4660] transition-colors font-medium disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
                   {isAnalyzing ? (
                     <span className="flex items-center justify-center">
@@ -1315,7 +1367,7 @@ export default function CMProfile() {
                     <div className="pt-4 border-t border-gray-200">
                       <button
                         onClick={handleConfirmRole}
-                        className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                        className="w-full px-4 py-3 bg-gradient-to-r from-[#3a4660] to-gray-400 text-white rounded-lg hover:from-[#3a4660] hover:to-[#3a4660] transition-colors font-medium"
                       >
                         Confirm & Update Professional Title
                       </button>

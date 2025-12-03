@@ -246,7 +246,7 @@ export default function CandidateEmploymentsPage() {
             <CVSidebar activePage="employments" />
           </aside>
 
-          <section className="space-y-6 min-w-0 lg:mt-[var(--sticky-offset)]">
+          <section className="space-y-6 min-w-0">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>

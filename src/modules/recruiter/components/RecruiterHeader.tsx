@@ -7,6 +7,7 @@ import { useAuthStore } from "@/store/use-auth-store";
 import { decodeJWT } from "@/lib/auth-admin";
 import { getCurrentUser } from "@/lib/user-api";
 import { NotificationBell } from "@/components/notifications";
+import { useUserProfile } from "@/hooks/useUserProfile";
 
 interface RecruiterHeaderProps {
   sidebarOpen?: boolean;
@@ -15,6 +16,7 @@ interface RecruiterHeaderProps {
 export function RecruiterHeader({ sidebarOpen = false }: RecruiterHeaderProps) {
   const { user } = useAuthStore();
   const { isAuthenticated, accessToken, logout, role } = useAuthStore();
+  const { avatarUrl } = useUserProfile();
   const [isOpen, setIsOpen] = useState(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("sidebar-open") === "true";
@@ -141,7 +143,7 @@ export function RecruiterHeader({ sidebarOpen = false }: RecruiterHeaderProps) {
                     userName={userInfo?.username || userInfo?.name || user?.email || "User"}
                     userEmail={userInfo?.email || user?.email}
                     role={role || undefined}
-                    userAvatar="https://encrypted-tbn1.gstatic.com/licensed-image?q=tbn:ANd9GcTPMg7sLIhRN7k0UrPxSsHzujqgLqdTq67Pj4uVqKmr4sFR0eH4h4h-sWjxVvi3vKOl47pyShZMal8qcNuipNE4fbSfblUL99EfUtDrBto"
+                    userAvatar={avatarUrl || undefined}
                   />
                 </>
               ) : (

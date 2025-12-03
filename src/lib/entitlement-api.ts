@@ -97,3 +97,33 @@ export async function checkCVBuilderAccess(): Promise<{
     }
 }
 
+/**
+ * Check if candidate has access to CV Analyse (ATS) feature
+ * Returns access status
+ */
+export async function checkCVAnalyseAccess(): Promise<{
+    hasAccess: boolean;
+    code?: number | null;
+    message?: string;
+    result?: any;
+}> {
+    try {
+        const response = await api.get('/api/candidate-entitlement/cv-analyse-checker');
+        const data = response.data || {};
+
+        const code = typeof data.code === 'number' ? data.code : null;
+        const message = typeof data.message === 'string' ? data.message : '';
+        const result = data.result;
+
+        // Allow access when result === true and code === 200
+        if (result === true && code === 200) {
+            return { hasAccess: true, code, message, result };
+        }
+
+        // Otherwise deny access
+        return { hasAccess: false, code, message, result };
+    } catch (error: any) {
+        console.error('Error checking CV analyse access:', error);
+        return { hasAccess: false, code: null, message: 'request_failed' };
+    }
+}

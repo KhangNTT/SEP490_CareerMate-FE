@@ -1,18 +1,104 @@
 import { Plus, ChevronDown, ChevronUp } from "lucide-react";
 
+interface SectionCompletion {
+    workExperience: { count: number; maxCount: number }; // max 3
+    education: { hasAny: boolean };
+    skills: { totalCount: number; maxCount: number }; // max 10 total skills
+    certificates: { hasAny: boolean };
+    awards: { hasAny: boolean };
+}
+
 interface ProfileStrengthSidebarProps {
     profileCompletion: number;
     expandedSections: string[];
     onToggleSection: (section: string) => void;
     onPreviewClick?: () => void;
+    sectionCompletion?: SectionCompletion;
+    // Dialog open handlers
+    onAddWorkExperience?: () => void;
+    onAddEducation?: () => void;
+    onAddSkills?: () => void;
+    onAddCertificates?: () => void;
+    onAddAwards?: () => void;
 }
+
+// Helper function to get status message based on completion percentage
+const getStatusMessage = (completion: number) => {
+    if (completion >= 70) {
+        return {
+            title: "Great!",
+            description: "Your profile is strong enough to generate a CV tailored for IT professionals.",
+            actionLabel: "What you can improve",
+        };
+    } else if (completion >= 40) {
+        return {
+            title: "Almost there!",
+            description: "Complete your profile to at least 70% to generate your CV template.",
+            actionLabel: "What you should add",
+        };
+    } else {
+        return {
+            title: "Let's get started!",
+            description: "Your profile is still in early stage. Add more information to unlock CV generation.",
+            actionLabel: "What you should add",
+        };
+    }
+};
+
+// Helper function to get progress circle color based on completion
+const getProgressColor = (completion: number) => {
+    if (completion >= 100) {
+        return { start: "#16a34a", end: "#22c55e" }; // green-600 to green-500
+    } else if (completion >= 70) {
+        return { start: "#163988", end: "#3b82f6" }; // blue
+    } else if (completion >= 40) {
+        return { start: "#d97706", end: "#fbbf24" }; // amber-600 to amber-400
+    } else {
+        return { start: "#6b7280", end: "#9ca3af" }; // gray
+    }
+};
 
 export default function ProfileStrengthSidebar({
     profileCompletion,
     expandedSections,
     onToggleSection,
-    onPreviewClick
+    onPreviewClick,
+    sectionCompletion,
+    onAddWorkExperience,
+    onAddEducation,
+    onAddSkills,
+    onAddCertificates,
+    onAddAwards
 }: ProfileStrengthSidebarProps) {
+    const statusInfo = getStatusMessage(profileCompletion);
+    const isEligible = profileCompletion >= 70;
+    const progressColor = getProgressColor(profileCompletion);
+
+    // Calculate which sections are incomplete
+    const incompleteSections = {
+        workExperience: !sectionCompletion || sectionCompletion.workExperience.count < sectionCompletion.workExperience.maxCount,
+        education: !sectionCompletion || !sectionCompletion.education.hasAny,
+        skills: !sectionCompletion || sectionCompletion.skills.totalCount < sectionCompletion.skills.maxCount,
+        certificates: !sectionCompletion || !sectionCompletion.certificates.hasAny,
+        awards: !sectionCompletion || !sectionCompletion.awards.hasAny
+    };
+
+    // Primary items to show (collapsed)
+    const primaryItems = [
+        { key: 'workExperience', label: 'Add Work Experience', onClick: onAddWorkExperience, show: incompleteSections.workExperience },
+        { key: 'education', label: 'Add Education', onClick: onAddEducation, show: incompleteSections.education },
+        { key: 'skills', label: 'Add Skills', onClick: onAddSkills, show: incompleteSections.skills },
+    ].filter(item => item.show);
+
+    // Secondary items (expanded)
+    const secondaryItems = [
+        { key: 'certificates', label: 'Add Certificates', onClick: onAddCertificates, show: incompleteSections.certificates },
+        { key: 'awards', label: 'Add Awards', onClick: onAddAwards, show: incompleteSections.awards },
+    ].filter(item => item.show);
+
+    const isExpanded = expandedSections.includes("more");
+    const hasSecondaryItems = secondaryItems.length > 0;
+
     return (
         <aside className="hidden xl:block space-y-6 sticky [top:calc(var(--sticky-offset)+var(--content-pad))] self-start transition-all duration-300">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -20,7 +106,7 @@ export default function ProfileStrengthSidebar({
                     Profile Strength
                 </h3>
 
-                {/* Progress Circle with Gradient */}
+                {/* Progress Circle with Dynamic Color */}
                 <div className="flex justify-center mb-6">
                     <div className="relative w-32 h-32">
                         <svg className="w-full h-full" viewBox="0 0 36 36">
@@ -32,8 +118,8 @@ export default function ProfileStrengthSidebar({
                                     x2="0%"
                                     y2="100%"
                                 >
-                                    <stop offset="0%" stopColor="#163988" />
-                                    <stop offset="100%" stopColor="#9ca3af" />
+                                    <stop offset="0%" stopColor={progressColor.start} />
+                                    <stop offset="100%" stopColor={progressColor.end} />
                                 </linearGradient>
                             </defs>
 
@@ -57,81 +143,104 @@ export default function ProfileStrengthSidebar({
 
                         {/* Text Center */}
                         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
-                            <div className="text-2xl font-bold">{profileCompletion}%</div>
+                            <div className={`text-2xl font-bold ${profileCompletion >= 100 ? "text-green-600" :
+                                    profileCompletion >= 70 ? "text-blue-600" :
+                                        profileCompletion >= 40 ? "text-amber-600" : "text-gray-600"
+                                }`}>
+                                {profileCompletion}%
+                            </div>
                             <div className="text-xs text-gray-500">completed</div>
                         </div>
                     </div>
                 </div>
 
-                {/* Info Box */}
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
-                    <div className="flex items-start gap-3">
-                        <span className="text-gray-800 font-bold">
-                            Complete profile to 70%
-                        </span>
-                        <span className="text-gray-700">
-                            to generate CV template for IT professionals.
-                        </span>
-                    </div>
-                    <div className="flex justify-end">
-                        <img
-                            src="/images/general/ad2.png"
-                            alt="CV Template"
-                            className="h-12 w-auto filter grayscale contrast-125 brightness-75"
-                        />
-                    </div>
+                {/* Status Message Box */}
+                <div className={`rounded-lg p-4 mb-6 ${isEligible ? "bg-green-50 border border-green-200" : "bg-gray-50 border border-gray-200"}`}>
+                    <p className={`text-sm font-semibold mb-1 ${isEligible ? "text-green-700" : "text-gray-700"}`}>
+                        {statusInfo.title}
+                    </p>
+                    <p className={`text-sm ${isEligible ? "text-green-600" : "text-gray-600"}`}>
+                        {statusInfo.description}
+                    </p>
                 </div>
 
-                {/* Action Items */}
-                <div className="space-y-4">
-                    <button className="w-full text-left flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium">
-                        <Plus className="w-5 h-5" />
-                        <span>Add About me</span>
-                    </button>
-                    <button className="w-full text-left flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium">
-                        <Plus className="w-5 h-5" />
-                        <span>Add Contact Information</span>
-                    </button>
-                    <button className="w-full text-left flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium">
-                        <Plus className="w-5 h-5" />
-                        <span>Add Work Experience</span>
-                    </button>
+                {/* Action Items Section */}
+                {(primaryItems.length > 0 || hasSecondaryItems) && (
+                    <div className="space-y-3">
+                        <p className="text-sm font-medium text-gray-700">
+                            {statusInfo.actionLabel}
+                        </p>
 
-                    <div className="mb-6">
-                        <button
-                            onClick={() => onToggleSection("more")}
-                            className="w-full flex items-center gap-2 text-gray-700 font-medium"
-                        >
-                            <ChevronDown
-                                className={`w-5 h-5 transition-transform duration-300 ${expandedSections.includes("more") ? "rotate-180" : ""
-                                    }`}
-                            />
-                            <span>Add more information</span>
-                        </button>
-
-                        {expandedSections.includes("more") && (
-                            <button className="w-full text-left flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium mt-2">
-                                <Plus className="w-5 h-5" />
-                                <span>Add Contact Information</span>
+                        {/* Primary Items */}
+                        {primaryItems.map((item) => (
+                            <button
+                                key={item.key}
+                                onClick={item.onClick}
+                                className="w-full text-left flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors"
+                            >
+                                <Plus className="w-4 h-4" />
+                                <span>{item.label}</span>
                             </button>
+                        ))}
+
+                        {/* More Fields Section */}
+                        {hasSecondaryItems && (
+                            <div>
+                                <button
+                                    onClick={() => onToggleSection("more")}
+                                    className="w-full flex items-center gap-2 text-gray-700 hover:text-gray-900 font-medium transition-colors text-sm"
+                                >
+                                    {isExpanded ? (
+                                        <ChevronUp className="w-4 h-4" />
+                                    ) : (
+                                        <ChevronDown className="w-4 h-4" />
+                                    )}
+                                    <span>{isExpanded ? "Show less" : "Add more information"}</span>
+                                </button>
+
+                                {isExpanded && (
+                                    <div className="mt-3 ml-6 space-y-3">
+                                        {secondaryItems.map((item) => (
+                                            <button
+                                                key={item.key}
+                                                onClick={item.onClick}
+                                                className="w-full text-left flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors"
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                                <span>{item.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </div>
+                )}
 
-                    <button
-                        className={`w-full py-3 ${profileCompletion >= 70
-                                ? "bg-gray-700 hover:bg-red-600"
-                                : "bg-gray-400 cursor-not-allowed"
-                            } text-white font-medium rounded-md transition`}
-                        disabled={profileCompletion < 70}
-                        onClick={onPreviewClick}
-                    >
-                        Preview & Download CV
-                    </button>
+                {/* Primary Action Button */}
+                <div className="pt-4">
+                    {isEligible ? (
+                        <button
+                            onClick={onPreviewClick}
+                            className="w-full py-3 bg-gradient-to-r from-[#3a4660] to-gray-400 text-white font-medium rounded-lg hover:from-[#3a4660] hover:to-[#3a4660] transition-all duration-200"
+                        >
+                            Preview & Download CV
+                        </button>
+                    ) : (
+                        <div className="relative group">
+                            <button
+                                disabled
+                                className="w-full py-3 bg-gray-500 text-white font-medium rounded-lg cursor-not-allowed opacity-70"
+                            >
+                                Your profile is not ready
+                            </button>
 
-                    {profileCompletion < 70 && (
-                        <p className="text-sm text-center text-gray-500">
-                            Complete your profile to 70% to enable CV preview and download.
-                        </p>
+                            {/* Tooltip */}
+                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+                                Complete at least 70% of your profile to generate your CV
+                                <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                            </div>
+                        </div>
                     )}
                 </div>
             </div>

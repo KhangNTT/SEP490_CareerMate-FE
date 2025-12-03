@@ -1429,7 +1429,7 @@ Responsibilities include leading technical projects, mentoring junior developers
         </aside>
 
         {/* Main Content */}
-        <section className="min-w-0 lg:mt-[var(--sticky-offset)] transition-all duration-300">
+        <section className="min-w-0 transition-all duration-300">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             {stage === 'start' && renderStartScreen()}
             {stage === 'job-description' && renderJobDescriptionScreen()}

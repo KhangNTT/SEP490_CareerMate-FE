@@ -42,7 +42,7 @@ interface UseCVActionsReturn {
   handleEditCV: (cv: CV) => void;
   handlePreview: (cv: CV) => void;
   handleClosePreview: () => void;
-  handleDelete: (cvId: string) => void;
+  handleDelete: (cvId: string) => Promise<void>;
   // Sync dialog handlers
   handleCloseSyncSummaryDialog: () => void;
   handleCloseSyncConfirmDialog: () => void;
@@ -597,123 +597,8 @@ export const useCVActions = (
   // (For untyped resumes created from SyncDialog)
   // ========================================
 
-  // Close draft conversion confirmation dialog
-  const handleCloseDraftConversionConfirm = useCallback(() => {
-    setShowDraftConversionConfirm(false);
-    setPendingAction(null);
-  }, []);
-
-  // Confirm convert untyped resume to DRAFT
-  const handleConfirmConvertToDraft = useCallback(async () => {
-    if (!untypedResumeId) {
-      console.log("No untyped resume to convert");
-      handleCloseDraftConversionConfirm();
-      return;
-    }
-
-    try {
-      toast.loading("Converting resume to Draft...", { id: "convert-to-draft" });
-      
-      const resumeId = parseInt(untypedResumeId, 10);
-      console.log("📝 Converting untyped resume to DRAFT:", resumeId);
-      
-      // Call API: PATCH /api/resume/{resumeId}/type/DRAFT
-      await updateResumeType(resumeId, "DRAFT");
-      
-      console.log("✅ Resume converted to DRAFT successfully");
-      toast.success("Resume saved as Draft!", { id: "convert-to-draft" });
-      
-      // Clear the untyped resume ID
-      clearUntypedResumeId();
-      
-      // Refresh data
-      if (refresh) {
-        await refresh();
-      }
-      
-      // Continue with pending action
-      if (pendingAction) {
-        const { type, cv } = pendingAction;
-        if (type === 'sync') {
-          // Continue to sync the new CV
-          handleCloseDraftConversionConfirm();
-          handleSyncToProfile(cv);
-        } else if (type === 'edit') {
-          // Navigate to edit - this will be handled by the caller
-          handleCloseDraftConversionConfirm();
-        }
-      } else {
-        handleCloseDraftConversionConfirm();
-      }
-      
-    } catch (err: any) {
-      console.error("❌ Failed to convert resume to DRAFT:", err);
-      toast.error("Failed to save as Draft", { id: "convert-to-draft" });
-    }
-  }, [untypedResumeId, pendingAction, clearUntypedResumeId, refresh, handleSyncToProfile]);
-
-  // Skip converting to DRAFT (just proceed with pending action)
-  const handleSkipConvertToDraft = useCallback(() => {
-    console.log("⏭️ Skipping DRAFT conversion");
-    
-    // Clear the untyped resume ID without converting
-    clearUntypedResumeId();
-    
-    // Continue with pending action
-    if (pendingAction) {
-      const { type, cv } = pendingAction;
-      if (type === 'sync') {
-        handleCloseDraftConversionConfirm();
-        handleSyncToProfile(cv);
-      } else if (type === 'edit') {
-        handleCloseDraftConversionConfirm();
-        // Navigate to edit
-        setCurrentEditingResume(cv.id);
-        router.push(`/candidate/cm-profile?resumeId=${cv.id}`);
-      }
-    } else {
-      handleCloseDraftConversionConfirm();
-    }
-  }, [pendingAction, clearUntypedResumeId, handleSyncToProfile, setCurrentEditingResume, router]);
-
-  // ========================================
-  // Switch CV Confirmation Handlers (for WEB/DRAFT CVs)
-  // ========================================
-  
-  // Close switch CV confirmation dialog
-  const handleCloseSwitchCVConfirm = useCallback(() => {
-    setShowSwitchCVConfirm(false);
-    setPendingAction(null);
-  }, []);
-
-  // Confirm switch to another CV (for WEB/DRAFT)
-  const handleConfirmSwitchCV = useCallback(() => {
-    console.log("✅ User confirmed switch to another CV");
-    
-    if (pendingAction) {
-      const { type, cv } = pendingAction;
-      handleCloseSwitchCVConfirm();
-      
-      if (type === 'sync') {
-        // Continue to sync - call the actual sync logic
-        setSyncingCV(cv);
-        setCurrentEditingResume(cv.id);
-        // Continue with sync flow for uploaded CVs
-        if (cv.source === "upload" && cv.downloadUrl) {
-          // Trigger the sync flow
-          performSyncToProfile(cv);
-        }
-      } else if (type === 'edit') {
-        // Navigate to edit
-        setCurrentEditingResume(cv.id);
-        router.push(`/candidate/cm-profile?resumeId=${cv.id}`);
-      }
-    } else {
-      handleCloseSwitchCVConfirm();
-    }
-  }, [pendingAction, setCurrentEditingResume, router]);
-
-  // Perform the actual sync to profile (extracted from handleSyncToProfile)
+  // Perform the actual sync to profile (for uploaded CVs)
+  // This is extracted to be called directly without going through checkBeforeSwitchCV
   const performSyncToProfile = useCallback(async (cv: CV) => {
     if (!cv.downloadUrl) {
       console.error("❌ Missing CV download URL");
@@ -755,6 +640,163 @@ export const useCVActions = (
       toast.error(err.message || "Failed to parse CV", { id: "sync-cv" });
     }
   }, []);
+
+  // Close draft conversion confirmation dialog
+  const handleCloseDraftConversionConfirm = useCallback(() => {
+    setShowDraftConversionConfirm(false);
+    setPendingAction(null);
+  }, []);
+
+  // Confirm convert untyped resume to DRAFT
+  const handleConfirmConvertToDraft = useCallback(async () => {
+    if (!untypedResumeId) {
+      console.log("No untyped resume to convert");
+      handleCloseDraftConversionConfirm();
+      return;
+    }
+
+    // Capture pending action BEFORE clearing state
+    const actionToPerform = pendingAction ? { ...pendingAction } : null;
+
+    try {
+      toast.loading("Converting resume to Draft...", { id: "convert-to-draft" });
+      
+      const resumeId = parseInt(untypedResumeId, 10);
+      console.log("📝 Converting untyped resume to DRAFT:", resumeId);
+      
+      // Call API: PATCH /api/resume/{resumeId}/type/DRAFT
+      await updateResumeType(resumeId, "DRAFT");
+      
+      console.log("✅ Resume converted to DRAFT successfully");
+      toast.success("Resume saved as Draft!", { id: "convert-to-draft" });
+      
+      // Clear the untyped resume ID
+      clearUntypedResumeId();
+      
+      // Close dialog FIRST
+      handleCloseDraftConversionConfirm();
+      
+      // Refresh data
+      if (refresh) {
+        await refresh();
+      }
+      
+      // Continue with pending action - call sync logic DIRECTLY (bypass checkBeforeSwitchCV)
+      if (actionToPerform) {
+        const { type, cv } = actionToPerform;
+        
+        if (type === 'sync') {
+          console.log("🔄 Continuing sync after DRAFT conversion (direct call)");
+          // Set current editing resume
+          setSyncingCV(cv);
+          setCurrentEditingResume(cv.id);
+          
+          // Call sync logic directly based on CV source
+          if (cv.source === "builder") {
+            // Builder CV - show sync confirm dialog
+            setShowSyncConfirmDialog(true);
+          } else if (cv.source === "draft") {
+            toast("This CV is already a draft", { icon: "ℹ️" });
+            setSyncingCV(null);
+          } else if (cv.source === "upload" && cv.downloadUrl) {
+            // Uploaded CV - perform sync directly
+            performSyncToProfile(cv);
+          } else {
+            toast.error("Cannot sync: Invalid CV source or missing URL");
+            setSyncingCV(null);
+          }
+        } else if (type === 'edit') {
+          // Navigate to edit
+          setCurrentEditingResume(cv.id);
+          router.push(`/candidate/cm-profile?resumeId=${cv.id}`);
+        }
+      }
+      
+    } catch (err: any) {
+      console.error("❌ Failed to convert resume to DRAFT:", err);
+      toast.error("Failed to save as Draft", { id: "convert-to-draft" });
+    }
+  }, [untypedResumeId, pendingAction, clearUntypedResumeId, refresh, performSyncToProfile, setCurrentEditingResume, router]);
+
+  // Skip converting to DRAFT (just proceed with pending action)
+  const handleSkipConvertToDraft = useCallback(() => {
+    console.log("⏭️ Skipping DRAFT conversion");
+    
+    // Capture pending action BEFORE clearing state
+    const actionToPerform = pendingAction ? { ...pendingAction } : null;
+    
+    // Clear the untyped resume ID without converting
+    clearUntypedResumeId();
+    
+    // Close dialog FIRST
+    handleCloseDraftConversionConfirm();
+    
+    // Continue with pending action - call sync logic DIRECTLY (bypass checkBeforeSwitchCV)
+    if (actionToPerform) {
+      const { type, cv } = actionToPerform;
+      
+      if (type === 'sync') {
+        console.log("🔄 Continuing sync after skip (direct call)");
+        // Set current editing resume
+        setSyncingCV(cv);
+        setCurrentEditingResume(cv.id);
+        
+        // Call sync logic directly based on CV source
+        if (cv.source === "builder") {
+          setShowSyncConfirmDialog(true);
+        } else if (cv.source === "draft") {
+          toast("This CV is already a draft", { icon: "ℹ️" });
+          setSyncingCV(null);
+        } else if (cv.source === "upload" && cv.downloadUrl) {
+          performSyncToProfile(cv);
+        } else {
+          toast.error("Cannot sync: Invalid CV source or missing URL");
+          setSyncingCV(null);
+        }
+      } else if (type === 'edit') {
+        // Navigate to edit
+        setCurrentEditingResume(cv.id);
+        router.push(`/candidate/cm-profile?resumeId=${cv.id}`);
+      }
+    }
+  }, [pendingAction, clearUntypedResumeId, performSyncToProfile, setCurrentEditingResume, router]);
+
+  // ========================================
+  // Switch CV Confirmation Handlers (for WEB/DRAFT CVs)
+  // ========================================
+  
+  // Close switch CV confirmation dialog
+  const handleCloseSwitchCVConfirm = useCallback(() => {
+    setShowSwitchCVConfirm(false);
+    setPendingAction(null);
+  }, []);
+
+  // Confirm switch to another CV (for WEB/DRAFT)
+  const handleConfirmSwitchCV = useCallback(() => {
+    console.log("✅ User confirmed switch to another CV");
+    
+    if (pendingAction) {
+      const { type, cv } = pendingAction;
+      handleCloseSwitchCVConfirm();
+      
+      if (type === 'sync') {
+        // Continue to sync - call the actual sync logic
+        setSyncingCV(cv);
+        setCurrentEditingResume(cv.id);
+        // Continue with sync flow for uploaded CVs
+        if (cv.source === "upload" && cv.downloadUrl) {
+          // Trigger the sync flow
+          performSyncToProfile(cv);
+        }
+      } else if (type === 'edit') {
+        // Navigate to edit
+        setCurrentEditingResume(cv.id);
+        router.push(`/candidate/cm-profile?resumeId=${cv.id}`);
+      }
+    } else {
+      handleCloseSwitchCVConfirm();
+    }
+  }, [pendingAction, setCurrentEditingResume, router]);
 
   // Handle Edit CV action with confirmation check
   const handleEditCV = useCallback((cv: CV) => {
@@ -800,21 +842,48 @@ export const useCVActions = (
     setPreviewUrl(null);
   }, []);
 
-  const handleDelete = useCallback((cvId: string) => {
+  const handleDelete = useCallback(async (cvId: string) => {
     if (window.confirm("Are you sure you want to delete this CV?")) {
-      setUploadedCVs(prev => prev.filter(cv => cv.id !== cvId));
-      setBuiltCVs(prev => prev.filter(cv => cv.id !== cvId));
-      setDraftCVs(prev => prev.filter(cv => cv.id !== cvId));
-
-      // Update default if deleted CV was default
-      if (defaultCV?.id === cvId) {
-        const remaining = [...uploadedCVs, ...builtCVs, ...draftCVs].filter(cv => cv.id !== cvId);
-        setDefaultCV(remaining[0] || null);
+      const resumeId = parseInt(cvId, 10);
+      
+      if (isNaN(resumeId)) {
+        console.error('❌ Invalid resume ID:', cvId);
+        toast.error('Invalid CV ID');
+        return;
       }
 
-      toast.success("CV deleted");
+      try {
+        toast.loading('Deleting CV...', { id: 'delete-cv' });
+        
+        // Call API to delete resume
+        await resumeService.deleteResume(resumeId);
+        
+        // Update local state
+        setUploadedCVs(prev => prev.filter(cv => cv.id !== cvId));
+        setBuiltCVs(prev => prev.filter(cv => cv.id !== cvId));
+        setDraftCVs(prev => prev.filter(cv => cv.id !== cvId));
+
+        // Update default if deleted CV was default
+        if (defaultCV?.id === cvId) {
+          const remaining = [...uploadedCVs, ...builtCVs, ...draftCVs].filter(cv => cv.id !== cvId);
+          setDefaultCV(remaining[0] || null);
+        }
+
+        // Refresh data from API
+        if (refresh) {
+          await refresh();
+        }
+
+        toast.success("CV deleted successfully", { id: 'delete-cv' });
+      } catch (error: any) {
+        console.error('❌ Failed to delete CV:', error);
+        toast.error(
+          error.message || 'Failed to delete CV',
+          { id: 'delete-cv' }
+        );
+      }
     }
-  }, [defaultCV, uploadedCVs, builtCVs, draftCVs, setUploadedCVs, setBuiltCVs, setDraftCVs, setDefaultCV]);
+  }, [defaultCV, uploadedCVs, builtCVs, draftCVs, setUploadedCVs, setBuiltCVs, setDraftCVs, setDefaultCV, refresh]);
 
   return {
     showPreview,

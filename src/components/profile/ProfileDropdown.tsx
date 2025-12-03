@@ -171,9 +171,8 @@ export function ProfileDropdown({
                   alt={userName || 'User'}
                   size="sm"
                   isPremium={isPremium}
+                  showOnline={true}
                 />
-                {/* Online indicator */}
-                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white z-10"></div>
               </div>
 
               {/* User Name */}
@@ -202,8 +201,8 @@ export function ProfileDropdown({
                     alt={userName || 'User'}
                     size="md"
                     isPremium={isPremium}
+                    showOnline={true}
                   />
-                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white z-10"></div>
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">{userName || userEmail || "User"}</p>
