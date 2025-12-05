@@ -26,21 +26,19 @@ const companies: Company[] = [
 
 export function TopEmployers() {
   return (
-    <section className="py-12 bg-white">
+    <section className="py-12 bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Tiêu đề */}
-        <h2 className="text-6xl font-bold text-[#6a6a6a] mb-12 text-center">
-            Top Employers
+        <h2 className="text-6xl font-bold text-muted-foreground mb-12 text-center">
+          Top Employers
         </h2>
 
-        {/* Hàng Top */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6 justify-items-center mb-10">
           {companies
             .filter((c) => c.isTop)
             .map((company) => (
               <div
                 key={company.id}
-                className="relative bg-white border rounded-xl shadow-sm hover:shadow-md p-6 flex items-center justify-center transition"
+                className="relative bg-card border border-border rounded-xl shadow-sm hover:shadow-md p-6 flex items-center justify-center transition"
               >
                 <span className="absolute top-2 left-2 bg-green-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
                   TOP
@@ -56,14 +54,13 @@ export function TopEmployers() {
             ))}
         </div>
 
-        {/* Hàng công ty khác */}
         <div className="flex flex-wrap justify-center gap-10">
           {companies
             .filter((c) => !c.isTop)
             .map((company) => (
               <div
                 key={company.id}
-                className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white border flex items-center justify-center shadow-sm hover:shadow-md transition"
+                className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-card border border-border flex items-center justify-center shadow-sm hover:shadow-md transition"
               >
                 <Image
                   src={company.logo}
@@ -79,5 +76,3 @@ export function TopEmployers() {
     </section>
   );
 }
-
-export default TopEmployers;

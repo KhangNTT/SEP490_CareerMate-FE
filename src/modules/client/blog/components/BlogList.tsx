@@ -111,7 +111,7 @@ export function BlogList() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-background">
             {/* Hero Section - Dark Theme */}
             <div className="bg-gradient-to-b from-[#1a1a3e] to-[#0f0f23] text-white">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 pt-24">
@@ -167,8 +167,8 @@ export function BlogList() {
                 {/* Filters */}
                 <div className="flex flex-wrap gap-4 mb-8 items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <BookOpen className="w-5 h-5 text-gray-600" />
-                        <span className="text-gray-700 font-medium">
+                        <BookOpen className="w-5 h-5 text-muted-foreground" />
+                        <span className="text-foreground font-medium">
                             {totalElements} {totalElements === 1 ? 'Article' : 'Articles'}
                         </span>
                     </div>
@@ -180,7 +180,7 @@ export function BlogList() {
                                     setCategoryFilter(e.target.value);
                                     setCurrentPage(0);
                                 }}
-                                className="h-10 px-4 border border-gray-200 rounded-lg bg-white text-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                className="h-10 px-4 border border-border rounded-lg bg-card text-foreground focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                             >
                                 <option value="">All Categories</option>
                                 {categories.map((cat) => (
@@ -193,7 +193,7 @@ export function BlogList() {
                         <select
                             value={sortBy}
                             onChange={(e) => setSortBy(e.target.value)}
-                            className="h-10 px-4 border border-gray-200 rounded-lg bg-white text-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                            className="h-10 px-4 border border-border rounded-lg bg-card text-foreground focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                         >
                             <option value="createdAt,desc">Newest First</option>
                             <option value="createdAt,asc">Oldest First</option>
@@ -207,21 +207,21 @@ export function BlogList() {
                 {loading ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {[...Array(6)].map((_, i) => (
-                            <div key={i} className="bg-white rounded-xl overflow-hidden border border-gray-100 animate-pulse">
-                                <div className="aspect-[16/9] bg-gray-200" />
+                            <div key={i} className="bg-card rounded-xl overflow-hidden border border-border animate-pulse">
+                                <div className="aspect-[16/9] bg-muted" />
                                 <div className="p-5 space-y-3">
-                                    <div className="h-5 bg-gray-200 rounded w-3/4" />
-                                    <div className="h-4 bg-gray-200 rounded w-1/2" />
-                                    <div className="h-4 bg-gray-200 rounded w-full" />
+                                    <div className="h-5 bg-muted rounded w-3/4" />
+                                    <div className="h-4 bg-muted rounded w-1/2" />
+                                    <div className="h-4 bg-muted rounded w-full" />
                                 </div>
                             </div>
                         ))}
                     </div>
                 ) : blogs.length === 0 ? (
                     <div className="text-center py-20">
-                        <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-xl font-medium text-gray-700 mb-2">No articles found</h3>
-                        <p className="text-gray-500">
+                        <BookOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-xl font-medium text-foreground mb-2">No articles found</h3>
+                        <p className="text-muted-foreground">
                             {activeSearch || categoryFilter
                                 ? 'Try adjusting your search or filters' 
                                 : 'Check back later for new content'}
@@ -232,9 +232,9 @@ export function BlogList() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {blogs.map((blog) => (
                             <Link key={blog.id} href={`/blog/${blog.id}`}>
-                                <article className="group bg-white rounded-xl overflow-hidden border border-gray-100 hover:border-blue-200 hover:shadow-lg transition-all duration-300 h-full flex flex-col">
+                                <article className="group bg-card rounded-xl overflow-hidden border border-border hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-lg transition-all duration-300 h-full flex flex-col">
                                     {/* Thumbnail */}
-                                    <div className="aspect-[16/9] relative overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100">
+                                    <div className="aspect-[16/9] relative overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30">
                                         {blog.thumbnailUrl && !blog.thumbnailUrl.startsWith('blob:') ? (
                                             <img
                                                 src={blog.thumbnailUrl}
@@ -266,29 +266,29 @@ export function BlogList() {
                                         )}
                                         
                                         {/* Title */}
-                                        <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
+                                        <h3 className="text-lg font-semibold text-foreground mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
                                             {blog.title}
                                         </h3>
 
                                         {/* Excerpt */}
-                                        <p className="text-gray-600 text-sm line-clamp-2 mb-4 flex-1">
+                                        <p className="text-muted-foreground text-sm line-clamp-2 mb-4 flex-1">
                                             {blog.content.replace(/<[^>]*>/g, '').substring(0, 100)}...
                                         </p>
 
                                         {/* Meta info */}
-                                        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                                            <div className="flex items-center gap-2 text-sm text-gray-500">
+                                        <div className="flex items-center justify-between pt-4 border-t border-border">
+                                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                                 <User className="w-4 h-4" />
                                                 <span className="truncate max-w-[100px]">{blog.authorName || 'Author'}</span>
                                             </div>
-                                            <div className="flex items-center gap-3 text-sm text-gray-500">
+                                            <div className="flex items-center gap-3 text-sm text-muted-foreground">
                                                 {blog.averageRating && blog.averageRating > 0 && (
                                                     <div className="flex items-center gap-1">
                                                         <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
                                                         <span>{blog.averageRating.toFixed(1)}</span>
                                                     </div>
                                                 )}
-                                                <span className="text-gray-400">{formatDate(blog.createdAt)}</span>
+                                                <span>{formatDate(blog.createdAt)}</span>
                                             </div>
                                         </div>
                                     </div>

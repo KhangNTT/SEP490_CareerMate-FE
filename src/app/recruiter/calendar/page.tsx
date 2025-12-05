@@ -518,12 +518,12 @@ function WeekView({ currentDate, weeklyCalendar }: any) {
                     <div
                       key={hour}
                       className={`h-[60px] border-r border-b border-gray-200 ${
+                        isPast || status === TimeSlotStatus.NON_WORKING || status === TimeSlotStatus.NON_WORKING_DAY ? 'bg-gray-100' :
                         status === TimeSlotStatus.LUNCH_BREAK ? 'bg-orange-50' :
-                        status === TimeSlotStatus.NON_WORKING || status === TimeSlotStatus.NON_WORKING_DAY ? 'bg-gray-100' :
-                        isPast ? 'bg-gray-50' : 'bg-white hover:bg-blue-50'
+                        'bg-white hover:bg-blue-50'
                       }`}
                     >
-                      {status === TimeSlotStatus.LUNCH_BREAK && (
+                      {status === TimeSlotStatus.LUNCH_BREAK && !isPast && (
                         <span className="text-xs text-orange-600 p-1">🍽️</span>
                       )}
                     </div>
@@ -659,18 +659,18 @@ function DayView({ currentDate, dailyCalendar }: any) {
                 <div
                   key={hour}
                   className={`h-[70px] border-b border-gray-200 ${
+                    isPast || status === TimeSlotStatus.NON_WORKING || status === TimeSlotStatus.NON_WORKING_DAY ? 'bg-gray-100' :
                     status === TimeSlotStatus.LUNCH_BREAK ? 'bg-orange-50' :
-                    status === TimeSlotStatus.NON_WORKING || status === TimeSlotStatus.NON_WORKING_DAY ? 'bg-gray-100' :
-                    isPast ? 'bg-gray-50' : 'bg-white hover:bg-blue-50'
+                    'bg-white hover:bg-blue-50'
                   }`}
                 >
-                  {status === TimeSlotStatus.LUNCH_BREAK && (
+                  {status === TimeSlotStatus.LUNCH_BREAK && !isPast && (
                     <div className="flex items-center gap-2 text-orange-600 p-2">
                       <span className="text-sm">🍽️</span>
                       <span className="text-xs">Lunch Break</span>
                     </div>
                   )}
-                  {status === TimeSlotStatus.NON_WORKING_DAY && (
+                  {status === TimeSlotStatus.NON_WORKING_DAY && !isPast && (
                     <div className="text-xs text-gray-400 p-2">Day off</div>
                   )}
                 </div>
