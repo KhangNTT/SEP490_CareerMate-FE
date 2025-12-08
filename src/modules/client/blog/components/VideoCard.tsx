@@ -7,32 +7,64 @@ interface VideoCardProps {
     video: VideoContent;
 }
 
+// Format view count (e.g., 1.2M, 500K)
+const formatViews = (views: number | undefined): string => {
+    if (!views) return '';
+    if (views >= 1000000) {
+        return `${(views / 1000000).toFixed(1)}M`;
+    }
+    if (views >= 1000) {
+        return `${(views / 1000).toFixed(0)}K`;
+    }
+    return `${views}`;
+};
+
 export function VideoCard({ video }: VideoCardProps) {
+    const handleClick = () => {
+        window.open(`https://www.youtube.com/watch?v=${video.youtubeId}`, '_blank');
+    };
+
     return (
-        <div className="bg-gray-800 rounded-lg overflow-hidden group cursor-pointer">
+        <div 
+            className="group bg-white rounded-xl overflow-hidden cursor-pointer border border-gray-100 hover:border-gray-200 hover:shadow-lg transition-all duration-200"
+            onClick={handleClick}
+        >
             {/* Video Thumbnail */}
-            <div className="relative aspect-video bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
-                {/* Play Button */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center group-hover:bg-white/30 transition-colors">
-                        <Play className="w-6 h-6 text-white ml-1" fill="currentColor" />
+            <div className="relative aspect-video">
+                <img
+                    src={video.thumbnail}
+                    alt={video.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                        e.currentTarget.src = `https://img.youtube.com/vi/${video.youtubeId}/hqdefault.jpg`;
+                    }}
+                />
+                
+                {/* Play Button Overlay */}
+                <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-colors">
+                    <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center opacity-90 group-hover:opacity-100 group-hover:scale-110 transition-all shadow-lg">
+                        <Play className="w-5 h-5 text-white ml-0.5" fill="currentColor" />
                     </div>
                 </div>
 
-                {/* CareerMate Logo */}
-                <div className="absolute top-3 left-3">
-                    <div className="flex items-center space-x-1">
-                        <span className="text-red-500 font-bold text-sm">H</span>
-                        <span className="text-white font-bold text-sm">M</span>
+                {/* Duration Badge */}
+                {video.duration && (
+                    <div className="absolute bottom-2 right-2 bg-black/80 text-white text-xs font-medium px-1.5 py-0.5 rounded">
+                        {video.duration}
                     </div>
-                </div>
+                )}
             </div>
 
-            {/* Video Title */}
-            <div className="p-4">
-                <h3 className="text-white text-sm font-medium leading-relaxed">
+            {/* Video Info */}
+            <div className="p-3">
+                <h3 className="text-gray-900 text-sm font-medium leading-snug line-clamp-2 group-hover:text-red-600 transition-colors">
                     {video.title}
                 </h3>
+                <div className="flex items-center gap-1.5 mt-2 text-xs text-gray-500">
+                    <span className="font-medium text-gray-600">{video.channel}</span>
+                    <span>•</span>
+                    <span>{formatViews(video.views)} views</span>
+                </div>
             </div>
         </div>
     );

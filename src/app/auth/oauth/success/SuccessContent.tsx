@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/store/use-auth-store";
 import toast from "react-hot-toast";
 
-export default function OAuthSuccessPage() {
+export function SuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setAuthFromTokens } = useAuthStore();

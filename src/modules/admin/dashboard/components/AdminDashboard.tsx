@@ -21,6 +21,7 @@ import {
   Mail,
   Network,
   Server,
+  Flame,
 } from "lucide-react";
 import Link from "next/link";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
@@ -146,18 +147,19 @@ export default function AdminDashboard() {
     { name: 'Kafka', status: stats.kafkaStatus, icon: Server },
     { name: 'Weaviate', status: stats.weaviateStatus, icon: Network },
     { name: 'Email Service', status: stats.emailStatus, icon: Mail },
+    { name: 'Firebase', status: stats.firebaseStatus, icon: Flame },
   ];
 
   const isSystemHealthy = stats.systemStatus === 'UP';
   const totalPendingItems = stats.pendingRecruiterApprovals + stats.flaggedComments + stats.flaggedRatings;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-4 lg:space-y-5 xl:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="text-gray-600 mt-1">Real-time system overview and statistics</p>
+          <h1 className="text-xl lg:text-2xl xl:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+          <p className="text-sm lg:text-base text-gray-600 mt-1">Real-time system overview and statistics</p>
         </div>
         <Button 
           onClick={() => fetchStats(true)} 
@@ -171,7 +173,7 @@ export default function AdminDashboard() {
 
       {/* System Health Banner */}
       <div 
-        className={`p-4 rounded-lg border ${
+        className={`p-3 lg:p-4 rounded-lg border ${
           isSystemHealthy 
             ? 'bg-green-50 border-green-200' 
             : 'bg-red-50 border-red-200'
@@ -179,30 +181,34 @@ export default function AdminDashboard() {
       >
         <div className="flex items-center gap-3">
           {isSystemHealthy ? (
-            <CheckCircle className="w-6 h-6 text-green-600" />
+            <CheckCircle className="w-5 h-5 lg:w-6 lg:h-6 text-green-600 shrink-0" />
           ) : (
-            <XCircle className="w-6 h-6 text-red-600" />
+            <XCircle className="w-5 h-5 lg:w-6 lg:h-6 text-red-600 shrink-0" />
           )}
-          <div className="flex-1">
-            <h3 className="font-semibold text-lg">
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-sm lg:text-base xl:text-lg">
               {isSystemHealthy ? 'System Online' : 'System Issue Detected'}
             </h3>
-            <div className="flex flex-wrap gap-3 text-sm text-gray-600 mt-1">
+            <div className="flex flex-wrap gap-3 lg:gap-4 xl:gap-5 text-xs lg:text-sm text-gray-600 mt-1">
               <span className="flex items-center gap-1">
-                <Database className="w-4 h-4" />
+                <Database className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                 Database: <span className={`font-medium ${stats.databaseStatus === 'UP' ? 'text-green-600' : 'text-red-600'}`}>{stats.databaseStatus}</span>
               </span>
               <span className="flex items-center gap-1">
-                <Server className="w-4 h-4" />
+                <Server className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                 Kafka: <span className={`font-medium ${stats.kafkaStatus === 'UP' ? 'text-green-600' : 'text-red-600'}`}>{stats.kafkaStatus}</span>
               </span>
               <span className="flex items-center gap-1">
-                <Network className="w-4 h-4" />
+                <Network className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                 Weaviate: <span className={`font-medium ${stats.weaviateStatus === 'UP' ? 'text-green-600' : stats.weaviateStatus === 'UNKNOWN' ? 'text-gray-600' : 'text-red-600'}`}>{stats.weaviateStatus}</span>
               </span>
               <span className="flex items-center gap-1">
-                <Mail className="w-4 h-4" />
+                <Mail className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                 Email: <span className={`font-medium ${stats.emailStatus === 'UP' ? 'text-green-600' : stats.emailStatus === 'UNKNOWN' ? 'text-gray-600' : 'text-red-600'}`}>{stats.emailStatus}</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <Flame className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                Firebase: <span className={`font-medium ${stats.firebaseStatus === 'UP' ? 'text-green-600' : stats.firebaseStatus === 'UNKNOWN' ? 'text-gray-600' : 'text-red-600'}`}>{stats.firebaseStatus}</span>
               </span>
             </div>
           </div>
@@ -210,20 +216,20 @@ export default function AdminDashboard() {
       </div>
 
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 lg:gap-4 xl:gap-5">
         {/* Total Users */}
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
+            <CardTitle className="text-xs lg:text-sm font-medium text-gray-600">
               Total Users
             </CardTitle>
-            <Users className="w-5 h-5 text-blue-600" />
+            <Users className="w-4 h-4 lg:w-5 lg:h-5 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-gray-900">
+            <div className="text-xl lg:text-2xl xl:text-3xl font-bold text-gray-900">
               {stats.totalUsers.toLocaleString()}
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs lg:text-sm text-gray-500 mt-1">
               All registered accounts
             </p>
           </CardContent>
@@ -232,16 +238,16 @@ export default function AdminDashboard() {
         {/* Active Accounts */}
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
+            <CardTitle className="text-xs lg:text-sm font-medium text-gray-600">
               Active Accounts
             </CardTitle>
-            <UserCheck className="w-5 h-5 text-green-600" />
+            <UserCheck className="w-4 h-4 lg:w-5 lg:h-5 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-gray-900">
+            <div className="text-xl lg:text-2xl xl:text-3xl font-bold text-gray-900">
               {stats.activeAccounts.toLocaleString()}
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs lg:text-sm text-gray-500 mt-1">
               {Math.round((stats.activeAccounts / stats.totalUsers) * 100)}% of total users
             </p>
           </CardContent>
@@ -251,16 +257,16 @@ export default function AdminDashboard() {
         <Link href="/admin/approvals">
           <Card className="hover:shadow-lg transition-shadow cursor-pointer">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
+              <CardTitle className="text-xs lg:text-sm font-medium text-gray-600">
                 Pending Approvals
               </CardTitle>
-              <AlertTriangle className="w-5 h-5 text-yellow-600" />
+              <AlertTriangle className="w-4 h-4 lg:w-5 lg:h-5 text-yellow-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900">
+              <div className="text-xl lg:text-2xl xl:text-3xl font-bold text-gray-900">
                 {totalPendingItems}
               </div>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs lg:text-sm text-gray-500 mt-1">
                 Requires attention
               </p>
             </CardContent>
@@ -272,18 +278,18 @@ export default function AdminDashboard() {
           isSystemHealthy ? 'border-green-200' : 'border-red-200'
         }`}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
+            <CardTitle className="text-xs lg:text-sm font-medium text-gray-600">
               System Status
             </CardTitle>
-            <Database className={`w-5 h-5 ${isSystemHealthy ? 'text-green-600' : 'text-red-600'}`} />
+            <Database className={`w-4 h-4 lg:w-5 lg:h-5 ${isSystemHealthy ? 'text-green-600' : 'text-red-600'}`} />
           </CardHeader>
           <CardContent>
-            <div className={`text-3xl font-bold ${
+            <div className={`text-xl lg:text-2xl xl:text-3xl font-bold ${
               isSystemHealthy ? 'text-green-600' : 'text-red-600'
             }`}>
               {stats.systemStatus}
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs lg:text-sm text-gray-500 mt-1">
               {isSystemHealthy ? 'All systems operational' : 'Check system components'}
             </p>
           </CardContent>
@@ -291,17 +297,17 @@ export default function AdminDashboard() {
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5 xl:gap-6">
         {/* User Distribution by Role */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="w-5 h-5" />
+          <CardHeader className="pb-2 lg:pb-4">
+            <CardTitle className="flex items-center gap-2 text-sm lg:text-base xl:text-lg">
+              <Shield className="w-4 h-4 lg:w-5 lg:h-5" />
               User Distribution by Role
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
+            <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie
                   data={userRoleData}
@@ -309,8 +315,8 @@ export default function AdminDashboard() {
                   cy="50%"
                   labelLine={false}
                   label={false}
-                  outerRadius={90}
-                  innerRadius={60}
+                  outerRadius={65}
+                  innerRadius={40}
                   fill="#8884d8"
                   dataKey="value"
                   paddingAngle={2}
@@ -330,24 +336,24 @@ export default function AdminDashboard() {
                 />
               </PieChart>
             </ResponsiveContainer>
-            <div className="mt-4 space-y-2">
-              <div className="flex justify-between items-center text-sm">
+            <div className="mt-3 lg:mt-4 space-y-1.5 lg:space-y-2">
+              <div className="flex justify-between items-center text-xs lg:text-sm">
                 <span className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                  <div className="w-2.5 h-2.5 lg:w-3 lg:h-3 rounded-full bg-blue-500"></div>
                   Candidates
                 </span>
                 <span className="font-semibold">{stats.totalCandidates.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between items-center text-sm">
+              <div className="flex justify-between items-center text-xs lg:text-sm">
                 <span className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                  <div className="w-2.5 h-2.5 lg:w-3 lg:h-3 rounded-full bg-green-500"></div>
                   Recruiters
                 </span>
                 <span className="font-semibold">{stats.totalRecruiters.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between items-center text-sm">
+              <div className="flex justify-between items-center text-xs lg:text-sm">
                 <span className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                  <div className="w-2.5 h-2.5 lg:w-3 lg:h-3 rounded-full bg-yellow-500"></div>
                   Admins
                 </span>
                 <span className="font-semibold">{stats.totalAdmins.toLocaleString()}</span>
@@ -358,14 +364,14 @@ export default function AdminDashboard() {
 
         {/* Account Status Distribution */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="w-5 h-5" />
+          <CardHeader className="pb-2 lg:pb-4">
+            <CardTitle className="flex items-center gap-2 text-sm lg:text-base xl:text-lg">
+              <Activity className="w-4 h-4 lg:w-5 lg:h-5" />
               Account Status Distribution
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
+            <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie
                   data={accountStatusData}
@@ -373,8 +379,8 @@ export default function AdminDashboard() {
                   cy="50%"
                   labelLine={false}
                   label={false}
-                  outerRadius={90}
-                  innerRadius={60}
+                  outerRadius={65}
+                  innerRadius={40}
                   fill="#8884d8"
                   dataKey="value"
                   paddingAngle={2}
@@ -394,31 +400,31 @@ export default function AdminDashboard() {
                 />
               </PieChart>
             </ResponsiveContainer>
-            <div className="mt-4 space-y-2">
-              <div className="flex justify-between items-center text-sm">
+            <div className="mt-3 lg:mt-4 space-y-1.5 lg:space-y-2">
+              <div className="flex justify-between items-center text-xs lg:text-sm">
                 <span className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                  <div className="w-2.5 h-2.5 lg:w-3 lg:h-3 rounded-full bg-green-500"></div>
                   Active
                 </span>
                 <span className="font-semibold">{stats.activeAccounts.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between items-center text-sm">
+              <div className="flex justify-between items-center text-xs lg:text-sm">
                 <span className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                  <div className="w-2.5 h-2.5 lg:w-3 lg:h-3 rounded-full bg-yellow-500"></div>
                   Pending
                 </span>
                 <span className="font-semibold">{stats.pendingAccounts.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between items-center text-sm">
+              <div className="flex justify-between items-center text-xs lg:text-sm">
                 <span className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                  <div className="w-2.5 h-2.5 lg:w-3 lg:h-3 rounded-full bg-red-500"></div>
                   Banned
                 </span>
                 <span className="font-semibold">{stats.bannedAccounts.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between items-center text-sm">
+              <div className="flex justify-between items-center text-xs lg:text-sm">
                 <span className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-gray-500"></div>
+                  <div className="w-2.5 h-2.5 lg:w-3 lg:h-3 rounded-full bg-gray-500"></div>
                   Rejected
                 </span>
                 <span className="font-semibold">{stats.rejectedAccounts.toLocaleString()}</span>
@@ -430,40 +436,40 @@ export default function AdminDashboard() {
 
       {/* Content Statistics */}
       <Card>
-        <CardHeader>
-          <CardTitle>Content Statistics</CardTitle>
+        <CardHeader className="pb-2 lg:pb-4">
+          <CardTitle className="text-sm lg:text-base xl:text-lg">Content Statistics</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-3 lg:gap-4 xl:gap-5">
             <Link href="/admin/blogs">
-              <div className="p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">
-                <div className="flex items-center gap-3">
-                  <FileText className="w-8 h-8 text-blue-600" />
-                  <div>
-                    <p className="text-sm text-gray-600">Blog Posts</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.totalBlogs.toLocaleString()}</p>
+              <div className="p-3 lg:p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">
+                <div className="flex items-center gap-2 lg:gap-3">
+                  <FileText className="w-6 h-6 lg:w-7 lg:h-7 xl:w-8 xl:h-8 text-blue-600 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs lg:text-sm text-gray-600">Blog Posts</p>
+                    <p className="text-lg lg:text-xl xl:text-2xl font-bold text-gray-900">{stats.totalBlogs.toLocaleString()}</p>
                   </div>
                 </div>
               </div>
             </Link>
             <Link href="/admin/jobs">
-              <div className="p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors cursor-pointer">
-                <div className="flex items-center gap-3">
-                  <Briefcase className="w-8 h-8 text-green-600" />
-                  <div>
-                    <p className="text-sm text-gray-600">Job Postings</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.totalJobPostings.toLocaleString()}</p>
+              <div className="p-3 lg:p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors cursor-pointer">
+                <div className="flex items-center gap-2 lg:gap-3">
+                  <Briefcase className="w-6 h-6 lg:w-7 lg:h-7 xl:w-8 xl:h-8 text-green-600 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs lg:text-sm text-gray-600">Job Postings</p>
+                    <p className="text-lg lg:text-xl xl:text-2xl font-bold text-gray-900">{stats.totalJobPostings.toLocaleString()}</p>
                   </div>
                 </div>
               </div>
             </Link>
             <Link href="/admin/applications">
-              <div className="p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors cursor-pointer">
-                <div className="flex items-center gap-3">
-                  <ClipboardList className="w-8 h-8 text-purple-600" />
-                  <div>
-                    <p className="text-sm text-gray-600">Applications</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.totalApplications.toLocaleString()}</p>
+              <div className="p-3 lg:p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors cursor-pointer">
+                <div className="flex items-center gap-2 lg:gap-3">
+                  <ClipboardList className="w-6 h-6 lg:w-7 lg:h-7 xl:w-8 xl:h-8 text-purple-600 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs lg:text-sm text-gray-600">Applications</p>
+                    <p className="text-lg lg:text-xl xl:text-2xl font-bold text-gray-900">{stats.totalApplications.toLocaleString()}</p>
                   </div>
                 </div>
               </div>
@@ -474,14 +480,14 @@ export default function AdminDashboard() {
 
       {/* System Components Status */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Server className="w-5 h-5" />
+        <CardHeader className="pb-2 lg:pb-4">
+          <CardTitle className="flex items-center gap-2 text-sm lg:text-base xl:text-lg">
+            <Server className="w-4 h-4 lg:w-5 lg:h-5" />
             System Components
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 lg:gap-4">
             {systemComponents.map((component) => {
               const Icon = component.icon;
               const isUp = component.status === 'UP';
@@ -490,7 +496,7 @@ export default function AdminDashboard() {
               return (
                 <div 
                   key={component.name}
-                  className={`p-4 rounded-lg border-2 transition-all ${
+                  className={`p-3 lg:p-4 rounded-lg border-2 transition-all ${
                     isUp 
                       ? 'bg-green-50 border-green-200' 
                       : isUnknown
@@ -498,15 +504,15 @@ export default function AdminDashboard() {
                       : 'bg-red-50 border-red-200'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <Icon className={`w-5 h-5 ${
+                  <div className="flex items-center justify-between mb-1.5 lg:mb-2">
+                    <Icon className={`w-4 h-4 lg:w-5 lg:h-5 ${
                       isUp 
                         ? 'text-green-600' 
                         : isUnknown
                         ? 'text-gray-600'
                         : 'text-red-600'
                     }`} />
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                    <span className={`px-1.5 py-0.5 lg:px-2 lg:py-1 rounded-full text-[10px] lg:text-xs font-semibold ${
                       isUp 
                         ? 'bg-green-100 text-green-700' 
                         : isUnknown
@@ -516,7 +522,7 @@ export default function AdminDashboard() {
                       {component.status}
                     </span>
                   </div>
-                  <p className="text-sm font-medium text-gray-900">{component.name}</p>
+                  <p className="text-xs lg:text-sm font-medium text-gray-900 truncate">{component.name}</p>
                 </div>
               );
             })}
@@ -526,40 +532,40 @@ export default function AdminDashboard() {
 
       {/* Moderation Queue */}
       <Card>
-        <CardHeader>
-          <CardTitle>Moderation Queue</CardTitle>
+        <CardHeader className="pb-2 lg:pb-4">
+          <CardTitle className="text-sm lg:text-base xl:text-lg">Moderation Queue</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
+          <div className="space-y-2 lg:space-y-3">
             <Link href="/admin/approvals/recruiters">
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
-                <div className="flex items-center gap-3">
-                  <UserCheck className="w-5 h-5 text-blue-600" />
-                  <span className="font-medium">Recruiter Approvals</span>
+              <div className="flex items-center justify-between p-2.5 lg:p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
+                <div className="flex items-center gap-2 lg:gap-3">
+                  <UserCheck className="w-4 h-4 lg:w-5 lg:h-5 text-blue-600" />
+                  <span className="text-xs lg:text-sm xl:text-base font-medium">Recruiter Approvals</span>
                 </div>
-                <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold">
+                <span className="bg-blue-100 text-blue-700 px-2 lg:px-3 py-0.5 lg:py-1 rounded-full text-xs lg:text-sm font-semibold">
                   {stats.pendingRecruiterApprovals}
                 </span>
               </div>
             </Link>
             <Link href="/admin/moderation/comments">
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
-                <div className="flex items-center gap-3">
-                  <MessageSquare className="w-5 h-5 text-yellow-600" />
-                  <span className="font-medium">Flagged Comments</span>
+              <div className="flex items-center justify-between p-2.5 lg:p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
+                <div className="flex items-center gap-2 lg:gap-3">
+                  <MessageSquare className="w-4 h-4 lg:w-5 lg:h-5 text-yellow-600" />
+                  <span className="text-xs lg:text-sm xl:text-base font-medium">Flagged Comments</span>
                 </div>
-                <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm font-semibold">
+                <span className="bg-yellow-100 text-yellow-700 px-2 lg:px-3 py-0.5 lg:py-1 rounded-full text-xs lg:text-sm font-semibold">
                   {stats.flaggedComments}
                 </span>
               </div>
             </Link>
             <Link href="/admin/moderation/ratings">
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
-                <div className="flex items-center gap-3">
-                  <Star className="w-5 h-5 text-red-600" />
-                  <span className="font-medium">Flagged Ratings</span>
+              <div className="flex items-center justify-between p-2.5 lg:p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
+                <div className="flex items-center gap-2 lg:gap-3">
+                  <Star className="w-4 h-4 lg:w-5 lg:h-5 text-red-600" />
+                  <span className="text-xs lg:text-sm xl:text-base font-medium">Flagged Ratings</span>
                 </div>
-                <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-semibold">
+                <span className="bg-red-100 text-red-700 px-2 lg:px-3 py-0.5 lg:py-1 rounded-full text-xs lg:text-sm font-semibold">
                   {stats.flaggedRatings}
                 </span>
               </div>

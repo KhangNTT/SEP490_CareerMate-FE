@@ -159,12 +159,9 @@ export function CandidateHeader() {
                             </Link>
                         </div>
 
-                        <div className="relative group">
-                            <Link href="/candidate/companies" className="flex items-center space-x-1 text-gray-300 hover:text-white transition-colors">
-                                <span>Companies</span>
-                                <ChevronDown className="w-4 h-4" />
-                            </Link>
-                        </div>
+                        <Link href="/companies" className="text-gray-300 hover:text-white transition-colors">
+                            Companies
+                        </Link>
 
                         <Link href="/blog" className="text-gray-300 hover:text-white transition-colors">
                             Blog

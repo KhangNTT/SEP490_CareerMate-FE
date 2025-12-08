@@ -87,7 +87,7 @@ export default function ProfileHeaderCard({
                 <div className="flex items-center gap-3">
                     <button
                         onClick={() => router.push('/candidate/ai-cv-checker')}
-                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg transition-all font-semibold shadow-lg hover:shadow-xl"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300 rounded-lg text-sm font-medium transition-all duration-200"
                         title="AI CV Checker"
                     >
                         <Sparkles className="w-4 h-4" />

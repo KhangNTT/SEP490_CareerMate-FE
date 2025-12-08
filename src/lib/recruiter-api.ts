@@ -789,12 +789,23 @@ export const updateJobApplicationStatus = async (
 ): Promise<any> => {
   try {
     console.log(`🔵 [UPDATE APPLICATION STATUS] ID: ${applicationId}, Status: ${status}`);
-    const response = await api.put(`/api/job-apply/${applicationId}?status=${status}`);
+    console.log(`🔵 [UPDATE APPLICATION STATUS] URL: PUT /api/job-apply/${applicationId}`);
+    console.log(`🔵 [UPDATE APPLICATION STATUS] Body: "${status}"`);
+    // Backend expects status as a JSON string in request body (e.g., "REVIEWING")
+    const response = await api.put(`/api/job-apply/${applicationId}`, JSON.stringify(status), {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
     console.log('✅ [UPDATE APPLICATION STATUS] Response:', response.data);
     return response.data;
   } catch (error: any) {
-    console.error('❌ [UPDATE APPLICATION STATUS] Error:', error.response?.data || error);
-    throw new Error(error.response?.data?.message || 'Failed to update job application status');
+    console.error('❌ [UPDATE APPLICATION STATUS] Full error:', error);
+    console.error('❌ [UPDATE APPLICATION STATUS] Error response:', error.response);
+    console.error('❌ [UPDATE APPLICATION STATUS] Error data:', error.response?.data);
+    console.error('❌ [UPDATE APPLICATION STATUS] Error status:', error.response?.status);
+    console.error('❌ [UPDATE APPLICATION STATUS] Error message:', error.message);
+    throw new Error(error.response?.data?.message || error.message || 'Failed to update job application status');
   }
 };
 

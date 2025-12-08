@@ -1,22 +1,20 @@
 "use client";
 
 import { Suspense } from "react";
-import { RefreshCw } from "lucide-react";
-import ApplicationsPageContent from "./ApplicationsPageContent";
+import { ApplicationsContent } from "./ApplicationsContent";
 
-function ApplicationsLoading() {
+function LoadingFallback() {
   return (
-    <div className="flex flex-col items-center justify-center py-16">
-      <RefreshCw className="h-8 w-8 text-sky-600 animate-spin mb-4" />
-      <p className="text-sm text-slate-600">Loading applications...</p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-600"></div>
     </div>
   );
 }
 
 export default function CandidateApplicationsPage() {
   return (
-    <Suspense fallback={<ApplicationsLoading />}>
-      <ApplicationsPageContent />
+    <Suspense fallback={<LoadingFallback />}>
+      <ApplicationsContent />
     </Suspense>
   );
 }

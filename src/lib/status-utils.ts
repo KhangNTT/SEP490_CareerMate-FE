@@ -175,7 +175,7 @@ export const getDisplayStatus = (status: string): string => {
  */
 export const requiresCandidateAction = (status: JobApplicationStatus): boolean => {
   const actions = getCandidateActions(status);
-  const criticalActions = ['confirm_interview', 'accept_offer', 'decline_offer'];
+  const criticalActions = ['confirm_interview'];
   return actions.some((action) => criticalActions.includes(action.action));
 };
 
@@ -266,9 +266,9 @@ export const getStatusHelpText = (status: JobApplicationStatus): string => {
     NO_RESPONSE: 'No response has been received from the company after 7 days.',
     INTERVIEW_SCHEDULED: 'An interview has been scheduled. Please confirm your attendance.',
     INTERVIEWED: 'The interview has been completed. Waiting for the recruiter\'s decision.',
-    APPROVED: 'Your application has been approved. You may receive an offer soon.',
+    APPROVED: 'Your application has been approved by the recruiter.',
     REJECTED: 'Unfortunately, your application was not successful at this time.',
-    ACCEPTED: 'You have accepted the offer. The company will contact you for onboarding.',
+    ACCEPTED: 'You have accepted. The company will contact you for onboarding.',
     WORKING: 'You are currently employed at this company.',
     PROBATION_FAILED: 'The probation period was not successfully completed.',
     TERMINATED: 'Your employment at this company has ended.',

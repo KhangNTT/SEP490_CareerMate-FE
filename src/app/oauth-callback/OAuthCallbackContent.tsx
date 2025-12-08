@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 
-export default function OAuthCallbackPage() {
+export function OAuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -67,12 +67,12 @@ export default function OAuthCallbackPage() {
               accountStatus: profile.accountStatus,
               rejectionReason: profile.rejectionReason,
             });
-            
+
             const message = profile.rejectionReason
               ? `Tài khoản bị từ chối: ${profile.rejectionReason}`
               : `Tài khoản của bạn đã bị từ chối. Vui lòng liên hệ hỗ trợ.`;
             toast.error(message);
-            
+
             // Redirect to rejected page with reason AND tokens
             const rejectedUrl = `/auth/account-rejected?reason=${encodeURIComponent(profile.rejectionReason || 'Không có thông tin chi tiết')}&accessToken=${encodeURIComponent(accessToken)}&email=${encodeURIComponent(email || '')}${refreshToken ? `&refreshToken=${encodeURIComponent(refreshToken)}` : ''}`;
             router.replace(rejectedUrl);

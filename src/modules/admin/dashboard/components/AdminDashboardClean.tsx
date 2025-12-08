@@ -33,70 +33,70 @@ export default function AdminDashboardClean() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="text-sm text-gray-600 mt-1">System Overview & Management</p>
+          <h1 className="text-2xl font-bold text-foreground">Admin Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-1">System Overview & Management</p>
         </div>
-        <div className="px-4 py-2 bg-green-50 text-green-700 rounded-full text-sm font-medium flex items-center gap-2">
-          <CheckCircle className="w-4 h-4 text-green-600" />
+        <div className="px-4 py-2 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-sm font-medium flex items-center gap-2">
+          <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
           All Systems Operational
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="bg-card border border-border shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Users</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.totalUsers.toLocaleString()}</p>
-                <p className="text-gray-500 text-xs mt-1">Registered accounts</p>
+                <p className="text-sm font-medium text-muted-foreground">Total Users</p>
+                <p className="text-3xl font-bold text-foreground mt-2">{stats.totalUsers.toLocaleString()}</p>
+                <p className="text-muted-foreground text-xs mt-1">Registered accounts</p>
               </div>
-              <div className="p-3 bg-blue-100 rounded-full">
+              <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full">
                 <Users className="h-6 w-6 text-blue-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="bg-card border border-border shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Active Users</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.activeUsers.toLocaleString()}</p>
-                <p className="text-gray-500 text-xs mt-1">Currently online</p>
+                <p className="text-sm font-medium text-muted-foreground">Active Users</p>
+                <p className="text-3xl font-bold text-foreground mt-2">{stats.activeUsers.toLocaleString()}</p>
+                <p className="text-muted-foreground text-xs mt-1">Currently online</p>
               </div>
-              <div className="p-3 bg-green-100 rounded-full">
+              <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-full">
                 <BarChart3 className="h-6 w-6 text-green-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="bg-card border border-border shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">System Health</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.systemHealth}%</p>
-                <p className="text-gray-500 text-xs mt-1">All services running</p>
+                <p className="text-sm font-medium text-muted-foreground">System Health</p>
+                <p className="text-3xl font-bold text-foreground mt-2">{stats.systemHealth}%</p>
+                <p className="text-muted-foreground text-xs mt-1">All services running</p>
               </div>
-              <div className="p-3 bg-sky-100 rounded-full">
+              <div className="p-3 bg-sky-100 dark:bg-sky-900/30 rounded-full">
                 <TrendingUp className="h-6 w-6 text-sky-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="bg-card border border-border shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Uptime</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.uptime}</p>
-                <p className="text-gray-500 text-xs mt-1">Last 30 days</p>
+                <p className="text-sm font-medium text-muted-foreground">Uptime</p>
+                <p className="text-3xl font-bold text-foreground mt-2">{stats.uptime}</p>
+                <p className="text-muted-foreground text-xs mt-1">Last 30 days</p>
               </div>
-              <div className="p-3 bg-orange-100 rounded-full">
+              <div className="p-3 bg-orange-100 dark:bg-orange-900/30 rounded-full">
                 <Clock className="h-6 w-6 text-orange-600" />
               </div>
             </div>
@@ -105,9 +105,9 @@ export default function AdminDashboardClean() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="bg-white border border-gray-200 shadow-sm">
+        <Card className="bg-card border border-border shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg font-semibold text-gray-900">Quick Actions</CardTitle>
+            <CardTitle className="text-lg font-semibold text-foreground">Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <Link href="/admin/user-management">
@@ -131,21 +131,21 @@ export default function AdminDashboardClean() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white border border-gray-200 shadow-sm">
+        <Card className="bg-card border border-border shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg font-semibold text-gray-900">System Status</CardTitle>
+            <CardTitle className="text-lg font-semibold text-foreground">System Status</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
               <div className="flex items-center gap-2">
                 <Database className="w-5 h-5 text-green-600" />
-                <span className="text-sm font-medium text-gray-700">Database</span>
+                <span className="text-sm font-medium text-foreground">Database</span>
               </div>
               <span className="text-xs font-medium text-green-600">Online</span>
             </div>
-            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-gray-700">API Server</span>
+                <span className="text-sm font-medium text-foreground">API Server</span>
               </div>
               <span className="text-xs font-medium text-green-600">Online</span>
             </div>

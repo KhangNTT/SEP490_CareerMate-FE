@@ -91,8 +91,10 @@ export interface DailyCalendarResponse {
   date: string;
   dayOfWeek: string;
   isWorkingDay: boolean;
-  workStartTime?: string;
-  workEndTime?: string;
+  workStartTime?: string | TimeObject;
+  workEndTime?: string | TimeObject;
+  lunchBreakStart?: string | TimeObject;
+  lunchBreakEnd?: string | TimeObject;
   hasTimeOff: boolean;
   timeOffReason?: string;
   totalInterviews: number;

@@ -1,5 +1,6 @@
 import { CV } from "@/services/cvService";
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import toast from "react-hot-toast";
 
 interface CVCardProps {
   cv: CV;
@@ -9,6 +10,7 @@ interface CVCardProps {
   onSync?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  onDownload?: () => void;
   // Loading states
   isSyncing?: boolean;
   isDisabled?: boolean;
@@ -22,10 +24,53 @@ export const CVCard = ({
   onSync,
   onEdit,
   onDelete,
+  onDownload,
   isSyncing = false,
   isDisabled = false
 }: CVCardProps) => {
   const [showMenu, setShowMenu] = useState(false);
+
+  // Download CV handler
+  const handleDownload = useCallback(async () => {
+    const downloadUrl = cv.downloadUrl || cv.fileUrl;
+    
+    if (!downloadUrl) {
+      toast.error("No download URL available for this CV");
+      return;
+    }
+
+    try {
+      toast.loading("Downloading CV...", { id: "download-cv" });
+      
+      // Fetch the file
+      const response = await fetch(downloadUrl);
+      if (!response.ok) {
+        throw new Error("Failed to fetch CV file");
+      }
+      
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = cv.name || "CV.pdf";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success("CV downloaded successfully!", { id: "download-cv" });
+      
+      // Call onDownload callback if provided
+      if (onDownload) {
+        onDownload();
+      }
+    } catch (error) {
+      console.error("Download error:", error);
+      toast.error("Failed to download CV", { id: "download-cv" });
+    }
+  }, [cv.downloadUrl, cv.fileUrl, cv.name, onDownload]);
 
   const getSourceBadge = () => {
     const sources = {
@@ -242,7 +287,7 @@ export const CVCard = ({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      // Download logic
+                      handleDownload();
                       setShowMenu(false);
                     }}
                     className="w-full px-3 py-1.5 text-left text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-1.5"
@@ -258,7 +303,7 @@ export const CVCard = ({
                     Download
                   </button>
 
-                  <button
+                  {/* <button
                     onClick={(e) => {
                       e.stopPropagation();
                       // Rename logic
@@ -275,7 +320,7 @@ export const CVCard = ({
                       />
                     </svg>
                     Rename
-                  </button>
+                  </button> */}
 
                   <hr className="my-0.5" />
                   {onDelete && (

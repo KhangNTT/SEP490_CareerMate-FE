@@ -99,7 +99,7 @@ export default function LanguageDialog({
                             <Button
                                 onClick={handleAddLanguage}
                                 disabled={!newLanguage.trim() || !newLevel || isAdding}
-                                className="bg-red-500 hover:bg-red-600 text-white"
+                                className="bg-gradient-to-r from-[#3a4660] to-gray-400 text-white rounded-lg hover:from-[#3a4660] hover:to-[#3a4660]"
                             >
                                 {isAdding ? "Adding..." : "Add"}
                             </Button>
@@ -143,7 +143,7 @@ export default function LanguageDialog({
                     </Button>
                     <Button
                         onClick={onSave}
-                        className="bg-red-500 hover:bg-red-600 text-white"
+                        className="bg-gradient-to-r from-[#3a4660] to-gray-400 text-white rounded-lg hover:from-[#3a4660] hover:to-[#3a4660]"
                     >
                         Save
                     </Button>

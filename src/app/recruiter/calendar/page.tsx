@@ -381,13 +381,12 @@ function MonthView({ currentDate, monthlyCalendar, setCurrentDate, setViewMode }
   );
 }
 
-// Week View Component (like image 2)
+// Week View Component with accurate time positioning
 function WeekView({ currentDate, weeklyCalendar }: any) {
   const [workingHoursMap, setWorkingHoursMap] = useState<Map<string, TimeSlotConfig>>(new Map());
   const [workingHoursLoaded, setWorkingHoursLoaded] = useState(false);
 
   useEffect(() => {
-    // Only load once
     if (!workingHoursLoaded) {
       const loadWorkingHours = async () => {
         try {
@@ -404,12 +403,11 @@ function WeekView({ currentDate, weeklyCalendar }: any) {
   }, [workingHoursLoaded]);
 
   const getWeekDays = () => {
-    // Start from Monday to match backend API
     const start = new Date(currentDate);
     const day = start.getDay();
-    const diff = start.getDate() - day + (day === 0 ? -6 : 1); // Monday
+    const diff = start.getDate() - day + (day === 0 ? -6 : 1);
     start.setDate(diff);
-    start.setHours(12, 0, 0, 0); // Set to noon to avoid timezone issues
+    start.setHours(12, 0, 0, 0);
     
     return Array.from({ length: 7 }, (_, i) => {
       const date = new Date(start);
@@ -418,15 +416,11 @@ function WeekView({ currentDate, weeklyCalendar }: any) {
     });
   };
 
-  // Helper to get interviews for a specific day and hour
-  const getInterviewsForSlot = (date: Date, hour: number) => {
-    // Check both allInterviews and dailyCalendars for interview data
+  // Get all interviews for a specific day
+  const getInterviewsForDay = (date: Date) => {
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     let interviews: any[] = [];
     
-    // Format date string
-    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-    
-    // Try allInterviews first
     if (weeklyCalendar?.allInterviews && weeklyCalendar.allInterviews.length > 0) {
       interviews = weeklyCalendar.allInterviews.filter((interview: any) => {
         const dateTimeStr = interview.scheduledDate || interview.interviewDateTime || interview.startTime;
@@ -434,53 +428,49 @@ function WeekView({ currentDate, weeklyCalendar }: any) {
         const interviewDate = new Date(dateTimeStr);
         if (isNaN(interviewDate.getTime())) return false;
         const interviewDateStr = `${interviewDate.getFullYear()}-${String(interviewDate.getMonth() + 1).padStart(2, '0')}-${String(interviewDate.getDate()).padStart(2, '0')}`;
-        const interviewHour = interviewDate.getHours();
-        return interviewDateStr === dateStr && interviewHour === hour;
+        return interviewDateStr === dateStr;
       });
     }
     
-    // Also check dailyCalendars if no interviews found in allInterviews
     if (interviews.length === 0 && weeklyCalendar?.dailyCalendars?.[dateStr]?.interviews) {
-      const dayData = weeklyCalendar.dailyCalendars[dateStr];
-      interviews = dayData.interviews.filter((interview: any) => {
-        const dateTimeStr = interview.scheduledDate || interview.interviewDateTime;
-        if (!dateTimeStr) return false;
-        const interviewDate = new Date(dateTimeStr);
-        if (isNaN(interviewDate.getTime())) return false;
-        return interviewDate.getHours() === hour;
-      });
+      interviews = weeklyCalendar.dailyCalendars[dateStr].interviews;
     }
     
     return interviews;
   };
-  
-  // Debug: Log when weekly calendar changes
-  useEffect(() => {
-    if (weeklyCalendar) {
-      console.log('🔍 [WEEK VIEW] Calendar data received:', {
-        allInterviewsCount: weeklyCalendar.allInterviews?.length || 0,
-        dailyCalendarsKeys: Object.keys(weeklyCalendar.dailyCalendars || {}),
-        weekStart: weeklyCalendar.weekStartDate,
-        weekEnd: weeklyCalendar.weekEndDate,
-      });
-      
-      // Check each day in dailyCalendars for interviews
-      if (weeklyCalendar.dailyCalendars) {
-        Object.entries(weeklyCalendar.dailyCalendars).forEach(([dateKey, dayData]: [string, any]) => {
-          if (dayData.interviews?.length > 0) {
-            console.log(`🔍 [WEEK VIEW] Day ${dateKey} has ${dayData.interviews.length} interviews:`, dayData.interviews);
-          }
-        });
-      }
-      
-      if (weeklyCalendar.allInterviews?.length > 0) {
-        console.log('🔍 [WEEK VIEW] All interviews:', weeklyCalendar.allInterviews);
-      }
-    }
-  }, [weeklyCalendar]);
+
+  // Calculate position and height for an interview card
+  const getInterviewStyle = (interview: any, startHour: number) => {
+    const dateTimeStr = interview.scheduledDate || interview.interviewDateTime;
+    const interviewDate = new Date(dateTimeStr);
+    const hours = interviewDate.getHours();
+    const minutes = interviewDate.getMinutes();
+    const duration = interview.durationMinutes || 60;
+    
+    // Calculate top position (relative to grid start at startHour)
+    const minutesFromStart = (hours - startHour) * 60 + minutes;
+    const top = (minutesFromStart / 60) * 60; // 60px per hour
+    
+    // Calculate height based on duration
+    const height = Math.max((duration / 60) * 60, 24); // min 24px height
+    
+    return { top, height };
+  };
+
+  // Format time range string
+  const formatTimeRange = (interview: any) => {
+    const dateTimeStr = interview.scheduledDate || interview.interviewDateTime;
+    const start = new Date(dateTimeStr);
+    const duration = interview.durationMinutes || 60;
+    const end = new Date(start.getTime() + duration * 60000);
+    
+    const formatTime = (d: Date) => d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    return `${formatTime(start)} - ${formatTime(end)}`;
+  };
 
   const weekDays = getWeekDays();
   const hours = Array.from({ length: 14 }, (_, i) => i + 7); // 7am to 8pm
+  const startHour = 7;
   const now = new Date();
 
   return (
@@ -489,12 +479,11 @@ function WeekView({ currentDate, weeklyCalendar }: any) {
         {/* Top left corner + day headers */}
         <div className="bg-gray-50 border-b border-r border-gray-200"></div>
         {weekDays.map((date, i) => {
-          const isPast = date < new Date(new Date().setHours(0, 0, 0, 0));
           const isToday = date.toDateString() === new Date().toDateString();
           return (
             <div
               key={i}
-              className={`border-b border-r border-gray-200 p-3 text-center ${isPast ? "bg-gray-50" : "bg-gray-50"} ${isToday ? "bg-blue-50" : ""}`}
+              className={`border-b border-r border-gray-200 p-3 text-center bg-gray-50 ${isToday ? "bg-blue-50" : ""}`}
             >
               <div className="text-xs text-gray-600 uppercase">{date.toLocaleDateString("en-US", { weekday: "short" })}</div>
               <div className="text-lg font-semibold mt-1">{date.getDate()}</div>
@@ -502,64 +491,90 @@ function WeekView({ currentDate, weeklyCalendar }: any) {
           );
         })}
 
-        {/* Time slots */}
-        {hours.map((hour) => (
-          <React.Fragment key={`hour-${hour}`}>
-            <div className="border-r border-b border-gray-200 p-2 text-xs text-gray-500 text-right bg-gray-50">
-              {hour === 12 ? "12pm" : hour > 12 ? `${hour - 12}pm` : `${hour}am`}
-            </div>
-            {weekDays.map((date, i) => {
-              const isPast = date < new Date(new Date().setHours(0, 0, 0, 0)) || 
-                            (date.toDateString() === now.toDateString() && hour < now.getHours());
-              const status = getTimeSlotStatus(date, hour, workingHoursMap);
-              const classes = getTimeSlotClasses(status, isPast);
-              const slotInterviews = getInterviewsForSlot(date, hour);
-              
-              return (
-                <div
-                  key={`${hour}-${i}`}
-                  className={classes}
-                  title={
-                    status === TimeSlotStatus.NON_WORKING_DAY ? 'Day off' :
-                    status === TimeSlotStatus.NON_WORKING ? 'Outside working hours' :
-                    status === TimeSlotStatus.LUNCH_BREAK ? 'Lunch break' :
-                    'Available'
-                  }
-                >
-                  {status === TimeSlotStatus.LUNCH_BREAK && (
-                    <span className="text-xs text-orange-600">🍽️</span>
-                  )}
-                  {/* Display scheduled interviews */}
-                  {slotInterviews.map((interview: any, idx: number) => (
+        {/* Time grid with positioned interviews */}
+        <div className="col-span-8 grid grid-cols-[80px_repeat(7,1fr)]">
+          {/* Hour labels column */}
+          <div className="bg-gray-50">
+            {hours.map((hour) => (
+              <div key={hour} className="h-[60px] border-r border-b border-gray-200 p-2 text-xs text-gray-500 text-right">
+                {hour === 12 ? "12pm" : hour > 12 ? `${hour - 12}pm` : `${hour}am`}
+              </div>
+            ))}
+          </div>
+          
+          {/* Day columns with positioned interviews */}
+          {weekDays.map((date, dayIndex) => {
+            const dayInterviews = getInterviewsForDay(date);
+            const isPastDay = date < new Date(new Date().setHours(0, 0, 0, 0));
+            
+            return (
+              <div key={dayIndex} className="relative">
+                {/* Hour grid cells */}
+                {hours.map((hour) => {
+                  const isPast = isPastDay || (date.toDateString() === now.toDateString() && hour < now.getHours());
+                  const status = getTimeSlotStatus(date, hour, workingHoursMap);
+                  
+                  return (
+                    <div
+                      key={hour}
+                      className={`h-[60px] border-r border-b border-gray-200 ${
+                        isPast || status === TimeSlotStatus.NON_WORKING || status === TimeSlotStatus.NON_WORKING_DAY ? 'bg-gray-100' :
+                        status === TimeSlotStatus.LUNCH_BREAK ? 'bg-orange-50' :
+                        'bg-white hover:bg-blue-50'
+                      }`}
+                    >
+                      {status === TimeSlotStatus.LUNCH_BREAK && !isPast && (
+                        <span className="text-xs text-orange-600 p-1">🍽️</span>
+                      )}
+                    </div>
+                  );
+                })}
+                
+                {/* Positioned interview cards */}
+                {dayInterviews.map((interview: any, idx: number) => {
+                  const { top, height } = getInterviewStyle(interview, startHour);
+                  
+                  // Skip if interview is outside visible hours
+                  if (top < 0 || top > hours.length * 60) return null;
+                  
+                  return (
                     <div
                       key={interview.id || idx}
-                      className="bg-blue-100 border-l-4 border-blue-500 text-blue-800 text-xs p-1 rounded mb-1 truncate cursor-pointer hover:bg-blue-200"
-                      title={`${interview.candidateName || 'Interview'} - ${interview.positionTitle || ''}`}
+                      className="absolute left-1 right-1 bg-blue-100 border-l-4 border-blue-500 text-blue-800 text-xs p-1 rounded overflow-hidden cursor-pointer hover:bg-blue-200 hover:shadow-md transition-all z-10"
+                      style={{
+                        top: `${top}px`,
+                        height: `${height}px`,
+                        minHeight: '24px',
+                      }}
+                      title={`${interview.candidateName || 'Interview'}\n${formatTimeRange(interview)}\n${interview.interviewType || ''}`}
                     >
                       <div className="font-medium truncate">{interview.candidateName || 'Interview'}</div>
-                      <div className="text-blue-600 text-[10px]">
-                        {new Date(interview.scheduledDate || interview.interviewDateTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                        {interview.durationMinutes && ` (${interview.durationMinutes}m)`}
-                      </div>
+                      {height >= 40 && (
+                        <div className="text-blue-600 text-[10px] truncate">
+                          {formatTimeRange(interview)}
+                        </div>
+                      )}
+                      {height >= 55 && interview.interviewType && (
+                        <div className="text-[10px] text-blue-500 truncate">{interview.interviewType}</div>
+                      )}
                     </div>
-                  ))}
-                </div>
-              );
-            })}
-          </React.Fragment>
-        ))}
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
 }
 
-// Day View Component (like image 3)
+// Day View Component with accurate time positioning
 function DayView({ currentDate, dailyCalendar }: any) {
   const [workingHoursMap, setWorkingHoursMap] = useState<Map<string, TimeSlotConfig>>(new Map());
   const [workingHoursLoaded, setWorkingHoursLoaded] = useState(false);
 
   useEffect(() => {
-    // Only load once
     if (!workingHoursLoaded) {
       const loadWorkingHours = async () => {
         try {
@@ -574,38 +589,41 @@ function DayView({ currentDate, dailyCalendar }: any) {
       loadWorkingHours();
     }
   }, [workingHoursLoaded]);
-  
-  // Debug: Log daily calendar data
-  useEffect(() => {
-    console.log('🔍 [DAY VIEW] Daily calendar received:', {
-      date: dailyCalendar?.date,
-      currentDateLocal: currentDate?.toLocaleDateString(),
-      interviewsCount: dailyCalendar?.interviews?.length || 0,
-      totalInterviews: dailyCalendar?.totalInterviews || 0,
-      isWorkingDay: dailyCalendar?.isWorkingDay,
-    });
-    
-    if (dailyCalendar?.interviews?.length > 0) {
-      console.log('🔍 [DAY VIEW] Interview data:', dailyCalendar.interviews);
-    }
-  }, [dailyCalendar, currentDate]);
 
-  // Helper to get interviews for a specific hour
-  const getInterviewsForHour = (hour: number) => {
-    if (!dailyCalendar?.interviews || dailyCalendar.interviews.length === 0) return [];
+  // Calculate position and height for an interview card
+  const getInterviewStyle = (interview: any, startHour: number) => {
+    const dateTimeStr = interview.scheduledDate || interview.interviewDateTime;
+    const interviewDate = new Date(dateTimeStr);
+    const hours = interviewDate.getHours();
+    const minutes = interviewDate.getMinutes();
+    const duration = interview.durationMinutes || 60;
     
-    return dailyCalendar.interviews.filter((interview: any) => {
-      const dateTimeStr = interview.scheduledDate || interview.interviewDateTime;
-      if (!dateTimeStr) return false;
-      const interviewDate = new Date(dateTimeStr);
-      if (isNaN(interviewDate.getTime())) return false;
-      const interviewHour = interviewDate.getHours();
-      return interviewHour === hour;
-    });
+    // Calculate top position (relative to grid start at startHour)
+    // 70px per hour in day view
+    const minutesFromStart = (hours - startHour) * 60 + minutes;
+    const top = (minutesFromStart / 60) * 70;
+    
+    // Calculate height based on duration
+    const height = Math.max((duration / 60) * 70, 30); // min 30px height
+    
+    return { top, height };
+  };
+
+  // Format time range string
+  const formatTimeRange = (interview: any) => {
+    const dateTimeStr = interview.scheduledDate || interview.interviewDateTime;
+    const start = new Date(dateTimeStr);
+    const duration = interview.durationMinutes || 60;
+    const end = new Date(start.getTime() + duration * 60000);
+    
+    const formatTime = (d: Date) => d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    return `${formatTime(start)} - ${formatTime(end)}`;
   };
 
   const hours = Array.from({ length: 14 }, (_, i) => i + 7); // 7am to 8pm
+  const startHour = 7;
   const now = new Date();
+  const interviews = dailyCalendar?.interviews || [];
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-auto">
@@ -618,64 +636,81 @@ function DayView({ currentDate, dailyCalendar }: any) {
           </div>
         </div>
 
-        {/* Time slots */}
+        {/* Time grid with positioned interviews */}
         <div className="grid grid-cols-[80px_1fr]">
-          {hours.map((hour) => {
-            const isPast = currentDate < new Date(new Date().setHours(0, 0, 0, 0)) || 
-                          (currentDate.toDateString() === now.toDateString() && hour < now.getHours());
-            const status = getTimeSlotStatus(currentDate, hour, workingHoursMap);
-            const classes = getTimeSlotClasses(status, isPast).replace('min-h-[60px]', 'min-h-[70px]');
-            const hourInterviews = getInterviewsForHour(hour);
-            
-            return (
-              <React.Fragment key={`hour-${hour}`}>
-                <div className="border-r border-b border-gray-200 p-2 text-sm text-gray-500 text-right bg-gray-50">
-                  {hour === 12 ? "12:00 pm" : hour > 12 ? `${hour - 12}:00 pm` : `${hour}:00 am`}
-                </div>
-                <div 
-                  className={classes}
-                  title={
-                    status === TimeSlotStatus.NON_WORKING_DAY ? 'Day off' :
-                    status === TimeSlotStatus.NON_WORKING ? 'Outside working hours' :
-                    status === TimeSlotStatus.LUNCH_BREAK ? 'Lunch break' :
-                    'Available for scheduling'
-                  }
+          {/* Hour labels column */}
+          <div className="bg-gray-50">
+            {hours.map((hour) => (
+              <div key={hour} className="h-[70px] border-r border-b border-gray-200 p-2 text-sm text-gray-500 text-right">
+                {hour === 12 ? "12:00 pm" : hour > 12 ? `${hour - 12}:00 pm` : `${hour}:00 am`}
+              </div>
+            ))}
+          </div>
+          
+          {/* Main content area with positioned interviews */}
+          <div className="relative">
+            {/* Hour grid cells */}
+            {hours.map((hour) => {
+              const isPast = currentDate < new Date(new Date().setHours(0, 0, 0, 0)) || 
+                            (currentDate.toDateString() === now.toDateString() && hour < now.getHours());
+              const status = getTimeSlotStatus(currentDate, hour, workingHoursMap);
+              
+              return (
+                <div
+                  key={hour}
+                  className={`h-[70px] border-b border-gray-200 ${
+                    isPast || status === TimeSlotStatus.NON_WORKING || status === TimeSlotStatus.NON_WORKING_DAY ? 'bg-gray-100' :
+                    status === TimeSlotStatus.LUNCH_BREAK ? 'bg-orange-50' :
+                    'bg-white hover:bg-blue-50'
+                  }`}
                 >
-                  {status === TimeSlotStatus.LUNCH_BREAK && (
-                    <div className="flex items-center gap-2 text-orange-600">
+                  {status === TimeSlotStatus.LUNCH_BREAK && !isPast && (
+                    <div className="flex items-center gap-2 text-orange-600 p-2">
                       <span className="text-sm">🍽️</span>
                       <span className="text-xs">Lunch Break</span>
                     </div>
                   )}
-                  {status === TimeSlotStatus.NON_WORKING_DAY && (
-                    <div className="text-xs text-gray-400">Day off</div>
+                  {status === TimeSlotStatus.NON_WORKING_DAY && !isPast && (
+                    <div className="text-xs text-gray-400 p-2">Day off</div>
                   )}
-                  {/* Display scheduled interviews */}
-                  {hourInterviews.map((interview: any, idx: number) => (
-                    <div
-                      key={interview.id || idx}
-                      className="bg-blue-100 border-l-4 border-blue-500 text-blue-800 p-2 rounded mb-1 cursor-pointer hover:bg-blue-200"
-                      title={`${interview.candidateName || 'Interview'} - ${interview.positionTitle || ''}`}
-                    >
-                      <div className="font-medium">{interview.candidateName || 'Interview'}</div>
-                      <div className="text-sm text-blue-600 mt-1">
-                        {new Date(interview.scheduledDate || interview.interviewDateTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                        {interview.durationMinutes && ` - ${interview.durationMinutes} min`}
-                      </div>
-                      {interview.positionTitle && (
-                        <div className="text-xs text-blue-500 mt-1">{interview.positionTitle}</div>
-                      )}
-                      {interview.interviewType && (
-                        <div className="text-xs bg-blue-200 px-2 py-0.5 rounded inline-block mt-1">
-                          {interview.interviewType}
-                        </div>
-                      )}
-                    </div>
-                  ))}
                 </div>
-              </React.Fragment>
-            );
-          })}
+              );
+            })}
+            
+            {/* Positioned interview cards */}
+            {interviews.map((interview: any, idx: number) => {
+              const { top, height } = getInterviewStyle(interview, startHour);
+              
+              // Skip if interview is outside visible hours
+              if (top < 0 || top > hours.length * 70) return null;
+              
+              return (
+                <div
+                  key={interview.id || idx}
+                  className="absolute left-2 right-2 bg-blue-100 border-l-4 border-blue-500 text-blue-800 p-2 rounded overflow-hidden cursor-pointer hover:bg-blue-200 hover:shadow-md transition-all z-10"
+                  style={{
+                    top: `${top}px`,
+                    height: `${height}px`,
+                    minHeight: '30px',
+                  }}
+                  title={`${interview.candidateName || 'Interview'}\n${formatTimeRange(interview)}\n${interview.interviewType || ''}`}
+                >
+                  <div className="font-medium truncate">{interview.candidateName || 'Interview'}</div>
+                  <div className="text-sm text-blue-600 mt-0.5">
+                    {formatTimeRange(interview)}
+                  </div>
+                  {height >= 70 && interview.positionTitle && (
+                    <div className="text-xs text-blue-500 mt-1 truncate">{interview.positionTitle}</div>
+                  )}
+                  {height >= 90 && interview.interviewType && (
+                    <div className="text-xs bg-blue-200 px-2 py-0.5 rounded inline-block mt-1">
+                      {interview.interviewType}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

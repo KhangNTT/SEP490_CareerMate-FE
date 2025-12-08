@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import OrganizationUpdateForm from "@/components/auth/OrganizationUpdateForm";
 import { useAuthStore } from "@/store/use-auth-store";
 
-export default function AccountRejectedPage() {
+export function RejectedContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [showUpdateForm, setShowUpdateForm] = useState(false);
@@ -22,28 +22,28 @@ export default function AccountRejectedPage() {
     // Lấy tokens từ URL params (nếu có) và lưu vào auth store
     const accessToken = searchParams.get("accessToken");
     const refreshToken = searchParams.get("refreshToken");
-    
+
     if (accessToken && !storedToken) {
       console.log("🔑 [Account Rejected] Saving tokens to auth store from URL params");
-      
+
       // Decode JWT to get expiration
       try {
         const base64Url = accessToken.split('.')[1];
         const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
           return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
         }).join(''));
         const payload = JSON.parse(jsonPayload);
-        
+
         const expiresAt = payload.exp * 1000; // Convert to milliseconds
-        
+
         // Save to localStorage first (for persistence)
         localStorage.setItem("access_token", accessToken);
         localStorage.setItem("token_expires_at", expiresAt.toString());
         if (refreshToken) {
           localStorage.setItem("refresh_token", refreshToken);
         }
-        
+
         // Then save to Zustand store
         setAuthFromTokens({
           accessToken,
@@ -51,7 +51,7 @@ export default function AccountRejectedPage() {
           isAuthenticated: true,
           role: payload.scope || 'ROLE_RECRUITER',
         });
-        
+
         console.log("✅ [Account Rejected] Tokens saved to auth store and localStorage");
       } catch (error) {
         console.error("❌ [Account Rejected] Error decoding token:", error);
@@ -106,7 +106,7 @@ export default function AccountRejectedPage() {
 
           {/* Form */}
           <div className="bg-white rounded-2xl shadow-lg p-8">
-            <OrganizationUpdateForm 
+            <OrganizationUpdateForm
               onCancel={() => setShowUpdateForm(false)}
               onSuccess={() => {
                 router.push("/auth/account-pending");
@@ -240,7 +240,7 @@ export default function AccountRejectedPage() {
                   <ArrowLeft className="w-5 h-5" />
                   Quay Lại Đăng Nhập
                 </button>
-                
+
                 <button
                   onClick={() => router.push("/")}
                   className="flex items-center justify-center gap-2 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-medium"

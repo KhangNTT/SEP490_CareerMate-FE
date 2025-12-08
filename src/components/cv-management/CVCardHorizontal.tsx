@@ -1,5 +1,6 @@
 import { CV } from "@/services/cvService";
-import { useState, memo } from "react";
+import { useState, memo, useCallback } from "react";
+import toast from "react-hot-toast";
 
 interface CVCardHorizontalProps {
   cv: CV;
@@ -9,6 +10,7 @@ interface CVCardHorizontalProps {
   onSync?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  onDownload?: () => void;
   // Loading states
   isSyncing?: boolean;
   isDisabled?: boolean;
@@ -22,10 +24,53 @@ export const CVCardHorizontal = ({
   onSync,
   onEdit,
   onDelete,
+  onDownload,
   isSyncing = false,
   isDisabled = false
 }: CVCardHorizontalProps) => {
   const [showMenu, setShowMenu] = useState(false);
+
+  // Download CV handler
+  const handleDownload = useCallback(async () => {
+    const downloadUrl = cv.downloadUrl || cv.fileUrl;
+    
+    if (!downloadUrl) {
+      toast.error("No download URL available for this CV");
+      return;
+    }
+
+    try {
+      toast.loading("Downloading CV...", { id: "download-cv" });
+      
+      // Fetch the file
+      const response = await fetch(downloadUrl);
+      if (!response.ok) {
+        throw new Error("Failed to fetch CV file");
+      }
+      
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = cv.name || "CV.pdf";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success("CV downloaded successfully!", { id: "download-cv" });
+      
+      // Call onDownload callback if provided
+      if (onDownload) {
+        onDownload();
+      }
+    } catch (error) {
+      console.error("Download error:", error);
+      toast.error("Failed to download CV", { id: "download-cv" });
+    }
+  }, [cv.downloadUrl, cv.fileUrl, cv.name, onDownload]);
 
   const getSourceBadge = () => {
     const sources = {
@@ -288,7 +333,7 @@ export const CVCardHorizontal = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          // Download logic
+                          handleDownload();
                           setShowMenu(false);
                         }}
                         className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors"
@@ -304,7 +349,7 @@ export const CVCardHorizontal = ({
                         Download
                       </button>
 
-                      <button
+                      {/* <button
                         onClick={(e) => {
                           e.stopPropagation();
                           // Rename logic
@@ -321,7 +366,7 @@ export const CVCardHorizontal = ({
                           />
                         </svg>
                         Rename
-                      </button>
+                      </button> */}
 
                       <hr className="my-1 border-gray-200" />
 

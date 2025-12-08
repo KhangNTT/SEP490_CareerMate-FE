@@ -76,7 +76,8 @@ export default function TipTapEditor({
                     .ProseMirror {
                         outline: none;
                         padding: 1rem;
-                        min-height: 200px;
+                        min-height: 280px;
+                        height: 100%;
                     }
                     .ProseMirror h1 {
                         font-size: 2em;
@@ -249,10 +250,12 @@ export default function TipTapEditor({
                 <div className="text-xs text-gray-500">Rich Text Editor</div>
             </div>
 
-            {/* Editor */}
-            <EditorContent editor={editor} />
+            {/* Editor Content Area */}
+            <div className="min-h-[300px] bg-white">
+                <EditorContent editor={editor} />
+            </div>
 
-            {/* Footer */}
+            {/* Footer - Fixed at bottom */}
             <div className="p-2 bg-gray-50 border-t border-gray-300 text-xs text-gray-500">
                 <strong>Tips:</strong> Select text and use the toolbar to format it. All formatting works properly!
             </div>

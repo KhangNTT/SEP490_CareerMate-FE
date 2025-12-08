@@ -1,6 +1,16 @@
 import { notFound } from 'next/navigation';
 
 // ========================================
+// ⚠️ FONT WARNING
+// ========================================
+// Inter font files are missing from /public/fonts/.
+// The print.css uses fallback fonts: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif
+// To use Inter font:
+// 1. Download Inter font from https://fonts.google.com/specimen/Inter
+// 2. Place .ttf files in /public/fonts/ (Inter-Regular.ttf, Inter-Medium.ttf, etc.)
+// 3. The fonts.css already has @font-face rules configured
+
+// ========================================
 // TYPES
 // ========================================
 
@@ -136,16 +146,22 @@ function normalizeCVData(rawData: any): CVData {
   
   const personalInfo = hasPersonalInfo ? rawData.personalInfo : rawData;
   
+  // ========================================
+  // ✅ FIX: Handle photoUrl from multiple sources
+  // Priority: rawData.photoUrl (ExportCVData flat) > personalInfo.photoUrl (nested)
+  // ========================================
+  const resolvedPhotoUrl = rawData.photoUrl || personalInfo.photoUrl || '';
+  
   return {
     // Personal Info - handle both flat and nested structures
-    fullName: personalInfo.fullName || rawData.fullName || '',
+    fullName: personalInfo.fullName || rawData.name || rawData.fullName || '',
     title: personalInfo.position || personalInfo.title || rawData.title || '',
     email: personalInfo.email || rawData.email || '',
     phone: personalInfo.phone || rawData.phone || '',
     address: personalInfo.location || personalInfo.address || rawData.address || '',
     website: personalInfo.website || personalInfo.link || rawData.website || '',
     linkedin: personalInfo.linkedin || rawData.linkedin || '', // Personal link from CVPreview
-    photoUrl: personalInfo.photoUrl || rawData.photoUrl || '',
+    photoUrl: resolvedPhotoUrl,
     dob: personalInfo.dob || rawData.dob || '',
     gender: personalInfo.gender || rawData.gender || '',
     summary: personalInfo.summary || rawData.summary || '',
@@ -948,11 +964,12 @@ export default async function PrintPage({
   params,
   searchParams,
 }: {
-  params: { templateId: string };
-  searchParams: { id?: string; data?: string; package?: string };
+  params: Promise<{ templateId: string }>;
+  searchParams: Promise<{ id?: string; data?: string; package?: string }>;
 }) {
-  const { templateId } = params;
-  const { id: cvId, data: encodedData, package: userPackage } = searchParams;
+  // ✅ Next.js 15+: Await params and searchParams
+  const { templateId } = await params;
+  const { id: cvId, data: encodedData, package: userPackage } = await searchParams;
 
   // Determine if watermark should be shown
   // Show watermark for FREE or BASIC package (or when no package specified)
@@ -1022,11 +1039,14 @@ export async function generateMetadata({
   params,
   searchParams,
 }: {
-  params: { templateId: string };
-  searchParams: { id?: string };
+  params: Promise<{ templateId: string }>;
+  searchParams: Promise<{ id?: string }>;
 }) {
+  // ✅ Next.js 15+: Await params
+  const { templateId } = await params;
+  
   return {
-    title: `CV Print - ${params.templateId}`,
+    title: `CV Print - ${templateId}`,
     robots: 'noindex, nofollow', // Prevent indexing of print pages
   };
 }
