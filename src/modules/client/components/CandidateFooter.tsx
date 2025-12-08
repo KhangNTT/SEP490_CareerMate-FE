@@ -45,7 +45,7 @@ export function CandidateFooter() {
                         <h3 className="text-lg font-semibold mb-4">For Candidates</h3>
                         <ul className="space-y-2">
                             <li>
-                                <Link href="/candidate/jobs" className="text-gray-400 hover:text-white transition-colors">
+                                <Link href="/jobs-list" className="text-gray-400 hover:text-white transition-colors">
                                     Find Jobs
                                 </Link>
                             </li>
@@ -55,7 +55,7 @@ export function CandidateFooter() {
                                 </Link>
                             </li>
                             <li>
-                                <Link href="/candidate/cv" className="text-gray-400 hover:text-white transition-colors">
+                                <Link href="/candidate/cv-management" className="text-gray-400 hover:text-white transition-colors">
                                     CV Templates
                                 </Link>
                             </li>

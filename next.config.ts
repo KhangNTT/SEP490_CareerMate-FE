@@ -67,7 +67,7 @@ const nextConfig = {
   experimental: {
     // Enable optimized CSS
     optimizeCss: true,
-    // Optimize package imports
+    // Optimize package imports (exclude puppeteer packages)
     optimizePackageImports: [
       "lucide-react",
       "react-icons",
@@ -75,6 +75,8 @@ const nextConfig = {
       "@radix-ui/react-select",
       "@radix-ui/react-label",
       "@radix-ui/react-slot",
+      // ❗DO NOT add @sparticuz/chromium or puppeteer-core here
+      // They need to be external for serverless environments
     ],
     // ========================================
     // ✅ FIX: Mark packages as external for serverless
