@@ -17,10 +17,10 @@ export default function AccountPendingPage() {
               <Clock className="w-12 h-12 text-white" />
             </div>
             <h1 className="text-4xl font-bold text-white mb-3">
-              Tài Khoản Đang Chờ Xét Duyệt
+              Account Pending Approval
             </h1>
             <p className="text-amber-50 text-lg">
-              Hồ sơ của bạn đang được quản trị viên xem xét
+              Your profile is currently under review by an administrator
             </p>
           </div>
 
@@ -36,24 +36,24 @@ export default function AccountPendingPage() {
                 </div>
                 <div className="flex-1">
                   <h3 className="font-bold text-amber-900 mb-3 text-lg">
-                    Thông tin quan trọng:
+                    Important Information:
                   </h3>
                   <ul className="space-y-2.5 text-sm text-amber-800">
                     <li className="flex items-start gap-2">
                       <span className="text-amber-500 mt-0.5">•</span>
-                      <span>Quá trình xét duyệt thường mất từ <strong>24-48 giờ làm việc</strong></span>
+                      <span>The review process usually takes <strong>24-48 business hours</strong></span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-amber-500 mt-0.5">•</span>
-                      <span>Bạn sẽ nhận được <strong>email thông báo</strong> khi tài khoản được phê duyệt</span>
+                      <span>You will receive an <strong>email notification</strong> when your account is approved</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-amber-500 mt-0.5">•</span>
-                      <span>Vui lòng kiểm tra cả <strong>hộp thư spam/junk</strong></span>
+                      <span>Please check your <strong>spam/junk folder</strong> as well</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-amber-500 mt-0.5">•</span>
-                      <span>Không thể đăng nhập cho đến khi tài khoản được kích hoạt</span>
+                      <span>You cannot log in until your account is activated</span>
                     </li>
                   </ul>
                 </div>
@@ -64,7 +64,7 @@ export default function AccountPendingPage() {
             <div className="bg-blue-50 rounded-xl p-6 mb-8 border border-blue-100">
               <h3 className="font-bold text-blue-900 mb-5 flex items-center gap-2 text-lg">
                 <CheckCircle2 className="w-5 h-5" />
-                Điều gì xảy ra tiếp theo?
+                What happens next?
               </h3>
               <div className="space-y-5">
                 {/* Step 1 */}
@@ -75,9 +75,9 @@ export default function AccountPendingPage() {
                     </div>
                   </div>
                   <div className="flex-1 pt-1.5">
-                    <h4 className="font-semibold text-blue-900 mb-1">Kiểm tra thông tin</h4>
+                    <h4 className="font-semibold text-blue-900 mb-1">Verify Information</h4>
                     <p className="text-sm text-blue-700">
-                      Admin sẽ xác minh thông tin doanh nghiệp và giấy phép kinh doanh của bạn
+                      Admin will verify your business information and business license
                     </p>
                   </div>
                 </div>
@@ -90,9 +90,9 @@ export default function AccountPendingPage() {
                     </div>
                   </div>
                   <div className="flex-1 pt-1.5">
-                    <h4 className="font-semibold text-blue-900 mb-1">Phê duyệt tài khoản</h4>
+                    <h4 className="font-semibold text-blue-900 mb-1">Account Approval</h4>
                     <p className="text-sm text-blue-700">
-                      Nếu hồ sơ hợp lệ, bạn sẽ nhận được email xác nhận phê duyệt
+                      If your profile is valid, you will receive an approval confirmation email
                     </p>
                   </div>
                 </div>
@@ -105,9 +105,9 @@ export default function AccountPendingPage() {
                     </div>
                   </div>
                   <div className="flex-1 pt-1.5">
-                    <h4 className="font-semibold text-blue-900 mb-1">Kích hoạt tài khoản</h4>
+                    <h4 className="font-semibold text-blue-900 mb-1">Activate Account</h4>
                     <p className="text-sm text-blue-700">
-                      Đăng nhập lại để truy cập đầy đủ tính năng recruiter
+                      Log in again to access full recruiter features
                     </p>
                   </div>
                 </div>
@@ -120,20 +120,20 @@ export default function AccountPendingPage() {
               <div className="bg-green-50 rounded-xl p-6 border border-green-100">
                 <h3 className="font-bold text-green-900 mb-4 flex items-center gap-2">
                   <Mail className="w-5 h-5" />
-                  Kiểm tra Email
+                  Check Email
                 </h3>
                 <ul className="space-y-2.5 text-sm text-green-800">
                   <li className="flex items-start gap-2">
                     <span className="text-green-500 mt-0.5">✓</span>
-                    <span>Hộp thư đến chính</span>
+                    <span>Primary Inbox</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-green-500 mt-0.5">✓</span>
-                    <span>Thư mục Spam/Junk</span>
+                    <span>Spam/Junk Folder</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-green-500 mt-0.5">✓</span>
-                    <span>Thư mục Promotions</span>
+                    <span>Promotions Folder</span>
                   </li>
                 </ul>
               </div>
@@ -142,20 +142,20 @@ export default function AccountPendingPage() {
               <div className="bg-purple-50 rounded-xl p-6 border border-purple-100">
                 <h3 className="font-bold text-purple-900 mb-4 flex items-center gap-2">
                   <Bell className="w-5 h-5" />
-                  Thông Báo
+                  Notifications
                 </h3>
                 <ul className="space-y-2.5 text-sm text-purple-800">
                   <li className="flex items-start gap-2">
                     <span className="text-purple-500 mt-0.5">✓</span>
-                    <span>Email phê duyệt</span>
+                    <span>Approval Email</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-purple-500 mt-0.5">✓</span>
-                    <span>Hướng dẫn kích hoạt</span>
+                    <span>Activation Guide</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-purple-500 mt-0.5">✓</span>
-                    <span>Link đăng nhập</span>
+                    <span>Login Link</span>
                   </li>
                 </ul>
               </div>
@@ -169,7 +169,7 @@ export default function AccountPendingPage() {
                   className="flex items-center justify-center gap-2 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all font-medium"
                 >
                   <ArrowLeft className="w-5 h-5" />
-                  Quay Lại Đăng Nhập
+                  Back to Sign In
                 </button>
                 
                 <button
@@ -177,7 +177,7 @@ export default function AccountPendingPage() {
                   className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-sky-600 to-blue-600 text-white rounded-xl hover:from-sky-700 hover:to-blue-700 transition-all font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 duration-200"
                 >
                   <Home className="w-5 h-5" />
-                  Về Trang Chủ
+                  Back to Home
                 </button>
               </div>
             </div>
@@ -187,9 +187,9 @@ export default function AccountPendingPage() {
         {/* Help Section */}
         <div className="mt-8 text-center">
           <p className="text-sm text-gray-600">
-            Cần hỗ trợ?{" "}
+            Need help?{" "}
             <a href="/contact" className="text-sky-600 hover:text-sky-700 font-medium underline">
-              Liên hệ với chúng tôi
+              Contact us
             </a>
           </p>
         </div>

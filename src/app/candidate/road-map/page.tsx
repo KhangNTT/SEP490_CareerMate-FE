@@ -93,15 +93,15 @@ export default function RoadMapPage() {
         fetchRecommendations(profile.title);
       } else {
         console.warn('⚠️ [ROADMAP PAGE] No professional title found in profile');
-        setError("Bạn chưa cập nhật Professional Title. Vui lòng cập nhật trong CM Profile.");
+        setError("Please update your Professional Title in CM Profile.");
         setIsLoadingProfile(false);
       }
     } catch (error: any) {
       console.error("❌ [ROADMAP PAGE] Error fetching profile:", error);
       if (error.message === "PROFILE_NOT_FOUND") {
-        setError("Bạn chưa có profile. Vui lòng tạo profile trong CM Profile.");
+        setError("You do not have a profile yet. Please create one in CM Profile.");
       } else {
-        setError("Không thể tải thông tin profile. Vui lòng thử lại.");
+        setError("Failed to load profile information. Please try again.");
       }
       setIsLoadingProfile(false);
     }
@@ -125,19 +125,19 @@ export default function RoadMapPage() {
         setRecommendations(response.result);
         
         if (response.result.length > 0) {
-          toast.success(`Tìm thấy ${response.result.length} roadmap phù hợp!`);
+          toast.success(`Found ${response.result.length} matching roadmaps!`);
         } else {
-          toast("Không tìm thấy roadmap phù hợp với chuyên môn của bạn.");
+          toast("No roadmaps found matching your expertise.");
         }
       } else {
         console.warn('⚠️ [ROADMAP PAGE] Unexpected response format:', response);
         setRecommendations([]);
-        toast("Không tìm thấy roadmap phù hợp với chuyên môn của bạn.");
+        toast("No roadmaps found matching your expertise.");
       }
     } catch (error: any) {
       console.error("❌ [ROADMAP PAGE] Error fetching recommendations:", error);
-      setError("Không thể tải danh sách roadmap. Vui lòng thử lại.");
-      toast.error("Lỗi khi tải roadmap recommendations");
+      setError("Failed to load roadmap list. Please try again.");
+      toast.error("Error loading roadmap recommendations");
       setRecommendations([]);
     } finally {
       setIsLoadingProfile(false);
@@ -159,10 +159,10 @@ export default function RoadMapPage() {
   };
 
   const getSimilarityBadge = (score: number): string => {
-    if (score >= 0.9) return "Rất phù hợp";
-    if (score >= 0.7) return "Phù hợp";
-    if (score >= 0.5) return "Khá phù hợp";
-    return "Ít phù hợp";
+    if (score >= 0.9) return "Highly Suitable";
+    if (score >= 0.7) return "Suitable";
+    if (score >= 0.5) return "Fairly Suitable";
+    return "Less Suitable";
   };
 
   // Loading state with skeleton
@@ -209,20 +209,20 @@ export default function RoadMapPage() {
                   <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <AlertCircle className="w-8 h-8 text-red-600" />
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">Thiếu thông tin</h3>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">Missing Information</h3>
                   <p className="text-gray-600 mb-6">{error}</p>
                   <div className="flex gap-3 justify-center">
                     <a
                       href="/candidate/cm-profile"
                       className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
                     >
-                      Cập nhật Profile
+                      Update Profile
                     </a>
                     <button
                       onClick={fetchProfile}
                       className="px-6 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
                     >
-                      Thử lại
+                      Retry
                     </button>
                   </div>
                 </div>
@@ -265,7 +265,7 @@ export default function RoadMapPage() {
                     className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium disabled:opacity-50"
                   >
                     <RefreshCw className={`w-4 h-4 ${isLoadingRecommendations ? 'animate-spin' : ''}`} />
-                    Làm mới
+                    Refresh
                   </button>
                 )}
               </div>
@@ -366,16 +366,16 @@ export default function RoadMapPage() {
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Target className="w-8 h-8 text-gray-400" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Không tìm thấy roadmap</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No roadmaps found</h3>
                 <p className="text-gray-600 mb-6">
-                  Chưa có roadmap phù hợp với "{professionalTitle}". Vui lòng thử lại sau.
+                  No roadmaps matching "{professionalTitle}" were found. Please try again later.
                 </p>
                 <button
                   onClick={handleRefreshRecommendations}
                   className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center gap-2 text-sm font-medium"
                 >
                   <RefreshCw className="w-4 h-4" />
-                  Thử lại
+                  Retry
                 </button>
               </div>
             )}

@@ -665,13 +665,13 @@ export default function CVPreview({
         const bg = getComputedStyle(elem).backgroundColor;
 
         if (color.includes("oklch")) elem.style.color = "#111827"; // text-gray-900
-        if (bg.includes("oklch")) elem.style.backgroundColor = "#ffffff"; // trắng an toàn
+        if (bg.includes("oklch")) elem.style.backgroundColor = "#ffffff"; // bg-white
       });
 
       document.querySelectorAll('*').forEach(el => {
   const color = getComputedStyle(el).color;
   if (color.includes('oklch')) {
-    (el as HTMLElement).style.color = '#000'; // fallback an toàn
+    (el as HTMLElement).style.color = '#000'; // safe fallback
   }
 });
 
@@ -778,20 +778,20 @@ export default function CVPreview({
     
     // If still no candidateId, try fetching it
     if (!effectiveCandidateId) {
-      toast.loading("Đang tải thông tin người dùng...", { id: "loading-profile" });
+      toast.loading("Loading user information...", { id: "loading-profile" });
       try {
         await useAuthStore.getState().fetchCandidateProfile();
         effectiveCandidateId = useAuthStore.getState().candidateId;
         toast.dismiss("loading-profile");
       } catch (err) {
-        toast.error("Không thể tải thông tin người dùng", { id: "loading-profile" });
+        toast.error("Failed to load user information", { id: "loading-profile" });
         return;
       }
     }
 
     // Final check - candidateId is required for Firebase path
     if (!effectiveCandidateId) {
-      toast.error("Bạn cần đăng nhập để lưu CV");
+      toast.error("You need to log in to save your CV");
       return;
     }
 
@@ -1149,7 +1149,7 @@ export default function CVPreview({
                     }}
                   />
 
-                  {/* Thumb - hình tròn trượt */}
+                  {/* Thumb - circular slider handle */}
                   <div
                     className="absolute w-4 h-4 bg-white border-2 border-gray-500 rounded-full shadow-sm transition-all duration-100 hover:scale-110 pointer-events-none"
                     style={{
@@ -3089,7 +3089,7 @@ export default function CVPreview({
         {isDownloading && (
           <div className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-200">
             <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm font-medium text-green-700">Đang tạo & lưu CV...</span>
+            <span className="text-sm font-medium text-green-700">Creating & saving CV...</span>
           </div>
         )}
         <div className="flex items-center justify-between p-4">
@@ -3170,11 +3170,11 @@ export default function CVPreview({
                 // Use candidateId from store, or fallback to user authentication check
                 const effectiveCandidateId = candidateId;
                 if (!effectiveCandidateId && !user) {
-                  toast.error("Bạn cần đăng nhập để lưu CV");
+                  toast.error("You need to log in to save your CV.");
                   return;
                 }
                 if (!effectiveCandidateId) {
-                  toast.error("Đang tải thông tin người dùng, vui lòng thử lại...");
+                  toast.error("Loading user information, please try again...");
                   // Try to fetch candidateId again
                   useAuthStore.getState().fetchCandidateProfile();
                   return;
@@ -3183,12 +3183,12 @@ export default function CVPreview({
               }}
               disabled={!isMounted || isDownloading || (!candidateId && !user)}
               className="px-3 py-2 border border-green-400 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              title={!isMounted || !user ? "Đăng nhập để lưu CV" : !candidateId ? "Đang tải..." : "Export PDF and save to Firebase Storage"}
+              title={!isMounted || !user ? "Log in to save your CV" : !candidateId ? "Loading..." : "Export PDF and save to Firebase Storage"}
             >
               {isDownloading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Đang lưu...
+                  Saving...
                 </>
               ) : (
                 <>

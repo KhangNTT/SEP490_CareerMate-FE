@@ -342,7 +342,7 @@ export default function JobRecommendModal({ isOpen, onClose }: JobRecommendModal
                       }}
                       className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
                     >
-                      Cập nhật CV ngay →
+                       Update CV now →
                     </button>
                   </div>
                 )}
@@ -526,7 +526,7 @@ export default function JobRecommendModal({ isOpen, onClose }: JobRecommendModal
                     {/* View Button */}
                     <button
                       onClick={() => {
-                        toast.success('Xem chi tiết công việc #' + job.job_id);
+                        toast.success('View details of job #' + job.job_id);
                         onClose();
                       }}
                       className="mt-3 w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium text-sm"
@@ -601,12 +601,12 @@ export default function JobRecommendModal({ isOpen, onClose }: JobRecommendModal
                     {/* View Button */}
                     <button
                       onClick={() => {
-                        toast.success('Xem chi tiết công việc #' + job.job_id);
+                        toast.success('View details of job #' + job.job_id);
                         onClose();
                       }}
                       className="mt-3 w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium text-sm"
                     >
-                      Xem chi tiết
+                      View Details
                     </button>
                   </div>
                 ))}
@@ -681,7 +681,7 @@ export default function JobRecommendModal({ isOpen, onClose }: JobRecommendModal
                     {/* View Button */}
                     <button
                       onClick={() => {
-                        toast.success('Xem chi tiết công việc #' + job.job_id);
+                        toast.success('View details of job #' + job.job_id);
                         onClose();
                       }}
                       className="mt-3 w-full px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg transition-colors font-medium text-sm"

@@ -15,11 +15,11 @@ export function RejectedContent() {
   const { accessToken: storedToken } = useAuthStore();
 
   useEffect(() => {
-    // Lấy lý do từ query params và decode URL encoding
+    // Get reason from query params and decode URL encoding
     const reason = searchParams.get("reason");
-    setRejectionReason(reason ? decodeURIComponent(reason) : "Không có thông tin chi tiết");
+    setRejectionReason(reason ? decodeURIComponent(reason) : "No detailed information available");
 
-    // Lấy tokens từ URL params (nếu có) và lưu vào auth store
+    // Get tokens from URL params (if any) and save to auth store
     const accessToken = searchParams.get("accessToken");
     const refreshToken = searchParams.get("refreshToken");
 
@@ -72,17 +72,17 @@ export function RejectedContent() {
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900">
-                    Cập Nhật Hồ Sơ Doanh Nghiệp
+                    Update Business Profile
                   </h1>
                   <p className="text-sm text-gray-600 mt-1">
-                    Điền đầy đủ thông tin để được xét duyệt lại
+                    Fill in all required information for re-evaluation
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setShowUpdateForm(false)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Quay lại"
+                title="Back"
               >
                 <ArrowLeft className="w-5 h-5 text-gray-600" />
               </button>
@@ -95,7 +95,7 @@ export function RejectedContent() {
               <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
               <div>
                 <h3 className="font-semibold text-amber-900 mb-1">
-                  Lý do từ chối trước đó:
+                  Previous Rejection Reason:
                 </h3>
                 <p className="text-sm text-amber-800 leading-relaxed">
                   {rejectionReason}
@@ -117,9 +117,9 @@ export function RejectedContent() {
           {/* Help Section */}
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              Cần hỗ trợ?{" "}
+              Need help?{" "}
               <a href="/contact" className="text-sky-600 hover:text-sky-700 font-medium underline">
-                Liên hệ với chúng tôi
+                Contact us
               </a>
             </p>
           </div>
@@ -139,10 +139,10 @@ export function RejectedContent() {
               <XCircle className="w-12 h-12 text-white" />
             </div>
             <h1 className="text-4xl font-bold text-white mb-3">
-              Tài Khoản Bị Từ Chối
+              Account Rejected
             </h1>
             <p className="text-red-50 text-lg">
-              Hồ sơ của bạn không đạt yêu cầu phê duyệt
+              Your profile did not meet the approval requirements
             </p>
           </div>
 
@@ -158,7 +158,7 @@ export function RejectedContent() {
                 </div>
                 <div className="flex-1">
                   <h3 className="font-bold text-red-900 mb-2 text-lg">
-                    Lý do từ chối:
+                    Previous Rejection Reason:
                   </h3>
                   <p className="text-red-800 leading-relaxed whitespace-pre-wrap">
                     {rejectionReason}
@@ -173,24 +173,24 @@ export function RejectedContent() {
               <div className="bg-blue-50 rounded-xl p-6 border border-blue-100">
                 <h3 className="font-bold text-blue-900 mb-4 flex items-center gap-2">
                   <RefreshCw className="w-5 h-5" />
-                  Bạn có thể làm gì?
+                  What can you do?
                 </h3>
                 <ul className="space-y-3 text-sm text-blue-800">
                   <li className="flex items-start gap-2">
                     <span className="text-blue-500 mt-0.5">•</span>
-                    <span>Xem lại lý do từ chối phía trên</span>
+                    <span>Review the rejection reason above</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-blue-500 mt-0.5">•</span>
-                    <span>Cập nhật thông tin doanh nghiệp chính xác</span>
+                    <span>Update your business information accurately</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-blue-500 mt-0.5">•</span>
-                    <span>Cung cấp giấy phép kinh doanh hợp lệ</span>
+                    <span>Provide a valid business license</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-blue-500 mt-0.5">•</span>
-                    <span>Gửi lại hồ sơ để xét duyệt</span>
+                    <span>Resubmit your profile for review</span>
                   </li>
                 </ul>
               </div>
@@ -199,24 +199,24 @@ export function RejectedContent() {
               <div className="bg-green-50 rounded-xl p-6 border border-green-100">
                 <h3 className="font-bold text-green-900 mb-4 flex items-center gap-2">
                   <FileText className="w-5 h-5" />
-                  Thông tin cần chuẩn bị
+                  Required Information
                 </h3>
                 <ul className="space-y-3 text-sm text-green-800">
                   <li className="flex items-start gap-2">
                     <Building2 className="w-4 h-4 mt-0.5 text-green-600" />
-                    <span>Tên công ty chính xác</span>
+                    <span>Accurate company name</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <FileText className="w-4 h-4 mt-0.5 text-green-600" />
-                    <span>Số giấy phép kinh doanh</span>
+                    <span>Business license number</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <User className="w-4 h-4 mt-0.5 text-green-600" />
-                    <span>Thông tin người liên hệ</span>
+                    <span>Contact person information</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <MapPin className="w-4 h-4 mt-0.5 text-green-600" />
-                    <span>Địa chỉ công ty</span>
+                    <span>Company address</span>
                   </li>
                 </ul>
               </div>
@@ -229,7 +229,7 @@ export function RejectedContent() {
                 className="w-full flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-sky-600 to-blue-600 text-white rounded-xl hover:from-sky-700 hover:to-blue-700 transition-all font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 duration-200 text-lg"
               >
                 <RefreshCw className="w-5 h-5" />
-                Cập Nhật & Gửi Lại Hồ Sơ
+                Update & Resubmit Profile
               </button>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -238,7 +238,7 @@ export function RejectedContent() {
                   className="flex items-center justify-center gap-2 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all font-medium"
                 >
                   <ArrowLeft className="w-5 h-5" />
-                  Quay Lại Đăng Nhập
+                  Back to Sign In
                 </button>
 
                 <button
@@ -246,7 +246,7 @@ export function RejectedContent() {
                   className="flex items-center justify-center gap-2 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-medium"
                 >
                   <Home className="w-5 h-5" />
-                  Về Trang Chủ
+                  Back to Home
                 </button>
               </div>
             </div>
@@ -256,9 +256,9 @@ export function RejectedContent() {
         {/* Help Section */}
         <div className="mt-8 text-center">
           <p className="text-sm text-gray-600">
-            Cần hỗ trợ?{" "}
+            Need help?{" "}
             <a href="/contact" className="text-sky-600 hover:text-sky-700 font-medium underline">
-              Liên hệ với chúng tôi
+              Contact us
             </a>
           </p>
         </div>

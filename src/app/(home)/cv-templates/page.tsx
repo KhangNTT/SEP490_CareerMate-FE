@@ -298,7 +298,7 @@ export default function CVTemplatesPage() {
             <h2 className="text-xl font-bold text-gray-800">Select Template</h2>
           </div>
           
-          {/* Thông báo dữ liệu cá nhân */}
+          {/* Your personal data notification */}
           {hasCustomData && (
             <div className="bg-green-50 border-l-4 border-green-500 text-green-800 p-4 my-2 mx-3">
               <div className="flex items-center">
@@ -306,8 +306,8 @@ export default function CVTemplatesPage() {
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
                 </svg>
                 <div>
-                  <p className="font-medium">Dữ liệu cá nhân của bạn đã được tải!</p>
-                  <p className="text-sm">CV đang hiển thị thông tin cá nhân thực của bạn.</p>
+                  <p className="font-medium">Your personal data has been loaded!</p>
+                  <p className="text-sm">CV is currently showing your actual personal information.</p>
                 </div>
               </div>
             </div>
