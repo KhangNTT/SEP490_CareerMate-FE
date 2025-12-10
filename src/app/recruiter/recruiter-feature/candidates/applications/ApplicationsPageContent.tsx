@@ -1,9 +1,9 @@
 "use client";
 
-import { Search, Filter, Download, FileText, Calendar, MapPin, Clock, CheckCircle, XCircle, Eye, RefreshCw, AlertCircle } from "lucide-react";
+import { Search, Filter, Download, FileText, Calendar, MapPin, Clock, CheckCircle, XCircle, Eye, RefreshCw, AlertCircle, Lock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getJobApplications, getRecruiterApplications, getRecruiterApplicationsFiltered, approveJobApplication, rejectJobApplication, setReviewingJobApplication, JobApplication, updateJobApplicationStatus } from "@/lib/recruiter-api";
+import { getJobApplications, getRecruiterApplications, getRecruiterApplicationsFiltered, approveJobApplication, rejectJobApplication, setReviewingJobApplication, JobApplication, updateJobApplicationStatus, checkCVViewEntitlement } from "@/lib/recruiter-api";
 import { StatusBadgeFull } from "@/components/shared/StatusBadge";
 import { getRecruiterActions, sortStatuses } from "@/lib/status-utils";
 import { JobApplicationStatus } from "@/types/status";
@@ -44,6 +44,8 @@ export default function ApplicationsPageContent() {
   const [rejectReason, setRejectReason] = useState("");
   const [banReason, setBanReason] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [canViewCV, setCanViewCV] = useState<boolean>(false);
+  const [isCheckingCVAccess, setIsCheckingCVAccess] = useState(false);
 
   // Available statuses for filtering (13 statuses)
   const availableStatuses: Array<JobApplicationStatus | 'ALL'> = [
@@ -61,6 +63,40 @@ export default function ApplicationsPageContent() {
     'WITHDRAWN',
     'BANNED'
   ];
+
+  // Check CV view entitlement when dialog opens
+  useEffect(() => {
+    if (isDetailDialogOpen) {
+      checkCVAccess();
+    }
+  }, [isDetailDialogOpen]);
+
+  const checkCVAccess = async () => {
+    try {
+      setIsCheckingCVAccess(true);
+      const response = await checkCVViewEntitlement();
+      setCanViewCV(response.result);
+    } catch (error) {
+      console.error('Error checking CV view entitlement:', error);
+      setCanViewCV(false);
+    } finally {
+      setIsCheckingCVAccess(false);
+    }
+  };
+
+  const handleViewCV = () => {
+    if (!canViewCV) {
+      toast.error('You need to upgrade your package to view CV', {
+        icon: '🔒',
+        duration: 4000,
+      });
+      return;
+    }
+    
+    if (selectedApplication?.cvFilePath) {
+      window.open(selectedApplication.cvFilePath, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   // Handle recruiter actions
   const handleRecruiterAction = async (action: string, applicationId: number) => {
@@ -485,14 +521,32 @@ export default function ApplicationsPageContent() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-700">CV File</p>
-                  <a
-                    href={selectedApplication.cvFilePath}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-600 hover:underline"
-                  >
-                    View CV
-                  </a>
+                  {isCheckingCVAccess ? (
+                    <span className="text-sm text-gray-400">Checking access...</span>
+                  ) : (
+                    <button
+                      onClick={handleViewCV}
+                      disabled={!canViewCV}
+                      className={`text-sm flex items-center gap-1.5 ${
+                        canViewCV 
+                          ? 'text-blue-600 hover:underline cursor-pointer' 
+                          : 'text-gray-400 cursor-not-allowed'
+                      }`}
+                      title={canViewCV ? 'Click to view CV' : 'Upgrade package to view CV'}
+                    >
+                      {canViewCV ? (
+                        <>
+                          <Eye className="h-4 w-4" />
+                          View CV
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="h-4 w-4" />
+                          View CV (Locked)
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
 

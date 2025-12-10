@@ -42,7 +42,18 @@ export const getRecruiterInvoice = async (): Promise<RecruiterInvoice> => {
  * Format date from YYYY-MM-DD to readable format
  */
 export const formatDate = (dateString: string): string => {
+  if (!dateString) {
+    return 'Unknown';
+  }
+  
   const date = new Date(dateString);
+  
+  // Check if date is valid
+  if (isNaN(date.getTime())) {
+    console.warn('Invalid date string:', dateString);
+    return 'Invalid date';
+  }
+  
   return new Intl.DateTimeFormat('vi-VN', {
     year: 'numeric',
     month: 'long',
@@ -54,7 +65,18 @@ export const formatDate = (dateString: string): string => {
  * Format date to relative time (e.g., "2 hours ago", "1 day ago")
  */
 export const formatRelativeTime = (dateString: string): string => {
+  if (!dateString) {
+    return 'Unknown';
+  }
+  
   const date = new Date(dateString);
+  
+  // Check if date is valid
+  if (isNaN(date.getTime())) {
+    console.warn('Invalid date string:', dateString);
+    return 'Invalid date';
+  }
+  
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffSecs = Math.floor(diffMs / 1000);

@@ -26,6 +26,12 @@ export function RecruiterHeader({ sidebarOpen = false }: RecruiterHeaderProps) {
     email: string;
     username?: string;
   } | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Ensure component is mounted to avoid hydration mismatch
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Fetch current user info from API
   useEffect(() => {
@@ -133,9 +139,11 @@ export function RecruiterHeader({ sidebarOpen = false }: RecruiterHeaderProps) {
             <div className="flex items-center space-x-4">
               {isAuthenticated && user ? (
                 <>
-                  <span className="sm:block text-gray-300 hover:text-white transition-colors hidden text-xs md:inline">
-                    For Recruiter {userInfo?.username || userInfo?.name || "abc"}
-                  </span>
+                  {isMounted && userInfo && (
+                    <span className="sm:block text-gray-300 hover:text-white transition-colors hidden text-xs md:inline">
+                      For Recruiter {userInfo.username || userInfo.name}
+                    </span>
+                  )}
 
                   <ProfileDropdown
                     userName={userInfo?.username || userInfo?.name || user?.email || "User"}

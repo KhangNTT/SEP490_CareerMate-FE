@@ -580,9 +580,9 @@ git add src/app/(home)/jobs-detail/page.tsx
                 <div className="relative">
                   <select className="appearance-none pl-4 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white cursor-pointer text-gray-700 text-sm">
                     <option>Working Model</option>
-                    <option>Remote</option>
-                    <option>Hybrid</option>
-                    <option>Onsite</option>
+                    <option>AT_OFFICE</option>
+                    <option>REMOTE</option>
+                    <option>HYBRID</option>
                   </select>
                   <svg
                     className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"

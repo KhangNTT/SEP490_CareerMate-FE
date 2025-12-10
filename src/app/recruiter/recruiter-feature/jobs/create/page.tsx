@@ -17,8 +17,11 @@ import {
   Package,
   Tag,
   Plus,
+  Lock,
+  AlertTriangle,
 } from "lucide-react";
-import { createJobPost, CreateJobPostRequest, getSkills, Skill, getRecruiterJobPostings, RecruiterJobPosting } from "@/lib/recruiter-api";
+import { createJobPost, CreateJobPostRequest, getSkills, Skill, getRecruiterJobPostings, RecruiterJobPosting, getRecruiterPackage } from "@/lib/recruiter-api";
+import { getRecruiterInvoice } from "@/lib/recruiter-invoice-api";
 import toast from "react-hot-toast";
 
 export default function CreateJobPage() {
@@ -27,6 +30,10 @@ export default function CreateJobPage() {
   const [jobs, setJobs] = useState<RecruiterJobPosting[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingJobs, setIsLoadingJobs] = useState(false);
+  const [jobPostingLimit, setJobPostingLimit] = useState<number>(0);
+  const [currentJobCount, setCurrentJobCount] = useState<number>(0);
+  const [isCheckingAccess, setIsCheckingAccess] = useState(false);
+  const [packageName, setPackageName] = useState<string>("");
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0);
@@ -60,6 +67,103 @@ export default function CreateJobPage() {
   
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [confirmDelete, setConfirmDelete] = useState<any | null>(null);
+
+  // Check job posting limit on component mount
+  useEffect(() => {
+    const checkJobPostingLimit = async () => {
+      try {
+        setIsCheckingAccess(true);
+        
+        // Get current package info from invoice
+        const invoiceResponse = await getRecruiterInvoice();
+        const currentPackageName = invoiceResponse.packageName;
+        setPackageName(currentPackageName);
+        
+        // Get all packages
+        const packageResponse = await getRecruiterPackage();
+        
+        if (packageResponse.code === 200 && packageResponse.result && packageResponse.result.length > 0) {
+          // Find the current active package by name
+          const currentPackage = packageResponse.result.find(
+            (pkg) => pkg.name === currentPackageName
+          );
+          
+          if (currentPackage) {
+            // Find Job Posting entitlement
+            const jobPostingEntitlement = currentPackage.entitlements.find(
+              (ent) => ent.code === 'JOB_POSTING'
+            );
+            
+            if (jobPostingEntitlement && jobPostingEntitlement.enabled) {
+              setJobPostingLimit(jobPostingEntitlement.limitValue);
+              console.log(`📦 Current package: ${currentPackageName}, Job posting limit: ${jobPostingEntitlement.limitValue}`);
+            } else {
+              setJobPostingLimit(0);
+              console.log(`📦 Current package: ${currentPackageName}, Job posting disabled`);
+            }
+          } else {
+            console.warn(`⚠️ Package ${currentPackageName} not found in package list`);
+            setJobPostingLimit(0);
+          }
+        }
+      } catch (error: any) {
+        console.error('Error checking job posting limit:', error);
+        
+        // If no invoice found (NO_INVOICE_FOUND), use BASIC package as default
+        if (error.message === 'NO_INVOICE_FOUND') {
+          try {
+            const packageResponse = await getRecruiterPackage();
+            const basicPackage = packageResponse.result.find(pkg => pkg.name === 'BASIC');
+            
+            if (basicPackage) {
+              setPackageName('BASIC');
+              const jobPostingEntitlement = basicPackage.entitlements.find(
+                (ent) => ent.code === 'JOB_POSTING'
+              );
+              if (jobPostingEntitlement) {
+                setJobPostingLimit(jobPostingEntitlement.limitValue);
+                console.log(`📦 No invoice found, using BASIC package with limit: ${jobPostingEntitlement.limitValue}`);
+              }
+            }
+          } catch (fallbackError) {
+            console.error('Error fetching fallback package:', fallbackError);
+            setJobPostingLimit(0);
+          }
+        } else {
+          setJobPostingLimit(0);
+        }
+      } finally {
+        setIsCheckingAccess(false);
+      }
+    };
+    
+    checkJobPostingLimit();
+  }, []);
+
+  // Check job posting entitlement on component mount
+  useEffect(() => {
+    const checkAccess = async () => {
+      try {
+        setIsCheckingAccess(true);
+        const response = await checkJobPostingEntitlement();
+        setCanCreateJob(response.result);
+        
+        if (!response.result) {
+          toast.error('You need to purchase a package to create job postings', {
+            icon: '🔒',
+            duration: 5000,
+          });
+        }
+      } catch (error) {
+        console.error('Error checking job posting entitlement:', error);
+        setCanCreateJob(false);
+      } finally {
+        setIsCheckingAccess(false);
+      }
+    };
+    
+    checkAccess();
+  }, []);
 
   // Fetch skills on component mount
   useEffect(() => {
@@ -98,10 +202,12 @@ export default function CreateJobPage() {
           setJobs(response.result.content);
           setTotalPages(response.result.totalPages);
           setTotalElements(response.result.totalElements);
+          setCurrentJobCount(response.result.totalElements); // Set total job count
         } else if (response.code === 200 && response.result) {
           setJobs(response.result.content);
           setTotalPages(response.result.totalPages);
           setTotalElements(response.result.totalElements);
+          setCurrentJobCount(response.result.totalElements); // Set total job count
         } else {
           toast.error(response.message || "Failed to load job postings");
         }
@@ -229,6 +335,17 @@ export default function CreateJobPage() {
   // Submit form
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check job posting limit before submitting (limitValue = 0 means unlimited)
+    const isUnlimited = jobPostingLimit === 0;
+    if (!isUnlimited && currentJobCount >= jobPostingLimit) {
+      toast.error(`You have reached your job posting limit (${jobPostingLimit} posts). Please upgrade your package to post more jobs.`, {
+        icon: '🚫',
+        duration: 6000,
+      });
+      return;
+    }
+    
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
@@ -316,20 +433,122 @@ export default function CreateJobPage() {
     setConfirmDelete(null);
   };
 
+  // Handle create job button click
+  const handleCreateJobClick = () => {
+    // limitValue = 0 means unlimited
+    const isUnlimited = jobPostingLimit === 0;
+    
+    if (!isUnlimited && currentJobCount >= jobPostingLimit) {
+      toast.error(`You have reached your job posting limit (${jobPostingLimit} posts). Please upgrade your package to post more jobs.`, {
+        icon: '🚫',
+        duration: 6000,
+      });
+      return;
+    }
+    setIsOpen(true);
+  };
+  
+  // Check if can create more jobs (limitValue = 0 means unlimited)
+  const isUnlimited = jobPostingLimit === 0;
+  const canCreateMoreJobs = isUnlimited || currentJobCount < jobPostingLimit;
+
   return (
     <div className="p-4 sm:p-0 relative">
       {/* Header */}
       <header className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-800">Job Posts</h1>
-        <button
-          onClick={() => setIsOpen(true)}
-          className="flex items-center bg-sky-600 text-white px-4 py-2 rounded-md hover:bg-sky-700 transition"
-        >
-          <PlusCircle className="w-5 h-5 mr-1" /> Create Job Post
-        </button>
+        {isCheckingAccess ? (
+          <button
+            disabled
+            className="flex items-center bg-gray-300 text-gray-500 px-4 py-2 rounded-md cursor-not-allowed"
+          >
+            <PlusCircle className="w-5 h-5 mr-1" /> Checking access...
+          </button>
+        ) : (
+          <button
+            onClick={handleCreateJobClick}
+            disabled={!canCreateMoreJobs}
+            className={`flex items-center px-4 py-2 rounded-md transition ${
+              canCreateMoreJobs
+                ? 'bg-sky-600 text-white hover:bg-sky-700'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+            title={canCreateMoreJobs ? (isUnlimited ? 'Create new job posting (Unlimited)' : 'Create new job posting') : `Limit reached (${currentJobCount}/${jobPostingLimit})`}
+          >
+            {canCreateMoreJobs ? (
+              <>
+                <PlusCircle className="w-5 h-5 mr-1" /> Create Job Post
+              </>
+            ) : isUnlimited ? (
+              <>
+                <PlusCircle className="w-5 h-5 mr-1" /> Create Job Post
+              </>
+            ) : (
+              <>
+                <Lock className="w-5 h-5 mr-1" /> Limit Reached ({currentJobCount}/{jobPostingLimit})
+              </>
+            )}
+          </button>
+        )}
       </header>
 
-      {/* Danh sách Job */}
+      {/* Job Posting Limit Info */}
+      {!isCheckingAccess && (
+        <div className={`mb-6 rounded-lg p-4 flex items-start gap-3 ${
+          isUnlimited
+            ? 'bg-green-50 border border-green-200'
+            : currentJobCount >= jobPostingLimit
+            ? 'bg-red-50 border border-red-200'
+            : currentJobCount >= jobPostingLimit * 0.8
+            ? 'bg-yellow-50 border border-yellow-200'
+            : 'bg-blue-50 border border-blue-200'
+        }`}>
+          <AlertTriangle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+            isUnlimited
+              ? 'text-green-600'
+              : currentJobCount >= jobPostingLimit
+              ? 'text-red-600'
+              : currentJobCount >= jobPostingLimit * 0.8
+              ? 'text-yellow-600'
+              : 'text-blue-600'
+          }`} />
+          <div className="flex-1">
+            <p className={`text-sm font-medium ${
+              isUnlimited
+                ? 'text-green-800'
+                : currentJobCount >= jobPostingLimit
+                ? 'text-red-800'
+                : currentJobCount >= jobPostingLimit * 0.8
+                ? 'text-yellow-800'
+                : 'text-blue-800'
+            }`}>
+              {isUnlimited 
+                ? `Job Posting: Unlimited (${packageName})` 
+                : `Job Posting Limit: ${currentJobCount} / ${jobPostingLimit} (${packageName})`
+              }
+            </p>
+            <p className={`text-sm mt-1 ${
+              isUnlimited
+                ? 'text-green-700'
+                : currentJobCount >= jobPostingLimit
+                ? 'text-red-700'
+                : currentJobCount >= jobPostingLimit * 0.8
+                ? 'text-yellow-700'
+                : 'text-blue-700'
+            }`}>
+              {isUnlimited
+                ? `You have unlimited job postings. You currently have ${currentJobCount} active job(s).`
+                : currentJobCount >= jobPostingLimit
+                ? 'You have reached your job posting limit. Please upgrade your package to post more jobs.'
+                : currentJobCount >= jobPostingLimit * 0.8
+                ? `You are approaching your limit. ${jobPostingLimit - currentJobCount} posts remaining.`
+                : `You can post ${jobPostingLimit - currentJobCount} more jobs this month.`
+              }
+            </p>
+          </div>
+        </div>
+      )}
+      
       {isLoadingJobs ? (
         <div className="rounded-lg border bg-white p-6 shadow-sm text-center">
           <p className="text-gray-600">Loading job postings...</p>
@@ -619,9 +838,9 @@ export default function CreateJobPage() {
                   }`}
                 >
                   <option value="">Select...</option>
-                  <option value="Remote">Remote</option>
-                  <option value="Hybrid">Hybrid</option>
-                  <option value="Onsite">Onsite</option>
+                  <option value="AT_OFFICE">At Office</option>
+                  <option value="REMOTE">Remote</option>
+                  <option value="HYBRID">Hybrid</option>
                 </select>
                 {errors.workModel && (
                   <p className="text-sm text-red-600 mt-1">{errors.workModel}</p>

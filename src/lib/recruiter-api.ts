@@ -666,6 +666,80 @@ export const checkAIMatchingEntitlement = async (): Promise<AIMatchingCheckerRes
   }
 };
 
+// Check if recruiter can view CV
+export interface CVViewCheckerResponse {
+  code: number;
+  message: string;
+  result: boolean;
+}
+
+export const checkCVViewEntitlement = async (): Promise<CVViewCheckerResponse> => {
+  try {
+    console.log('🔵 [CHECK CV VIEW] Checking entitlement');
+    const response = await api.get('/api/recruiter-entitlement/cv-view-checker');
+    console.log('✅ [CHECK CV VIEW] Response:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('❌ [CHECK CV VIEW] Error:', error.response?.data || error);
+    throw new Error(error.response?.data?.message || 'Failed to check CV view entitlement');
+  }
+};
+
+// Check if recruiter can create job posting
+export interface JobPostingCheckerResponse {
+  code: number;
+  message: string;
+  result: boolean;
+}
+
+export const checkJobPostingEntitlement = async (): Promise<JobPostingCheckerResponse> => {
+  try {
+    console.log('🔵 [CHECK JOB POSTING] Checking entitlement');
+    const response = await api.get('/api/recruiter-entitlement/job-posting-checker');
+    console.log('✅ [CHECK JOB POSTING] Response:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('❌ [CHECK JOB POSTING] Error:', error.response?.data || error);
+    throw new Error(error.response?.data?.message || 'Failed to check job posting entitlement');
+  }
+};
+
+// Package Entitlement interfaces
+export interface PackageEntitlement {
+  name: string;
+  code: string;
+  unit: string;
+  hasLimit: boolean;
+  enabled: boolean;
+  limitValue: number;
+}
+
+export interface RecruiterPackage {
+  name: string;
+  price: number;
+  durationDays: number;
+  entitlements: PackageEntitlement[];
+}
+
+export interface RecruiterPackageResponse {
+  code: number;
+  message: string;
+  result: RecruiterPackage[];
+}
+
+// Get recruiter's package information
+export const getRecruiterPackage = async (): Promise<RecruiterPackageResponse> => {
+  try {
+    console.log('🔵 [GET RECRUITER PACKAGE] Fetching package info');
+    const response = await api.get('/api/package/recruiter');
+    console.log('✅ [GET RECRUITER PACKAGE] Response:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('❌ [GET RECRUITER PACKAGE] Error:', error.response?.data || error);
+    throw new Error(error.response?.data?.message || 'Failed to fetch recruiter package');
+  }
+};
+
 // Job Application APIs
 export interface JobApplication {
   id: number;
