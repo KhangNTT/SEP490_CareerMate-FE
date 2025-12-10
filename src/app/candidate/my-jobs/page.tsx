@@ -14,7 +14,7 @@ import {
 } from "@/lib/my-jobs-api";
 import {
   fetchSavedJobs,
-  fetchViewedJobs,
+  // fetchViewedJobs, // TODO: Uncomment when view job feedback feature is ready
   type SavedJobFeedback
 } from "@/lib/job-api";
 import { updateJobApplicationStatus } from "@/lib/recruiter-api";
@@ -38,14 +38,14 @@ import {
   getInterviewTypeText,
   type InterviewScheduleResponse
 } from "@/lib/interview-api";
-import { Calendar, Video, MapPin, ExternalLink } from "lucide-react";
+import { Calendar, Video, MapPin, ExternalLink, BriefcaseBusiness } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 // Lazy load tab components for better code splitting
 const SavedJobsTab = lazy(() => import("./SavedJobsTab"));
-const RecentJobsTab = lazy(() => import("./RecentJobsTab"));
+// const RecentJobsTab = lazy(() => import("./RecentJobsTab")); // TODO: Uncomment when view job feedback feature is ready
 
-type TabType = "applied" | "saved" | "recent";
+type TabType = "applied" | "saved"; // Removed "recent" temporarily
 
 // Skeleton loading component for job cards
 const JobCardSkeleton = () => (
@@ -88,7 +88,7 @@ const MyJobsPage = () => {
   // State for job applications
   const [jobApplications, setJobApplications] = useState<JobApplication[]>([]);
   const [savedJobs, setSavedJobs] = useState<SavedJobFeedback[]>([]);
-  const [viewedJobs, setViewedJobs] = useState<SavedJobFeedback[]>([]);
+  // const [viewedJobs, setViewedJobs] = useState<SavedJobFeedback[]>([]); // TODO: Uncomment when view job feedback feature is ready
 
   // Loading states
   const [isLoading, setIsLoading] = useState(true);
@@ -96,7 +96,7 @@ const MyJobsPage = () => {
 
   // Loaded flags to prevent re-fetching on tab switch
   const [savedLoaded, setSavedLoaded] = useState(false);
-  const [viewedLoaded, setViewedLoaded] = useState(false);
+  // const [viewedLoaded, setViewedLoaded] = useState(false); // TODO: Uncomment when view job feedback feature is ready
 
   const [expandedJobId, setExpandedJobId] = useState<number | null>(null);
 
@@ -152,6 +152,7 @@ const MyJobsPage = () => {
           setSavedLoaded(true);
         });
 
+      /* TODO: Uncomment when view job feedback feature is ready
       // Load viewed jobs in background (don't block UI)
       fetchViewedJobs(candidateId)
         .then(jobs => {
@@ -162,6 +163,7 @@ const MyJobsPage = () => {
           console.error('Failed to load viewed jobs:', error);
           setViewedLoaded(true);
         });
+      */
     };
 
     loadAllData();
@@ -248,24 +250,6 @@ const MyJobsPage = () => {
           router.push('/candidate/interviews');
           break;
           
-        case 'accept_offer':
-          if (confirm('Are you sure you want to accept this job offer? The recruiter will be notified to proceed with onboarding.')) {
-            await updateJobApplicationStatus(applicationId, 'ACCEPTED');
-            toast.success('Job offer accepted! The company will contact you for next steps.');
-            const updatedApplications = await fetchMyJobApplications(candidateId!);
-            setJobApplications(updatedApplications);
-          }
-          break;
-          
-        case 'decline_offer':
-          if (confirm('Are you sure you want to decline this job offer?')) {
-            await updateJobApplicationStatus(applicationId, 'REJECTED');
-            toast.success('Job offer declined');
-            const updatedApplications = await fetchMyJobApplications(candidateId!);
-            setJobApplications(updatedApplications);
-          }
-          break;
-          
         case 'submit_review':
           router.push(`/candidate/reviews/submit?jobApplyId=${applicationId}`);
           break;
@@ -345,10 +329,11 @@ const MyJobsPage = () => {
           </aside>
 
           {/* Main Content */}
-          <section className="space-y-6 min-w-0 lg:mt-[var(--sticky-offset)] transition-all duration-300">
+          <section className="space-y-6 min-w-0 transition-all duration-300">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h1 className="text-2xl font-semibold text-gray-900 mb-6">
-                My Jobs
+              <h1 className="text-2xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
+                {/* <BriefcaseBusiness className="w-6 h-6" /> */}
+                Job Activities
               </h1>
 
               {/* Tabs */}
@@ -379,18 +364,7 @@ const MyJobsPage = () => {
                   </span>
                 </button>
 
-                <button
-                  onClick={() => handleTabChange("recent")}
-                  className={`pb-3 px-1 mr-8 relative ${activeTab === "recent"
-                    ? "text-gray-500 font-medium border-b-2 border-gray-500"
-                    : "text-gray-600 hover:text-gray-900"
-                    }`}
-                >
-                  Recent Viewed Jobs
-                  <span className="ml-2 px-2 py-0.5 text-xs bg-gray-500 text-white rounded-full">
-                    {viewedJobs.length}
-                  </span>
-                </button>
+                {/* TODO: Add "Recent Viewed Jobs" tab when view job feedback feature is ready */}
               </div>
 
               {/* Tab Content */}
@@ -441,7 +415,7 @@ const MyJobsPage = () => {
                                     {/* Action Required badge - for INTERVIEW_SCHEDULED, only show if interview not confirmed */}
                                     {application.status === 'INTERVIEW_SCHEDULED' && interviewsMap[application.id] && !interviewsMap[application.id].candidateConfirmed && (
                                       <button
-                                        onClick={() => router.push(`/candidate/interviews?action=confirm&id=${interviewsMap[application.id].id}`)}
+                                        onClick={() => router.push(`/candidate/interviews?action=confirm&id=${application.id}`)}
                                         className="px-3 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800 border border-amber-300 animate-pulse hover:bg-amber-200 cursor-pointer transition-colors"
                                       >
                                         Action Required
@@ -574,7 +548,7 @@ const MyJobsPage = () => {
                                         <div className="mt-3 pt-3 border-t border-purple-200 flex flex-wrap gap-2">
                                           <Button
                                             size="sm"
-                                            onClick={() => router.push(`/candidate/interviews?action=confirm&id=${interviewsMap[application.id].id}`)}
+                                            onClick={() => router.push(`/candidate/interviews?action=confirm&id=${application.id}`)}
                                             className="bg-green-600 hover:bg-green-700 text-white"
                                           >
                                             <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -754,15 +728,7 @@ const MyJobsPage = () => {
                   </Suspense>
                 )}
 
-                {activeTab === "recent" && (
-                  <Suspense fallback={<JobCardSkeleton />}>
-                    {!viewedLoaded ? (
-                      <JobCardSkeleton />
-                    ) : (
-                      <RecentJobsTab viewedJobs={viewedJobs} />
-                    )}
-                  </Suspense>
-                )}
+                {/* TODO: Add "Recent Viewed Jobs" tab content when view job feedback feature is ready */}
               </div>
             </div>
           </section>

@@ -35,7 +35,7 @@ export default function CandidateEmailSubscriptions() {
             <CVSidebar activePage="email-subscriptions" />
           </aside>
           {/* Main Content */}
-          <section className="space-y-6 min-w-0 lg:mt-[var(--sticky-offset)] transition-all duration-300">
+          <section className="space-y-6 min-w-0 transition-all duration-300">
             {/* Skills you subscribed */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-1">Skills you subscribed (1/5)</h2>

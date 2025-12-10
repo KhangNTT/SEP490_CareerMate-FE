@@ -11,7 +11,6 @@ import {
     Briefcase,
     Clock,
     Ban,
-    Settings,
     ChevronDown,
     ChevronRight,
     Brain,
@@ -78,11 +77,6 @@ const NAV_ITEMS: NavItem[] = [
         label: "Skill Management",
         href: "/admin/skills",
         icon: Brain,
-    },
-    {
-        label: "Settings",
-        href: "/admin/settings",
-        icon: Settings,
     },
 ];
 
@@ -214,7 +208,7 @@ export function AdminSidebar() {
     if (!mounted) {
         return (
             <aside
-                className="fixed left-0 top-0 z-40 h-screen w-16 border-r bg-white shadow-sm transition-all duration-300 ease-in-out"
+                className="fixed left-0 top-[82px] z-30 h-[calc(100vh-72px)] w-16 border-r bg-white shadow-sm transition-all duration-300 ease-in-out hidden md:block"
             >
                 <div className="flex flex-col h-full" />
             </aside>
@@ -224,21 +218,15 @@ export function AdminSidebar() {
     return (
         <aside
             className={cn(
-                "fixed left-0 z-40 h-screen border-r bg-white shadow-sm transition-all duration-300 ease-in-out pt-10",
+                "fixed left-0 top-[82px] z-30 h-[calc(100vh-72px)] border-r bg-white shadow-sm transition-all duration-300 ease-in-out",
                 isOpen ? "w-64" : "w-16"
             )}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
         >
-            <div className="flex flex-col h-full max-h-screen">
+            <div className="flex flex-col h-full overflow-hidden">
                 {/* Navigation */}
-                <nav
-                    className="flex-1 p-2 space-y-1 overflow-y-auto hide-scrollbar"
-                    style={{
-                        scrollbarWidth: "none",
-                        msOverflowStyle: "none",
-                    }}
-                >
+                <nav className="flex-1 p-2 space-y-1 overflow-y-auto overflow-x-hidden scrollbar-thin">
                     {NAV_ITEMS.map((item) => {
                         const Icon = item.icon;
                         const isActive = isItemActive(item);

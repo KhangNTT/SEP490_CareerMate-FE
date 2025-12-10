@@ -5,6 +5,7 @@ export interface Role {
 }
 
 export interface User {
+  id: number;
   email: string;
   username: string;
   status: string;
@@ -23,26 +24,21 @@ export interface ApiResponse<T> {
   code: number;
   result: T;
 }
-// Additional user-related types can be added here
-export interface User {
-  id: string;
-  email: string;
+
+// Extended user profile type
+export interface UserProfile extends User {
   firstName?: string;
   lastName?: string;
   displayName?: string;
   avatar?: string;
-  role?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface UserProfile extends User {
   phone?: string;
   address?: string;
   biography?: string;
   skills?: string[];
   jobTitle?: string;
   company?: string;
+  createdAt?: string;
+  updatedAt?: string;
   socialLinks?: {
     linkedin?: string;
     github?: string;

@@ -162,15 +162,26 @@ class ResumeService {
 
   /**
    * Delete a resume
-   * TODO: Implement API endpoint
+   * DELETE /api/resume/{resumeId}
    */
   async deleteResume(resumeId: number): Promise<void> {
     try {
-      // TODO: Replace with actual API call when endpoint is available
-      console.log("Deleting resume:", resumeId);
-      // await api.delete(`/api/resume/${resumeId}`);
-    } catch (error) {
-      console.error("Error deleting resume:", error);
+      console.log("🗑️ Deleting resume:", resumeId);
+      const response = await api.delete(`/api/resume/${resumeId}`);
+      
+      if (response.data?.code !== 200 && response.data?.code !== 204) {
+        throw new Error(response.data?.message || "Failed to delete resume");
+      }
+      
+      console.log("✅ Resume deleted successfully:", resumeId);
+    } catch (error: any) {
+      console.error("❌ Error deleting resume:", error);
+      
+      // Enhance error message with backend response if available
+      if (error?.response?.data?.message) {
+        throw new Error(`Failed to delete resume: ${error.response.data.message}`);
+      }
+      
       throw error;
     }
   }

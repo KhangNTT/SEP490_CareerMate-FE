@@ -17,6 +17,8 @@ export interface VideoContent {
     thumbnail: string;
     duration?: string;
     views?: number;
+    youtubeId: string;
+    channel: string;
 }
 
 export interface BlogCategory {
@@ -183,86 +185,38 @@ export const mockBlogPosts: BlogPost[] = [
 export const mockVideos: VideoContent[] = [
     {
         id: '1',
-        title: 'CareerMate Talks! | CODE YOUR LIFE',
-        thumbnail: '/images/videos/video1.jpg',
-        duration: '15:30',
-        views: 12500
+        title: 'PHP in 100 Seconds',
+        thumbnail: 'https://img.youtube.com/vi/a7_WFUlFS94/maxresdefault.jpg',
+        duration: '2:24',
+        views: 2100000,
+        youtubeId: 'a7_WFUlFS94',
+        channel: 'Fireship'
     },
     {
         id: '2',
-        title: 'CareerMate Talks! | FIND YOUR TEAM',
-        thumbnail: '/images/videos/video2.jpg',
-        duration: '12:45',
-        views: 8900
+        title: 'Python in 100 Seconds',
+        thumbnail: 'https://img.youtube.com/vi/x7X9w_GIm1s/maxresdefault.jpg',
+        duration: '2:31',
+        views: 4500000,
+        youtubeId: 'x7X9w_GIm1s',
+        channel: 'Fireship'
     },
     {
         id: '3',
-        title: 'CareerMate Talks! | TECH INTERVIEWS',
-        thumbnail: '/images/videos/video1.jpg',
-        duration: '18:20',
-        views: 15600
+        title: 'Kotlin in 100 Seconds',
+        thumbnail: 'https://img.youtube.com/vi/xT8oP0wy-A0/maxresdefault.jpg',
+        duration: '2:18',
+        views: 1800000,
+        youtubeId: 'xT8oP0wy-A0',
+        channel: 'Fireship'
     },
     {
         id: '4',
-        title: 'CareerMate Talks! | SALARY NEGOTIATION',
-        thumbnail: '/images/videos/video2.jpg',
-        duration: '14:15',
-        views: 11200
-    },
-    {
-        id: '5',
-        title: 'CareerMate Talks! | REMOTE WORK',
-        thumbnail: '/images/videos/video1.jpg',
-        duration: '16:40',
-        views: 9800
-    },
-    {
-        id: '6',
-        title: 'CareerMate Talks! | CAREER GROWTH',
-        thumbnail: '/images/videos/video2.jpg',
-        duration: '13:25',
-        views: 13400
-    },
-    {
-        id: '7',
-        title: 'CareerMate Talks! | STARTUP LIFE',
-        thumbnail: '/images/videos/video1.jpg',
-        duration: '17:50',
-        views: 8700
-    },
-    {
-        id: '8',
-        title: 'CareerMate Talks! | TECH TRENDS',
-        thumbnail: '/images/videos/video2.jpg',
-        duration: '15:10',
-        views: 15200
-    },
-    {
-        id: '9',
-        title: 'CareerMate Talks! | SOFT SKILLS',
-        thumbnail: '/images/videos/video1.jpg',
-        duration: '12:30',
-        views: 10900
-    },
-    {
-        id: '10',
-        title: 'CareerMate Talks! | LEADERSHIP',
-        thumbnail: '/images/videos/video2.jpg',
-        duration: '19:45',
-        views: 12800
-    },
-    {
-        id: '11',
-        title: 'CareerMate Talks! | NETWORKING',
-        thumbnail: '/images/videos/video1.jpg',
-        duration: '14:20',
-        views: 9600
-    },
-    {
-        id: '12',
-        title: 'CareerMate Talks! | WORK-LIFE BALANCE',
-        thumbnail: '/images/videos/video2.jpg',
-        duration: '16:15',
-        views: 11800
+        title: 'React in 100 Seconds',
+        thumbnail: 'https://img.youtube.com/vi/Tn6-PIqc4UM/maxresdefault.jpg',
+        duration: '2:20',
+        views: 3200000,
+        youtubeId: 'Tn6-PIqc4UM',
+        channel: 'Fireship'
     }
 ];

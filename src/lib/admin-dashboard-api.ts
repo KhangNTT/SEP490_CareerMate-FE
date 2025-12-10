@@ -39,6 +39,7 @@ export interface DashboardStats {
   kafkaStatus: 'UP' | 'DOWN' | 'UNKNOWN';
   weaviateStatus: 'UP' | 'DOWN' | 'UNKNOWN';
   emailStatus: 'UP' | 'DOWN' | 'UNKNOWN';
+  firebaseStatus: 'UP' | 'DOWN' | 'UNKNOWN';
   systemStatus: 'UP' | 'DOWN';
 }
 

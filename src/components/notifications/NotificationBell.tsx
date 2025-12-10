@@ -205,24 +205,39 @@ export function NotificationBell() {
         console.log('✅ [Recruiter] Job rejected -> /recruiter/recruiter-feature/jobs/drafts');
       }
       else if (eventType === 'APPLICATION_RECEIVED') {
-        // New candidate application
-        const jobPostingId = metadata.jobPostingId;
-        if (jobPostingId) {
-          redirectUrl = `/recruiter/recruiter-feature/jobs/${jobPostingId}/applications`;
-        } else {
-          redirectUrl = '/recruiter/recruiter-feature/applications';
-        }
-        console.log('✅ [Recruiter] Application received -> ', redirectUrl);
+        // New candidate application - go to applications list
+        redirectUrl = '/recruiter/recruiter-feature/candidates/applications';
+        console.log('✅ [Recruiter] Application received -> /recruiter/recruiter-feature/candidates/applications');
+      }
+      else if (eventType === 'APPLICATION_AUTO_WITHDRAWN' || eventType === 'APPLICATION_WITHDRAWN') {
+        // Candidate withdrew or was auto-withdrawn (hired elsewhere)
+        redirectUrl = '/recruiter/recruiter-feature/candidates/applications';
+        console.log('✅ [Recruiter] Application withdrawn -> /recruiter/recruiter-feature/candidates/applications');
+      }
+      else if (eventType === 'INTERVIEW_CONFIRMED') {
+        // Candidate confirmed attendance
+        redirectUrl = '/recruiter/calendar';
+        console.log('✅ [Recruiter] Interview confirmed -> /recruiter/calendar');
+      }
+      else if (eventType === 'INTERVIEW_REMINDER_24_HOUR' || eventType === 'INTERVIEW_REMINDER_2_HOUR') {
+        // Interview reminder for recruiter (24h or 2h before)
+        redirectUrl = '/recruiter/calendar';
+        console.log('✅ [Recruiter] Interview reminder -> /recruiter/calendar');
+      }
+      else if (eventType === 'INTERVIEW_AUTO_CANCELLED' || eventType === 'INTERVIEW_CANCELLED') {
+        // Interview cancelled (auto or manual)
+        redirectUrl = '/recruiter/calendar';
+        console.log('✅ [Recruiter] Interview cancelled -> /recruiter/calendar');
       }
       else if (eventType === 'PROFILE_UPDATE_APPROVED') {
         // Profile update approved
-        redirectUrl = '/recruiter/profile';
-        console.log('✅ [Recruiter] Profile update approved -> /recruiter/profile');
+        redirectUrl = '/recruiter/recruiter-feature/profile';
+        console.log('✅ [Recruiter] Profile update approved -> /recruiter/recruiter-feature/profile');
       }
       else if (eventType === 'PROFILE_UPDATE_REJECTED') {
         // Profile update rejected
-        redirectUrl = '/recruiter/profile';
-        console.log('✅ [Recruiter] Profile update rejected -> /recruiter/profile');
+        redirectUrl = '/recruiter/recruiter-feature/profile';
+        console.log('✅ [Recruiter] Profile update rejected -> /recruiter/recruiter-feature/profile');
       }
       else if (eventType === 'ACCOUNT_APPROVED') {
         // Registration approved
@@ -240,26 +255,36 @@ export function NotificationBell() {
         console.log('✅ [Recruiter] Test notification -> /recruiter');
       }
       
-      // ========== CANDIDATE NOTIFICATIONS (4 types) ==========
+      // ========== CANDIDATE NOTIFICATIONS ==========
       else if (eventType === 'APPLICATION_STATUS_CHANGED') {
         // Status updated by recruiter
         redirectUrl = '/candidate/my-jobs';
         console.log('✅ [Candidate] Application status changed -> /candidate/my-jobs');
       }
-      else if (eventType === 'AUTO_WITHDRAW' || eventType === 'APPLICATION_AUTO_WITHDRAWN') {
-        // Application auto-withdrawn because candidate was hired elsewhere
+      else if (eventType === 'AUTO_WITHDRAW' || eventType === 'APPLICATION_AUTO_WITHDRAWN' || eventType === 'APPLICATIONS_AUTO_WITHDRAWN') {
+        // Application(s) auto-withdrawn because candidate was hired elsewhere
         redirectUrl = '/candidate/my-jobs';
         console.log('✅ [Candidate] Auto-withdraw notification -> /candidate/my-jobs');
       }
-      else if (eventType === 'INTERVIEW_SCHEDULED') {
-        // Interview has been scheduled
+      else if (eventType === 'INTERVIEW_INVITATION' || eventType === 'INTERVIEW_SCHEDULED') {
+        // Interview invitation/scheduled
         redirectUrl = '/candidate/interviews';
-        console.log('✅ [Candidate] Interview scheduled -> /candidate/interviews');
+        console.log('✅ [Candidate] Interview invitation -> /candidate/interviews');
       }
-      else if (eventType === 'INTERVIEW_REMINDER' || eventType === 'INTERVIEW_REMINDER_24H' || eventType === 'INTERVIEW_REMINDER_2H') {
+      else if (eventType === 'INTERVIEW_INVITATION_CONFLICT') {
+        // Interview invitation with scheduling conflict - candidate has another interview at this time
+        redirectUrl = '/candidate/interviews';
+        console.log('⚠️ [Candidate] Interview invitation WITH CONFLICT -> /candidate/interviews');
+      }
+      else if (eventType === 'INTERVIEW_REMINDER' || eventType === 'INTERVIEW_REMINDER_24H' || eventType === 'INTERVIEW_REMINDER_2H' || eventType === 'INTERVIEW_REMINDER_24_HOUR' || eventType === 'INTERVIEW_REMINDER_2_HOUR') {
         // Interview reminder (24h or 2h before)
         redirectUrl = '/candidate/interviews';
         console.log('✅ [Candidate] Interview reminder -> /candidate/interviews');
+      }
+      else if (eventType === 'INTERVIEW_UPDATE') {
+        // Interview details updated
+        redirectUrl = '/candidate/interviews';
+        console.log('✅ [Candidate] Interview update -> /candidate/interviews');
       }
       else if (eventType === 'INTERVIEW_CANCELLED') {
         // Interview cancelled
@@ -270,6 +295,21 @@ export function NotificationBell() {
         // Interview rescheduled or reschedule request responded
         redirectUrl = '/candidate/interviews';
         console.log('✅ [Candidate] Interview rescheduled -> /candidate/interviews');
+      }
+      else if (eventType === 'INTERVIEW_OUTCOME_PASS' || eventType === 'INTERVIEW_OUTCOME_FAIL' || eventType === 'INTERVIEW_OUTCOME_PENDING') {
+        // Interview result notification
+        redirectUrl = '/candidate/my-jobs';
+        console.log('✅ [Candidate] Interview outcome -> /candidate/my-jobs');
+      }
+      else if (eventType === 'INTERVIEW_SECOND_ROUND') {
+        // Second round interview required
+        redirectUrl = '/candidate/interviews';
+        console.log('✅ [Candidate] Second round interview -> /candidate/interviews');
+      }
+      else if (eventType === 'INTERVIEW_NO_SHOW') {
+        // Marked as no-show
+        redirectUrl = '/candidate/my-jobs';
+        console.log('✅ [Candidate] Interview no-show -> /candidate/my-jobs');
       }
       else if (eventType === 'EMPLOYMENT_30_DAY_VERIFICATION' || eventType === 'EMPLOYMENT_90_DAY_VERIFICATION') {
         // Employment verification reminder

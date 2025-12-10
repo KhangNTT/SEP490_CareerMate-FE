@@ -62,6 +62,11 @@ export default function CandidateCalendarPage() {
     }
   };
 
+  // Helper to get interview datetime - handles both scheduledDate and legacy interviewDateTime
+  function getInterviewDateTime(interview: InterviewScheduleResponse): string {
+    return interview.scheduledDate || interview.interviewDateTime || '';
+  }
+
   function formatDateTime(dateTimeStr: string): string {
     const date = new Date(dateTimeStr);
     return date.toLocaleDateString("en-US", {
@@ -169,11 +174,12 @@ export default function CandidateCalendarPage() {
     interview: InterviewScheduleResponse;
     showActions?: boolean;
   }) => {
-    const isUrgent = isWithin24Hours(interview.interviewDateTime);
+    const interviewDateTime = getInterviewDateTime(interview);
+    const isUrgent = interviewDateTime ? isWithin24Hours(interviewDateTime) : false;
     const canConfirm = interview.status === "SCHEDULED" && showActions;
 
     // Calculate end time
-    const endDateTime = new Date(new Date(interview.interviewDateTime).getTime() + interview.durationMinutes * 60000);
+    const endDateTime = interviewDateTime ? new Date(new Date(interviewDateTime).getTime() + interview.durationMinutes * 60000) : new Date();
 
     return (
       <Card className={`hover:shadow-lg transition-all ${isUrgent ? "ring-2 ring-primary" : ""}`}>
@@ -181,7 +187,7 @@ export default function CandidateCalendarPage() {
           {isUrgent && (
             <div className="mb-4 p-2 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2 text-sm text-amber-800">
               <AlertCircle className="h-4 w-4" />
-              <span className="font-medium">Interview starting soon: {getTimeUntil(interview.interviewDateTime)}</span>
+              <span className="font-medium">Interview starting soon: {getTimeUntil(interviewDateTime)}</span>
             </div>
           )}
 
@@ -204,12 +210,12 @@ export default function CandidateCalendarPage() {
             <div className="flex items-start gap-3 p-3 bg-muted rounded-lg">
               <CalendarIcon className="h-5 w-5 text-primary mt-0.5" />
               <div className="flex-1">
-                <div className="font-medium">{formatDate(interview.interviewDateTime)}</div>
+                <div className="font-medium">{interviewDateTime ? formatDate(interviewDateTime) : 'TBD'}</div>
                 <div className="text-sm text-muted-foreground">
-                  {formatTime(interview.interviewDateTime)} - {formatTime(endDateTime.toISOString())}
-                  {showActions && (
+                  {interviewDateTime ? formatTime(interviewDateTime) : ''} - {formatTime(endDateTime.toISOString())}
+                  {showActions && interviewDateTime && (
                     <span className="ml-2 text-primary font-medium">
-                      {getTimeUntil(interview.interviewDateTime)}
+                      {getTimeUntil(interviewDateTime)}
                     </span>
                   )}
                 </div>
@@ -238,7 +244,7 @@ export default function CandidateCalendarPage() {
               </div>
             )}
 
-            {(interview.interviewType === "VIDEO" || interview.interviewType === "PHONE") &&
+            {(interview.interviewType === "VIDEO_CALL" || interview.interviewType === "PHONE") &&
               interview.meetingLink && (
                 <div className="flex items-start gap-3 p-3 bg-muted rounded-lg">
                   <Video className="h-5 w-5 text-primary mt-0.5" />
@@ -256,11 +262,11 @@ export default function CandidateCalendarPage() {
                 </div>
               )}
 
-            {/* Notes */}
-            {interview.notes && (
+            {/* Preparation Notes */}
+            {interview.preparationNotes && (
               <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="text-sm font-medium text-blue-900 mb-1">Notes</div>
-                <div className="text-sm text-blue-700">{interview.notes}</div>
+                <div className="text-sm font-medium text-blue-900 mb-1">Preparation Notes</div>
+                <div className="text-sm text-blue-700">{interview.preparationNotes}</div>
               </div>
             )}
           </div>
@@ -272,7 +278,7 @@ export default function CandidateCalendarPage() {
                 <Button
                   variant="default"
                   onClick={() =>
-                    router.push(`/candidate/interviews?action=confirm&id=${interview.id}`)
+                    router.push(`/candidate/interviews?action=confirm&id=${interview.jobApplyId}`)
                   }
                   className="flex-1"
                 >
@@ -282,7 +288,7 @@ export default function CandidateCalendarPage() {
               )}
               <Button
                 variant="outline"
-                onClick={() => router.push(`/candidate/interviews?id=${interview.id}`)}
+                onClick={() => router.push(`/candidate/interviews?id=${interview.jobApplyId}`)}
                 className={canConfirm ? "" : "flex-1"}
               >
                 View Details
@@ -291,7 +297,7 @@ export default function CandidateCalendarPage() {
                 <Button
                   variant="outline"
                   onClick={() =>
-                    router.push(`/candidate/interviews?action=reschedule&id=${interview.id}`)
+                    router.push(`/candidate/interviews?action=reschedule&id=${interview.jobApplyId}`)
                   }
                 >
                   Request Reschedule
@@ -308,7 +314,8 @@ export default function CandidateCalendarPage() {
     const groups: Record<string, InterviewScheduleResponse[]> = {};
 
     interviews.forEach((interview) => {
-      const date = new Date(interview.interviewDateTime);
+      const dateStr = getInterviewDateTime(interview);
+      const date = dateStr ? new Date(dateStr) : new Date();
       const key = date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
       if (!groups[key]) {
         groups[key] = [];
@@ -359,7 +366,7 @@ export default function CandidateCalendarPage() {
               <div>
                 <div className="text-sm text-muted-foreground">Within 24 Hours</div>
                 <div className="text-2xl font-bold">
-                  {upcomingInterviews.filter((i) => isWithin24Hours(i.interviewDateTime)).length}
+                  {upcomingInterviews.filter((i) => { const dt = getInterviewDateTime(i); return dt ? isWithin24Hours(dt) : false; }).length}
                 </div>
               </div>
             </div>
@@ -408,7 +415,7 @@ export default function CandidateCalendarPage() {
           ) : (
             <>
               {/* Urgent Interviews (within 24 hours) */}
-              {upcomingInterviews.filter((i) => isWithin24Hours(i.interviewDateTime)).length > 0 && (
+              {upcomingInterviews.filter((i) => { const dt = getInterviewDateTime(i); return dt ? isWithin24Hours(dt) : false; }).length > 0 && (
                 <div>
                   <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                     <AlertCircle className="h-5 w-5 text-amber-600" />
@@ -416,7 +423,7 @@ export default function CandidateCalendarPage() {
                   </h2>
                   <div className="space-y-4">
                     {upcomingInterviews
-                      .filter((i) => isWithin24Hours(i.interviewDateTime))
+                      .filter((i) => { const dt = getInterviewDateTime(i); return dt ? isWithin24Hours(dt) : false; })
                       .map((interview) => (
                         <InterviewCard key={interview.id} interview={interview} />
                       ))}
@@ -425,12 +432,12 @@ export default function CandidateCalendarPage() {
               )}
 
               {/* Other Upcoming Interviews */}
-              {upcomingInterviews.filter((i) => !isWithin24Hours(i.interviewDateTime)).length > 0 && (
+              {upcomingInterviews.filter((i) => { const dt = getInterviewDateTime(i); return dt ? !isWithin24Hours(dt) : true; }).length > 0 && (
                 <div>
                   <h2 className="text-xl font-semibold mb-4">Scheduled Interviews</h2>
                   <div className="space-y-4">
                     {upcomingInterviews
-                      .filter((i) => !isWithin24Hours(i.interviewDateTime))
+                      .filter((i) => { const dt = getInterviewDateTime(i); return dt ? !isWithin24Hours(dt) : true; })
                       .map((interview) => (
                         <InterviewCard key={interview.id} interview={interview} />
                       ))}

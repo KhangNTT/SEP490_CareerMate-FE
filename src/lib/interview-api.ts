@@ -9,14 +9,15 @@ import api from './api';
 
 /**
  * Request to schedule a new interview
- * Backend expects: scheduledDate, durationMinutes, interviewType, createdByRecruiterId
+ * Backend expects: scheduledDate, durationMinutes, interviewType
  * interviewType must be: IN_PERSON, VIDEO_CALL, PHONE, or ONLINE_ASSESSMENT
+ * Note: createdByRecruiterId is auto-filled from JWT token if not provided
  */
 export interface ScheduleInterviewRequest {
   scheduledDate: string; // ISO datetime format (e.g., "2024-01-15T10:00:00")
   durationMinutes?: number; // Default: 60
   interviewType: 'IN_PERSON' | 'VIDEO_CALL' | 'PHONE' | 'ONLINE_ASSESSMENT';
-  createdByRecruiterId: number; // Required by backend
+  createdByRecruiterId?: number; // Optional - auto-filled from JWT if not provided
   location?: string;
   interviewerName?: string;
   interviewerEmail?: string;
@@ -45,7 +46,7 @@ export interface InterviewScheduleResponse {
   interviewRound: number;
   scheduledDate: string;           // ISO DateTime - this is what backend returns
   durationMinutes: number;
-  interviewType: 'IN_PERSON' | 'VIDEO_CALL' | 'PHONE' | 'ONLINE_ASSESSMENT';
+  interviewType: 'IN_PERSON' | 'VIDEO_CALL' | 'PHONE' | 'ONLINE_ASSESSMENT' | 'ONLINE';
   location?: string;
   interviewerName?: string;
   interviewerEmail?: string;
@@ -70,11 +71,21 @@ export interface InterviewScheduleResponse {
   hasInterviewTimePassed?: boolean;
   isInterviewInProgress?: boolean;
   hoursUntilInterview?: number;
-  // Additional display fields
-  candidateName?: string;
-  companyName?: string;
-  positionTitle?: string;
+  // Candidate fields from backend
   candidateId?: number;
+  candidateName?: string;
+  candidatePhone?: string;
+  candidateEmail?: string;
+  candidateImage?: string;
+  // Job fields
+  jobId?: number;
+  jobTitle?: string;
+  positionTitle?: string; // Alias for jobTitle
+  // Company fields (for candidate view)
+  companyId?: number;
+  companyName?: string;
+  companyLogo?: string;
+  companyWebsite?: string;
   recruiterId?: number;
   rescheduleRequests?: RescheduleRequestResponse[];
   // Legacy alias for backward compatibility
@@ -156,8 +167,18 @@ export const scheduleInterview = async (
     console.log('✅ [SCHEDULE INTERVIEW] Response:', response.data);
     return response.data.result;
   } catch (error: any) {
-    console.error('❌ [SCHEDULE INTERVIEW] Error:', error.response?.data || error);
-    throw new Error(error.response?.data?.message || 'Failed to schedule interview');
+    console.error('❌ [SCHEDULE INTERVIEW] Error:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message,
+      fullError: error,
+    });
+    const errorMessage = error.response?.data?.message 
+      || error.response?.data?.error 
+      || error.message 
+      || 'Failed to schedule interview';
+    throw new Error(errorMessage);
   }
 };
 
@@ -377,6 +398,28 @@ export const getCandidatePastInterviews = async (): Promise<InterviewScheduleRes
   }
 };
 
+/**
+ * Get scheduled interviews for a recruiter (including past that need completion)
+ * GET /api/interviews/recruiter/scheduled
+ * Backend extracts recruiterId from JWT token automatically
+ * Returns interviews with status SCHEDULED or CONFIRMED regardless of time
+ */
+export const getRecruiterScheduledInterviews = async (): Promise<InterviewScheduleResponse[]> => {
+  try {
+    console.log(`📅 [GET RECRUITER SCHEDULED] Fetching (ID from JWT)`);
+    const response = await api.get<ApiResponse<InterviewListResponse>>(
+      `/api/interviews/recruiter/scheduled`
+    );
+    console.log('✅ [GET RECRUITER SCHEDULED] Response:', response.data);
+    const data = response.data.result || response.data;
+    return (data as InterviewListResponse)?.interviews || [];
+  } catch (error: any) {
+    console.error('❌ [GET RECRUITER SCHEDULED] Error:', error.response?.data || error);
+    // Return empty array if endpoint doesn't exist - fallback to upcoming only
+    return [];
+  }
+};
+
 // ==================== Interview Actions ====================
 
 /**
@@ -403,14 +446,14 @@ export const confirmInterview = async (interviewId: number): Promise<InterviewSc
  */
 export const completeInterview = async (
   interviewId: number,
-  result: 'PASS' | 'FAIL' | 'PENDING' | 'NEEDS_SECOND_ROUND',
-  feedback?: string
+  outcome: 'PASS' | 'FAIL' | 'PENDING' | 'NEEDS_SECOND_ROUND',
+  interviewerNotes?: string
 ): Promise<InterviewScheduleResponse> => {
   try {
-    console.log(`✅ [COMPLETE INTERVIEW] Interview ID: ${interviewId}, Result: ${result}`);
+    console.log(`✅ [COMPLETE INTERVIEW] Interview ID: ${interviewId}, Outcome: ${outcome}`);
     const response = await api.post<ApiResponse<InterviewScheduleResponse>>(
       `/api/interviews/${interviewId}/complete`,
-      { result, feedback }
+      { outcome, interviewerNotes }
     );
     console.log('✅ [COMPLETE INTERVIEW] Response:', response.data);
     return response.data.result;
@@ -422,15 +465,19 @@ export const completeInterview = async (
 
 /**
  * Mark interview as no-show (recruiter action)
- * POST /api/interviews/{interviewId}/no-show
+ * POST /api/interviews/{interviewId}/no-show?notes=...
+ * Effect: Interview status → NO_SHOW, Job application status → REJECTED
  */
 export const markInterviewNoShow = async (
-  interviewId: number
+  interviewId: number,
+  notes?: string
 ): Promise<InterviewScheduleResponse> => {
   try {
     console.log(`❌ [MARK NO-SHOW] Interview ID: ${interviewId}`);
     const response = await api.post<ApiResponse<InterviewScheduleResponse>>(
-      `/api/interviews/${interviewId}/no-show`
+      `/api/interviews/${interviewId}/no-show`,
+      null,
+      { params: { notes } }
     );
     console.log('✅ [MARK NO-SHOW] Response:', response.data);
     return response.data.result;
@@ -446,13 +493,15 @@ export const markInterviewNoShow = async (
  */
 export const cancelInterview = async (
   interviewId: number,
-  reason?: string
+  reason: string
 ): Promise<InterviewScheduleResponse> => {
   try {
     console.log(`❌ [CANCEL INTERVIEW] Interview ID: ${interviewId}`);
+    // Backend expects reason as query parameter, not body
     const response = await api.post<ApiResponse<InterviewScheduleResponse>>(
       `/api/interviews/${interviewId}/cancel`,
-      { reason }
+      null,
+      { params: { reason } }
     );
     console.log('✅ [CANCEL INTERVIEW] Response:', response.data);
     return response.data.result;
@@ -474,9 +523,11 @@ export const adjustInterviewDuration = async (
     console.log(
       `⏱️ [ADJUST DURATION] Interview ID: ${interviewId}, New Duration: ${newDurationMinutes}min`
     );
+    // Backend expects newDurationMinutes as query parameter, not body
     const response = await api.patch<ApiResponse<InterviewScheduleResponse>>(
       `/api/interviews/${interviewId}/adjust-duration`,
-      { newDurationMinutes }
+      null,
+      { params: { newDurationMinutes } }
     );
     console.log('✅ [ADJUST DURATION] Response:', response.data);
     return response.data.result;
@@ -546,6 +597,7 @@ export const getInterviewTypeText = (
   const typeMap: Record<string, string> = {
     PHONE: 'Phone Interview',
     VIDEO_CALL: 'Video Interview',
+    ONLINE: 'Video Interview',
     IN_PERSON: 'In-Person Interview',
     ONLINE_ASSESSMENT: 'Online Assessment',
   };

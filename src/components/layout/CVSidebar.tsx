@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import React, { memo } from "react";
+import React, { memo, useEffect, useState } from "react";
 import { PiHandWavingLight } from "react-icons/pi";
 import { candidateMenuItems } from "@/lib/candidate-menu-item";
 import { useAuthStore } from "@/store/use-auth-store";
+import api from "@/lib/api";
 
 type Item = {
   href: string;
@@ -23,9 +24,26 @@ interface CVSidebarProps {
 const CVSidebar: React.FC<CVSidebarProps> = memo(({ activePage }) => {
   const pathname = usePathname();
   const { user } = useAuthStore();
+  const [realName, setRealName] = useState<string>("");
 
-  // Get display name: prioritize user.fullName, then user.name, then user.email
-  const displayName = user?.fullName || user?.name || user?.email?.split('@')[0] || 'User';
+  // Fetch real name from profile API
+  useEffect(() => {
+    const fetchRealName = async () => {
+      try {
+        const response = await api.get("/api/candidates/profiles/current");
+        if (response.data?.result?.fullName) {
+          setRealName(response.data.result.fullName);
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile for sidebar:", error);
+      }
+    };
+
+    fetchRealName();
+  }, []);
+
+  // Get display name: prioritize fetched realName, then user.fullName, then user.name, then user.email
+  const displayName = realName || user?.fullName || user?.name || user?.email?.split('@')[0] || 'User';
 
   const items: Item[] = candidateMenuItems;
 

@@ -127,7 +127,7 @@ export function ProfileDropdown({
   return (
     <div className="flex items-center gap-2">
       {/* Dark Mode Toggle Button */}
-      <button
+      {/* <button
         onClick={toggleDarkMode}
         className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-white"
         title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
@@ -137,7 +137,7 @@ export function ProfileDropdown({
         ) : (
           <Moon className="w-5 h-5" />
         )}
-      </button>
+      </button> */}
 
       {/* Notifications Button - Real implementation */}
       <NotificationBell />
@@ -171,9 +171,8 @@ export function ProfileDropdown({
                   alt={userName || 'User'}
                   size="sm"
                   isPremium={isPremium}
+                  showOnline={true}
                 />
-                {/* Online indicator */}
-                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white z-10"></div>
               </div>
 
               {/* User Name */}
@@ -202,8 +201,8 @@ export function ProfileDropdown({
                     alt={userName || 'User'}
                     size="md"
                     isPremium={isPremium}
+                    showOnline={true}
                   />
-                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white z-10"></div>
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">{userName || userEmail || "User"}</p>
@@ -248,7 +247,7 @@ export function ProfileDropdown({
                     onClick={() => setIsOpen(false)}
                   >
                     <BriefcaseBusiness className="w-4 h-4" />
-                    My jobs
+                    Job Activities
                   </Link>
                   <Link
                     href="/settings"

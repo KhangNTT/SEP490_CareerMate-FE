@@ -164,7 +164,7 @@ export const STATUS_CONFIGS: Record<JobApplicationStatus, StatusConfig> = {
     borderColor: 'border-teal-300',
     icon: '✅',
     lucideIcon: 'CheckCircle',
-    text: 'Offer accepted - Pending onboarding',
+    text: 'Accepted - Pending onboarding',
     category: 'employment',
     isTerminal: false,
   },
@@ -226,15 +226,20 @@ export const STATUS_CONFIGS: Record<JobApplicationStatus, StatusConfig> = {
 };
 
 /**
- * Status transition rules
+ * Status transition rules (Aligned with Backend v3.0)
+ * 
+ * Auto-withdrawal: When a candidate is hired (ACCEPTED/WORKING), all their other 
+ * pending applications are automatically withdrawn by the system.
+ * 
+ * Interview reminders: System sends 24-hour and 2-hour reminders before interviews.
  */
 export const STATUS_TRANSITIONS: StatusTransition[] = [
-  // From SUBMITTED
-  { from: 'SUBMITTED', to: ['REVIEWING', 'WITHDRAWN', 'BANNED'], actor: 'recruiter' },
+  // From SUBMITTED - recruiter can schedule interview directly or review first
+  { from: 'SUBMITTED', to: ['REVIEWING', 'INTERVIEW_SCHEDULED', 'APPROVED', 'REJECTED', 'NO_RESPONSE', 'WITHDRAWN', 'BANNED'], actor: 'recruiter' },
   { from: 'SUBMITTED', to: ['WITHDRAWN'], actor: 'candidate' },
   
-  // From REVIEWING
-  { from: 'REVIEWING', to: ['INTERVIEW_SCHEDULED', 'APPROVED', 'REJECTED', 'NO_RESPONSE', 'WITHDRAWN', 'BANNED'], actor: 'recruiter' },
+  // From REVIEWING - can schedule interview, approve directly (for referrals), or reject
+  { from: 'REVIEWING', to: ['INTERVIEW_SCHEDULED', 'APPROVED', 'REJECTED', 'WITHDRAWN', 'BANNED'], actor: 'recruiter' },
   { from: 'REVIEWING', to: ['WITHDRAWN'], actor: 'candidate' },
   { from: 'REVIEWING', to: ['NO_RESPONSE'], actor: 'system' },
   
@@ -242,22 +247,29 @@ export const STATUS_TRANSITIONS: StatusTransition[] = [
   { from: 'NO_RESPONSE', to: ['REVIEWING', 'REJECTED'], actor: 'recruiter' },
   
   // From INTERVIEW_SCHEDULED
-  { from: 'INTERVIEW_SCHEDULED', to: ['INTERVIEWED', 'REJECTED', 'WITHDRAWN', 'BANNED'], actor: 'recruiter' },
+  { from: 'INTERVIEW_SCHEDULED', to: ['INTERVIEWED', 'APPROVED', 'REJECTED', 'WITHDRAWN', 'BANNED'], actor: 'recruiter' },
   { from: 'INTERVIEW_SCHEDULED', to: ['WITHDRAWN'], actor: 'candidate' },
   
-  // From INTERVIEWED
+  // From INTERVIEWED - can approve, reject, or schedule another interview round
   { from: 'INTERVIEWED', to: ['APPROVED', 'REJECTED', 'INTERVIEW_SCHEDULED'], actor: 'recruiter' },
   
-  // From APPROVED
-  { from: 'APPROVED', to: ['ACCEPTED', 'REJECTED'], actor: 'candidate' },
-  { from: 'APPROVED', to: ['REJECTED'], actor: 'recruiter' },
+  // From APPROVED - recruiter marks as WORKING when candidate starts, candidate can withdraw
+  { from: 'APPROVED', to: ['WORKING', 'REJECTED'], actor: 'recruiter' },
+  { from: 'APPROVED', to: ['WITHDRAWN'], actor: 'candidate' },
   
-  // From ACCEPTED
+  // From ACCEPTED (legacy - kept for backward compatibility)
   { from: 'ACCEPTED', to: ['WORKING'], actor: 'recruiter' },
   { from: 'ACCEPTED', to: ['WITHDRAWN'], actor: 'candidate' },
   
-  // From WORKING
-  { from: 'WORKING', to: ['PROBATION_FAILED', 'TERMINATED'], actor: 'recruiter' },
+  // From WORKING - can end employment
+  { from: 'WORKING', to: ['PROBATION_FAILED', 'TERMINATED', 'BANNED'], actor: 'recruiter' },
+  
+  // System-triggered transitions (auto-withdrawal when hired elsewhere)
+  { from: 'SUBMITTED', to: ['WITHDRAWN'], actor: 'system' },
+  { from: 'REVIEWING', to: ['WITHDRAWN'], actor: 'system' },
+  { from: 'INTERVIEW_SCHEDULED', to: ['WITHDRAWN'], actor: 'system' },
+  { from: 'INTERVIEWED', to: ['WITHDRAWN'], actor: 'system' },
+  { from: 'APPROVED', to: ['WITHDRAWN'], actor: 'system' },
   
   // Terminal statuses (no transitions)
   { from: 'REJECTED', to: [], actor: 'recruiter' },
@@ -269,6 +281,7 @@ export const STATUS_TRANSITIONS: StatusTransition[] = [
 
 /**
  * Status-specific actions for candidates and recruiters
+ * Aligned with Backend v3.0 - includes all allowed transitions
  */
 export const STATUS_ACTIONS: Record<JobApplicationStatus, StatusActions> = {
   SUBMITTED: {
@@ -277,6 +290,8 @@ export const STATUS_ACTIONS: Record<JobApplicationStatus, StatusActions> = {
     ],
     recruiter: [
       { label: 'Review', action: 'review', variant: 'default', icon: 'Eye' },
+      { label: 'Schedule Interview', action: 'schedule_interview', variant: 'secondary', icon: 'Calendar' },
+      { label: 'Approve', action: 'approve', variant: 'secondary', icon: 'ThumbsUp' },
       { label: 'Reject', action: 'reject', variant: 'destructive', icon: 'XCircle' },
       { label: 'Ban', action: 'ban', variant: 'destructive', icon: 'Ban' },
     ],
@@ -287,7 +302,7 @@ export const STATUS_ACTIONS: Record<JobApplicationStatus, StatusActions> = {
     ],
     recruiter: [
       { label: 'Schedule Interview', action: 'schedule_interview', variant: 'default', icon: 'Calendar' },
-      { label: 'Approve', action: 'approve', variant: 'default', icon: 'ThumbsUp' },
+      { label: 'Approve', action: 'approve', variant: 'secondary', icon: 'ThumbsUp' },
       { label: 'Reject', action: 'reject', variant: 'destructive', icon: 'XCircle' },
       { label: 'Ban', action: 'ban', variant: 'destructive', icon: 'Ban' },
     ],
@@ -311,7 +326,9 @@ export const STATUS_ACTIONS: Record<JobApplicationStatus, StatusActions> = {
     ],
     recruiter: [
       { label: 'View Interview', action: 'view_interview', variant: 'default', icon: 'Eye' },
+      { label: 'Complete Interview', action: 'complete_interview', variant: 'secondary', icon: 'CheckCircle' },
       { label: 'Reschedule', action: 'reschedule', variant: 'outline', icon: 'Calendar' },
+      { label: 'Mark No-Show', action: 'mark_no_show', variant: 'destructive', icon: 'UserX' },
       { label: 'Cancel', action: 'cancel_interview', variant: 'destructive', icon: 'XCircle' },
     ],
   },
@@ -327,12 +344,11 @@ export const STATUS_ACTIONS: Record<JobApplicationStatus, StatusActions> = {
   },
   APPROVED: {
     candidate: [
-      { label: 'Accept Offer', action: 'accept_offer', variant: 'default', icon: 'CheckCircle' },
-      { label: 'Decline Offer', action: 'decline_offer', variant: 'destructive', icon: 'XCircle' },
+      { label: 'View Details', action: 'view_details', variant: 'outline', icon: 'Eye' },
+      { label: 'Withdraw', action: 'withdraw', variant: 'outline', icon: 'Undo2' },
     ],
     recruiter: [
-      { label: 'Create Employment', action: 'create_employment', variant: 'default', icon: 'Briefcase' },
-      { label: 'Send Offer', action: 'send_offer', variant: 'outline', icon: 'Mail' },
+      { label: 'Start Employment', action: 'start_employment', variant: 'default', icon: 'Briefcase' },
       { label: 'Reject', action: 'reject', variant: 'destructive', icon: 'XCircle' },
     ],
   },

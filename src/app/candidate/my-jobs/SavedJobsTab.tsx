@@ -6,7 +6,8 @@ import { ChevronDown } from "lucide-react";
 import toast from "react-hot-toast";
 import { type SavedJobFeedback, unsaveJob } from "@/lib/job-api";
 import { getDaysDiff } from "@/lib/my-jobs-utils";
-import { InfoIcon, CompanyLogoPlaceholder, HeartIcon, BookmarkIcon } from "@/components/ui/icons";
+import { InfoIcon, CompanyLogoPlaceholder, BookmarkIcon } from "@/components/ui/icons";
+import { AiFillStar } from "react-icons/ai";
 
 interface SavedJobsTabProps {
     savedJobs: SavedJobFeedback[];
@@ -96,17 +97,17 @@ const SavedJobsTab = ({ savedJobs, candidateId, onJobUnsaved }: SavedJobsTabProp
 
                                         <div className="flex items-center gap-2">
                                             <Link
-                                                href={`/jobs-detail?id=${job.jobId}`}
-                                                className="px-6 py-2 border-2 border-red-500 text-red-500 rounded hover:bg-red-50 transition-colors font-medium"
+                                                href={`/jobs-detail/${job.jobId}/apply`}
+                                                className="px-6 py-2 bg-gradient-to-r from-[#3a4660] to-gray-400 text-white rounded-md font-medium hover:from-[#3a4660] hover:to-[#3a4660] transition-colors"
                                             >
-                                                Apply now
+                                                Apply Now
                                             </Link>
                                             <button
                                                 onClick={() => handleUnsaveJob(job.jobId)}
-                                                className="p-2 text-red-500 hover:bg-red-50 rounded transition-colors"
+                                                className="p-3 border-2 border-yellow-500 bg-yellow-50 rounded-md hover:bg-yellow-100 transition-colors"
                                                 title="Remove from saved"
                                             >
-                                                <HeartIcon />
+                                                <AiFillStar className="w-6 h-6 text-yellow-500" />
                                             </button>
                                         </div>
                                     </div>

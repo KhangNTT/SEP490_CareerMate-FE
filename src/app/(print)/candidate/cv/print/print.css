@@ -50,6 +50,27 @@ body {
 }
 
 /* ========================================
+   WATERMARK
+   ======================================== */
+
+.cv-watermark {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(0,0,0,0.15);
+  letter-spacing: 2px;
+  user-select: none;
+}
+
+
+.cv-watermark::before {
+  content: "CareerMate";
+}
+
+/* ========================================
    TYPOGRAPHY
    ======================================== */
 

@@ -9,6 +9,7 @@ import CVPreview from '@/components/cv/CVPreview';
 import { SAMPLE_CV_DATA, CV_TEMPLATES, type CVData } from '@/types/cv';
 import { decodeCVTemplateData } from '@/lib/cv-template-navigation';
 import { autoNormalizeCVData } from '@/lib/cv-data-normalizer';
+import { getMyInvoice } from '@/lib/invoice-api';
 
 // Helper function to normalize awards array to objects for CVPreview compatibility
 // Kept for backward compatibility with localStorage data
@@ -41,6 +42,22 @@ export default function CVTemplatesPage() {
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
   const [cvData, setCVData] = useState<CVData>(SAMPLE_CV_DATA);
   const [profileData, setProfileData] = useState<any>(null);
+  const [currentPackage, setCurrentPackage] = useState<string>("FREE");
+
+  // Fetch invoice to check package
+  useEffect(() => {
+    const fetchInvoice = async () => {
+      try {
+        const invoiceData = await getMyInvoice();
+        setCurrentPackage(invoiceData?.packageName || "FREE");
+      } catch (error: any) {
+        if (error.message === 'NO_INVOICE_FOUND') {
+          setCurrentPackage("FREE");
+        }
+      }
+    };
+    fetchInvoice();
+  }, []);
 
   // Handle incoming data from query parameter (from cm-profile page)
   useEffect(() => {
@@ -305,6 +322,7 @@ export default function CVTemplatesPage() {
             templateId={selectedTemplate} 
             cvData={cvData}
             onEditClick={handleEditClick}
+            userPackage={currentPackage}
           />
         </div>
       </div>

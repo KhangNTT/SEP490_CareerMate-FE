@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { FiXCircle, FiRefreshCw } from "react-icons/fi";
 import { useAuthStore } from "@/store/use-auth-store";
 
-export default function PaymentFailurePage() {
+export function FailureContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const packageName = searchParams.get('package') || 'PREMIUM';
@@ -16,8 +16,8 @@ export default function PaymentFailurePage() {
   const normalizedRole = role?.toUpperCase().includes("CANDIDATE")
     ? "CANDIDATE"
     : role?.toUpperCase().includes("RECRUITER")
-    ? "RECRUITER"
-    : "USER";
+      ? "RECRUITER"
+      : "USER";
 
   const handleTryAgain = () => {
     if (normalizedRole === "CANDIDATE") {

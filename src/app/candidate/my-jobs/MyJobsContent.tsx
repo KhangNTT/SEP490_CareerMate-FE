@@ -14,7 +14,7 @@ import {
 } from "@/lib/my-jobs-api";
 import {
   fetchSavedJobs,
-  fetchViewedJobs,
+  // fetchViewedJobs, // TODO: Uncomment when view job feedback feature is ready
   type SavedJobFeedback
 } from "@/lib/job-api";
 import { updateJobApplicationStatus } from "@/lib/recruiter-api";
@@ -43,9 +43,9 @@ import { Badge } from "@/components/ui/badge";
 
 // Lazy load tab components for better code splitting
 const SavedJobsTab = lazy(() => import("./SavedJobsTab"));
-const RecentJobsTab = lazy(() => import("./RecentJobsTab"));
+// const RecentJobsTab = lazy(() => import("./RecentJobsTab")); // TODO: Uncomment when view job feedback feature is ready
 
-type TabType = "applied" | "saved" | "recent";
+type TabType = "applied" | "saved"; // Removed "recent" temporarily
 
 // Skeleton loading component for job cards
 const JobCardSkeleton = () => (
@@ -88,7 +88,7 @@ const MyJobsPage = () => {
   // State for job applications
   const [jobApplications, setJobApplications] = useState<JobApplication[]>([]);
   const [savedJobs, setSavedJobs] = useState<SavedJobFeedback[]>([]);
-  const [viewedJobs, setViewedJobs] = useState<SavedJobFeedback[]>([]);
+  // const [viewedJobs, setViewedJobs] = useState<SavedJobFeedback[]>([]); // TODO: Uncomment when view job feedback feature is ready
 
   // Loading states
   const [isLoading, setIsLoading] = useState(true);
@@ -96,7 +96,7 @@ const MyJobsPage = () => {
 
   // Loaded flags to prevent re-fetching on tab switch
   const [savedLoaded, setSavedLoaded] = useState(false);
-  const [viewedLoaded, setViewedLoaded] = useState(false);
+  // const [viewedLoaded, setViewedLoaded] = useState(false); // TODO: Uncomment when view job feedback feature is ready
 
   const [expandedJobId, setExpandedJobId] = useState<number | null>(null);
 
@@ -152,6 +152,7 @@ const MyJobsPage = () => {
           setSavedLoaded(true);
         });
 
+      /* TODO: Uncomment when view job feedback feature is ready
       // Load viewed jobs in background (don't block UI)
       fetchViewedJobs(candidateId)
         .then(jobs => {
@@ -162,6 +163,7 @@ const MyJobsPage = () => {
           console.error('Failed to load viewed jobs:', error);
           setViewedLoaded(true);
         });
+      */
     };
 
     loadAllData();
@@ -379,18 +381,7 @@ const MyJobsPage = () => {
                   </span>
                 </button>
 
-                <button
-                  onClick={() => handleTabChange("recent")}
-                  className={`pb-3 px-1 mr-8 relative ${activeTab === "recent"
-                    ? "text-gray-500 font-medium border-b-2 border-gray-500"
-                    : "text-gray-600 hover:text-gray-900"
-                    }`}
-                >
-                  Recent Viewed Jobs
-                  <span className="ml-2 px-2 py-0.5 text-xs bg-gray-500 text-white rounded-full">
-                    {viewedJobs.length}
-                  </span>
-                </button>
+                {/* TODO: Add "Recent Viewed Jobs" tab when view job feedback feature is ready */}
               </div>
 
               {/* Tab Content */}
@@ -754,15 +745,7 @@ const MyJobsPage = () => {
                   </Suspense>
                 )}
 
-                {activeTab === "recent" && (
-                  <Suspense fallback={<JobCardSkeleton />}>
-                    {!viewedLoaded ? (
-                      <JobCardSkeleton />
-                    ) : (
-                      <RecentJobsTab viewedJobs={viewedJobs} />
-                    )}
-                  </Suspense>
-                )}
+                {/* TODO: Add "Recent Viewed Jobs" tab content when view job feedback feature is ready */}
               </div>
             </div>
           </section>

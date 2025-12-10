@@ -1,12 +1,14 @@
 "use client";
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import JobCard from "../../../components/JobCard";
 import JobRecommendModal from "../../../components/JobRecommendModal";
 import { RiMoneyDollarCircleLine } from "react-icons/ri";
 import { FiMapPin, FiSearch, FiX, FiStar } from "react-icons/fi";
 import { IoFilterOutline } from "react-icons/io5";
 import { AiFillStar, AiFillLike, AiOutlineLike } from "react-icons/ai";
+import { HiOutlineDocumentSearch } from "react-icons/hi";
+import { Lock } from "lucide-react";
 import {
   fetchJobPostings,
   transformJobPosting,
@@ -20,6 +22,10 @@ import {
 import { useAuthStore } from "@/store/use-auth-store";
 import toast from "react-hot-toast";
 import { JobCardSkeleton, JobDetailSkeleton } from "@/components/skeletons";
+import { resumeService } from "@/services/resumeService";
+import { analyzeCVATS } from "@/lib/cv-ats-api";
+import { checkCVAnalyseAccess } from "@/lib/entitlement-api";
+import api from "@/lib/api";
 
 interface JobListing {
   id: number;
@@ -222,6 +228,9 @@ const jobs: JobListing[] = [
 
 export default function JobsDetailPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlJobId = searchParams.get("id");
+  
   const { isAuthenticated, candidateId, fetchCandidateProfile } =
     useAuthStore();
 
@@ -233,18 +242,23 @@ export default function JobsDetailPage() {
 
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
-  
+
   // ✅ Use maps to track saved/liked status per job
   const [savedMap, setSavedMap] = useState<Record<number, boolean>>({});
   const [likedMap, setLikedMap] = useState<Record<number, boolean>>({});
-  
+
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isLiking, setIsLiking] = useState<boolean>(false);
+  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [searchKeyword, setSearchKeyword] = useState<string>("");
   const [searchLocation, setSearchLocation] = useState<string>("All Cities");
   const [currentPage, setCurrentPage] = useState<number>(0);
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
   const [showJobRecommendModal, setShowJobRecommendModal] = useState<boolean>(false);
+  const [showNoCVModal, setShowNoCVModal] = useState<boolean>(false);
+  const [showCVAnalyseUpgradeModal, setShowCVAnalyseUpgradeModal] = useState<boolean>(false);
+  const [hasCVAnalyseAccess, setHasCVAnalyseAccess] = useState<boolean | null>(null);
+  const [checkingCVAnalyseAccess, setCheckingCVAnalyseAccess] = useState<boolean>(false);
 
   // ✅ Fetch candidateId if authenticated but missing
   useEffect(() => {
@@ -256,6 +270,39 @@ export default function JobsDetailPage() {
     }
   }, [isAuthenticated, candidateId, fetchCandidateProfile]);
   const jobsPerPage = 10;
+
+  // ✅ Handle URL job ID - fetch specific job if ID provided
+  useEffect(() => {
+    const loadSpecificJob = async () => {
+      if (!urlJobId) return;
+      
+      const jobIdNum = parseInt(urlJobId, 10);
+      if (isNaN(jobIdNum)) return;
+      
+      try {
+        // Fetch the specific job by ID
+        const response = await api.get(`/api/job-postings/${jobIdNum}`);
+        if (response.data?.result) {
+          const specificJob = transformJobPosting(response.data.result);
+          
+          // Add to jobs list if not already present
+          setJobs(prevJobs => {
+            const exists = prevJobs.some(j => j.id === jobIdNum);
+            if (exists) return prevJobs;
+            return [specificJob, ...prevJobs];
+          });
+          
+          // Select this job
+          setSelectedJobId(jobIdNum);
+        }
+      } catch (err) {
+        console.error("Failed to fetch specific job:", err);
+        // Job not found, will fall back to first job in list
+      }
+    };
+    
+    loadSpecificJob();
+  }, [urlJobId]);
 
   // Fetch jobs from API
   useEffect(() => {
@@ -277,9 +324,20 @@ export default function JobsDetailPage() {
           setTotalPages(response.result.totalPages);
           setTotalElements(response.result.totalElements);
 
-          // Select first job if none selected
+          // Select job from URL if provided, otherwise first job
           if (!selectedJobId && transformedJobs.length > 0) {
-            setSelectedJobId(transformedJobs[0].id);
+            if (urlJobId) {
+              const jobIdNum = parseInt(urlJobId, 10);
+              const jobExists = transformedJobs.some(j => j.id === jobIdNum);
+              if (jobExists) {
+                setSelectedJobId(jobIdNum);
+              } else {
+                // Job not in current page, will be fetched by the other useEffect
+                setSelectedJobId(transformedJobs[0].id);
+              }
+            } else {
+              setSelectedJobId(transformedJobs[0].id);
+            }
           }
         }
       } catch (err) {
@@ -291,7 +349,7 @@ export default function JobsDetailPage() {
     };
 
     loadJobs();
-  }, [currentPage, searchKeyword]);
+  }, [currentPage, searchKeyword, urlJobId]);
 
   // ✅ Fetch saved and liked jobs when authenticated
   useEffect(() => {
@@ -325,18 +383,18 @@ export default function JobsDetailPage() {
   }, [isAuthenticated, candidateId]);
 
   // ✅ Memoize selectedJob to avoid recalculation on every render
-  const selectedJob = useMemo(() => 
+  const selectedJob = useMemo(() =>
     jobs.find((job) => job.id === selectedJobId) || jobs[0],
     [jobs, selectedJobId]
   );
-  
+
   // ✅ Memoize computed values for current job's saved/liked status
-  const isBookmarked = useMemo(() => 
+  const isBookmarked = useMemo(() =>
     selectedJobId ? (savedMap[selectedJobId] ?? false) : false,
     [selectedJobId, savedMap]
   );
-  
-  const isLiked = useMemo(() => 
+
+  const isLiked = useMemo(() =>
     selectedJobId ? (likedMap[selectedJobId] ?? false) : false,
     [selectedJobId, likedMap]
   );
@@ -362,6 +420,111 @@ export default function JobsDetailPage() {
     router.push(`/jobs-detail/${selectedJobId}/apply`);
   }, [isAuthenticated, selectedJobId, router]);
 
+  // Handler for CV Analyse button
+  const handleCVAnalyse = useCallback(async () => {
+    if (!isAuthenticated) {
+      setShowLoginModal(true);
+      return;
+    }
+
+    if (!selectedJobId) {
+      toast.error("Please select a job first");
+      return;
+    }
+
+    setIsAnalyzing(true);
+
+    try {
+      // Check subscription access first
+      setCheckingCVAnalyseAccess(true);
+      const accessRes = await checkCVAnalyseAccess();
+      setCheckingCVAnalyseAccess(false);
+      setHasCVAnalyseAccess(accessRes.hasAccess);
+
+      if (!accessRes.hasAccess) {
+        setIsAnalyzing(false);
+        setShowCVAnalyseUpgradeModal(true);
+        return;
+      }
+
+      // 1. Fetch default/active CV
+      const activeResume = await resumeService.getActiveResume();
+
+      if (!activeResume || !activeResume.resumeUrl) {
+        setIsAnalyzing(false);
+        setShowNoCVModal(true);
+        return;
+      }
+
+      // 2. Fetch job detail from API
+      const jobResponse = await api.get(`/api/job-postings/${selectedJobId}`);
+      const jobData = jobResponse.data?.result;
+
+      if (!jobData) {
+        toast.error("Failed to fetch job details");
+        return;
+      }
+
+      // 3. Build job description from job data
+      const skillsList = jobData.skills?.map((s: any) =>
+        `${s.name}${s.mustToHave ? ' (Required)' : ''}`
+      ).join(', ') || '';
+
+      const jobDescription = `
+Job Title: ${jobData.title}
+Company: ${jobData.recruiterInfo?.companyName || 'N/A'}
+Location: ${jobData.address}
+Work Model: ${jobData.workModel}
+Salary: ${jobData.salaryRange}
+Years of Experience Required: ${jobData.yearsOfExperience} years
+
+Job Description:
+${jobData.description}
+
+Required Skills:
+${skillsList}
+
+About Company:
+${jobData.recruiterInfo?.about || 'N/A'}
+      `.trim();
+
+      // 4. Fetch CV file from URL
+      toast.loading("Fetching your CV...");
+      const cvResponse = await fetch(activeResume.resumeUrl);
+      if (!cvResponse.ok) {
+        throw new Error("Failed to fetch CV file");
+      }
+
+      const cvBlob = await cvResponse.blob();
+      // Extract filename from URL or use default
+      const urlParts = activeResume.resumeUrl.split('/');
+      const fileName = urlParts[urlParts.length - 1]?.split('?')[0] || "cv.pdf";
+      const cvFile = new File([cvBlob], fileName, {
+        type: cvBlob.type || "application/pdf"
+      });
+
+      // 5. Call ATS analysis API
+      toast.dismiss();
+      toast.loading("Analyzing your CV against this job...");
+
+      const result = await analyzeCVATS(jobDescription, cvFile);
+
+      // 6. Store result and navigate
+      sessionStorage.setItem("cv_ats_result", JSON.stringify(result));
+
+      toast.dismiss();
+      toast.success("CV analysis completed!");
+      router.push("/candidate/ai-cv-result");
+
+    } catch (error: any) {
+      console.error("Error analyzing CV:", error);
+      toast.dismiss();
+      toast.error(error.message || "Failed to analyze CV. Please try again.");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, [isAuthenticated, selectedJobId, router]);
+
   const handleToggleSave = useCallback(async () => {
     // Check authentication
     if (!isAuthenticated) {
@@ -383,7 +546,7 @@ export default function JobsDetailPage() {
     }
 
     const currentlySaved = savedMap[selectedJobId] ?? false;
-    
+
     setIsSaving(true);
     try {
       const newSavedStatus = await toggleSaveJob(
@@ -403,7 +566,7 @@ export default function JobsDetailPage() {
       console.error("Error toggling save status:", error);
       toast.error(
         error?.response?.data?.message ||
-          "Failed to save job. Please try again."
+        "Failed to save job. Please try again."
       );
     } finally {
       setIsSaving(false);
@@ -451,7 +614,7 @@ export default function JobsDetailPage() {
       console.error("Error toggling like status:", error);
       toast.error(
         error?.response?.data?.message ||
-          "Failed to like job. Please try again."
+        "Failed to like job. Please try again."
       );
     } finally {
       setIsLiking(false);
@@ -485,9 +648,9 @@ export default function JobsDetailPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50 pt-20">
+      <div className="min-h-screen bg-gray-50 pt-16">
         {/* Search Bar Section */}
-        <div className="py-4 bg-gray-50">
+        <div className="py-3 bg-gray-50">
           <div className="mx-auto max-w-7xl px-4 md:px-6">
             <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4">
               <div className="flex flex-col md:flex-row gap-3">
@@ -498,7 +661,7 @@ export default function JobsDetailPage() {
                     onChange={(e) => setSearchLocation(e.target.value)}
                     className="appearance-none w-full md:w-64 pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white cursor-pointer text-gray-700"
                   >
-git add src/app/(home)/jobs-detail/page.tsx
+                    git add src/app/(home)/jobs-detail/page.tsx
                     <option value="Ho Chi Minh">Ho Chi Minh</option>
                     <option value="Ha Noi">Ha Noi</option>
                     <option value="Da Nang">Da Nang</option>
@@ -523,7 +686,7 @@ git add src/app/(home)/jobs-detail/page.tsx
                 <div className="relative flex-1">
                   <input
                     type="text"
-                    placeholder="Fullstack developer, DevOps, AI..."
+                    placeholder="Fullstack Developer"
                     value={searchKeyword}
                     onChange={(e) => setSearchKeyword(e.target.value)}
                     className="w-full pl-4 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
@@ -548,11 +711,11 @@ git add src/app/(home)/jobs-detail/page.tsx
                 </button>
               </div>
 
-              {/* Filter Bar */}
-              <div className="flex flex-wrap items-center gap-3 mt-4">
+              {/* Filter Bar - Compact Design */}
+              <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-gray-100">
                 {/* Level Dropdown */}
                 <div className="relative">
-                  <select className="appearance-none pl-4 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white cursor-pointer text-gray-700 text-sm">
+                  <select className="appearance-none pl-3 pr-8 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 hover:bg-white cursor-pointer text-gray-700 text-sm font-medium transition-colors">
                     <option>Level</option>
                     <option>Intern</option>
                     <option>Fresher</option>
@@ -562,17 +725,12 @@ git add src/app/(home)/jobs-detail/page.tsx
                     <option>Leader</option>
                   </select>
                   <svg
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </div>
 
@@ -580,28 +738,23 @@ git add src/app/(home)/jobs-detail/page.tsx
                 <div className="relative">
                   <select className="appearance-none pl-4 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white cursor-pointer text-gray-700 text-sm">
                     <option>Working Model</option>
-                    <option>AT_OFFICE</option>
-                    <option>REMOTE</option>
-                    <option>HYBRID</option>
+                    <option>Remote</option>
+                    <option>Hybrid</option>
+                    <option>Onsite</option>
                   </select>
                   <svg
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </div>
 
                 {/* Salary Dropdown */}
                 <div className="relative">
-                  <select className="appearance-none pl-4 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white cursor-pointer text-gray-700 text-sm">
+                  <select className="appearance-none pl-3 pr-8 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 hover:bg-white cursor-pointer text-gray-700 text-sm font-medium transition-colors">
                     <option>Salary</option>
                     <option>Dưới 10 triệu</option>
                     <option>10-15 triệu</option>
@@ -611,24 +764,19 @@ git add src/app/(home)/jobs-detail/page.tsx
                     <option>Trên 50 triệu</option>
                   </select>
                   <svg
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </div>
 
                 {/* Job Domain Dropdown */}
                 <div className="relative">
-                  <select className="appearance-none pl-4 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white cursor-pointer text-gray-700 text-sm">
-                    <option>Job Domain</option>
+                  <select className="appearance-none pl-3 pr-8 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 hover:bg-white cursor-pointer text-gray-700 text-sm font-medium transition-colors">
+                    <option>Domain</option>
                     <option>Backend</option>
                     <option>Frontend</option>
                     <option>Fullstack</option>
@@ -638,24 +786,19 @@ git add src/app/(home)/jobs-detail/page.tsx
                     <option>Data Science</option>
                   </select>
                   <svg
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </div>
 
-                {/* Filter Button */}
-                <button className="ml-auto flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-gray-700 text-sm">
-                  <IoFilterOutline className="w-5 h-5" />
-                  Filter
+                {/* Clear Filters Button */}
+                <button className="ml-auto flex items-center gap-1.5 px-3 py-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors text-sm">
+                  <FiX className="w-4 h-4" />
+                  Clear
                 </button>
               </div>
             </div>
@@ -666,13 +809,13 @@ git add src/app/(home)/jobs-detail/page.tsx
         <div className="py-4">
           <main className="mx-auto max-w-7xl px-4 md:px-6">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <aside className="lg:col-span-5">
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <aside className="lg:col-span-5 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-hidden">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 h-full flex flex-col">
                   {/* Header Section: Title + Job Recommend Button */}
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-semibold text-gray-900">
+                  <div className="flex items-center justify-between mb-4 flex-shrink-0">
+                    <h2 className="text-xl font-bold text-gray-900">
                       Available Jobs{" "}
-                      <span className="text-blue-600">({totalElements})</span>
+                      <span className="text-blue-600 font-semibold">({totalElements})</span>
                     </h2>
 
                     <button
@@ -713,8 +856,8 @@ git add src/app/(home)/jobs-detail/page.tsx
                       <p className="text-gray-500">No jobs found</p>
                     </div>
                   ) : (
-                    <>
-                      <div className="space-y-4">
+                    <div className="flex-1 overflow-y-auto">
+                      <div className="space-y-4 pr-1">
                         {jobs.map((job) => (
                           <div
                             key={job.id}
@@ -769,11 +912,10 @@ git add src/app/(home)/jobs-detail/page.tsx
                                   <button
                                     key={page}
                                     onClick={() => handlePageChange(page)}
-                                    className={`px-4 py-2 rounded-lg ${
-                                      currentPage === page
-                                        ? "bg-red-500 text-white"
-                                        : "border border-gray-300 hover:bg-gray-50"
-                                    }`}
+                                    className={`px-4 py-2 rounded-lg ${currentPage === page
+                                      ? "bg-red-500 text-white"
+                                      : "border border-gray-300 hover:bg-gray-50"
+                                      }`}
                                   >
                                     {page + 1}
                                   </button>
@@ -781,8 +923,7 @@ git add src/app/(home)/jobs-detail/page.tsx
                               }
                             )}
                           </div>
-
-                          <button
+                         <button
                             onClick={() => handlePageChange(currentPage + 1)}
                             disabled={currentPage === totalPages - 1}
                             className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -791,47 +932,47 @@ git add src/app/(home)/jobs-detail/page.tsx
                           </button>
                         </div>
                       )}
-                    </>
+                    </div>
                   )}
                 </div>
               </aside>
 
               <section className="lg:col-span-7">
                 {selectedJob ? (
-                  <div className="sticky top-20 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="lg:sticky lg:top-20 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden lg:max-h-[calc(100vh-6rem)]">
                     {/* Header with company and job title - Fixed */}
-                    <div className="p-6 border-b border-gray-200">
+                    <div className="p-6 border-b border-gray-100 bg-gradient-to-br from-white to-slate-50">
                       <div className="flex justify-between items-start mb-4">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                          <div className="flex items-center gap-2 mb-3">
+                            <span className="bg-blue-100 text-blue-800 px-3 py-1.5 rounded-full text-sm font-semibold">
                               {selectedJob.company}
                             </span>
-                            <span className="text-sm text-gray-700">
+                            <span className="text-sm text-gray-600">
                               ✓ You will love it
                             </span>
                           </div>
-                          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                          <h1 className="text-2xl font-bold text-gray-900 mb-3">
                             {selectedJob.title}
                           </h1>
 
                           {/* NEW: chips ngay dưới tiêu đề */}
-                          <div className="flex flex-wrap gap-2 mb-2">
+                          <div className="flex flex-wrap gap-2.5 mb-4">
                             {selectedJob.salaryRange && (
-                              <span className="salary-badge inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-bold shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200">
+                              <span className="salary-badge inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-bold shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200">
                                 <RiMoneyDollarCircleLine size={18} />
                                 {selectedJob.salaryRange}
                               </span>
                             )}
-                            <span className="px-3 py-1 rounded-full text-sm bg-sky-50 text-sky-700 border border-sky-200">
+                            <span className="px-3.5 py-1.5 rounded-full text-sm font-medium bg-sky-50 text-sky-700 border border-sky-200">
                               {selectedJob.workMode}
                             </span>
-                            <span className="px-3 py-1 rounded-full text-sm bg-violet-50 text-violet-700 border border-violet-200">
+                            <span className="px-3.5 py-1.5 rounded-full text-sm font-medium bg-violet-50 text-violet-700 border border-violet-200">
                               {selectedJob.jobType}
                             </span>
                           </div>
 
-                          <p className="text-gray-600 text-sm mb-4 flex items-center gap-1">
+                          <p className="text-gray-500 text-sm flex items-center gap-1.5">
                             <svg
                               className="w-4 h-4 text-blue-600"
                               xmlns="http://www.w3.org/2000/svg"
@@ -852,6 +993,38 @@ git add src/app/(home)/jobs-detail/page.tsx
                             · {selectedJob.postedAgo}
                           </p>
                         </div>
+
+                        {/* CV Analyse Button - Top Right */}
+                        <div className="flex-shrink-0">
+                          <button
+                            onClick={handleCVAnalyse}
+                            disabled={isAnalyzing}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300 rounded-lg text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isAnalyzing ? (
+                              <>
+                                <span className="animate-spin">⏳</span>
+                                <span>Analysing...</span>
+                              </>
+                            ) : (
+                              <>
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 24 24"
+                                  fill="currentColor"
+                                  className="w-4 h-4"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813a3.75 3.75 0 002.576-2.576l.813-2.846A.75.75 0 019 4.5z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                                <span>CV Analyse</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
 
                       <div className="flex gap-3 mb-4">
@@ -867,13 +1040,12 @@ git add src/app/(home)/jobs-detail/page.tsx
                           <button
                             onClick={handleToggleLike}
                             disabled={isLiking}
-                            className={`p-3 border-2 rounded-md transition-colors ${
-                              isLiking
-                                ? "border-gray-200 cursor-not-allowed opacity-50"
-                                : isLiked
+                            className={`p-3 border-2 rounded-md transition-colors ${isLiking
+                              ? "border-gray-200 cursor-not-allowed opacity-50"
+                              : isLiked
                                 ? "border-blue-500 bg-blue-50"
                                 : "border-gray-300 hover:border-blue-500"
-                            }`}
+                              }`}
                           >
                             {isLiked ? (
                               <AiFillLike className="w-6 h-6 text-blue-500" />
@@ -888,8 +1060,8 @@ git add src/app/(home)/jobs-detail/page.tsx
                               {isLiking
                                 ? "Processing..."
                                 : isLiked
-                                ? "Liked"
-                                : "You like this job"}
+                                  ? "Liked"
+                                  : "You like this job"}
                             </div>
                             <div className="w-3 h-3 bg-gray-800 transform rotate-45 absolute -bottom-1 right-4"></div>
                           </div>
@@ -900,13 +1072,12 @@ git add src/app/(home)/jobs-detail/page.tsx
                           <button
                             onClick={handleToggleSave}
                             disabled={isSaving}
-                            className={`p-3 border-2 rounded-md transition-colors ${
-                              isSaving
-                                ? "border-gray-200 cursor-not-allowed opacity-50"
-                                : isBookmarked
+                            className={`p-3 border-2 rounded-md transition-colors ${isSaving
+                              ? "border-gray-200 cursor-not-allowed opacity-50"
+                              : isBookmarked
                                 ? "border-yellow-500 bg-yellow-50"
                                 : "border-gray-300 hover:border-yellow-500"
-                            }`}
+                              }`}
                           >
                             {isBookmarked ? (
                               <AiFillStar className="w-6 h-6 text-yellow-500" />
@@ -921,8 +1092,8 @@ git add src/app/(home)/jobs-detail/page.tsx
                               {isSaving
                                 ? "Saving..."
                                 : isBookmarked
-                                ? "Saved"
-                                : "Save this job"}
+                                  ? "Saved"
+                                  : "Save this job"}
                             </div>
                             <div className="w-3 h-3 bg-gray-800 transform rotate-45 absolute -bottom-1 right-4"></div>
                           </div>
@@ -930,31 +1101,31 @@ git add src/app/(home)/jobs-detail/page.tsx
                       </div>
                     </div>
 
-                    {/* Scrollable Content Area */}
+                    {/* Scrollable Content Area - scroll riêng trong card */}
                     <div
-                      className="overflow-y-auto"
-                      style={{ maxHeight: "calc(100vh - 280px)" }}
+                      className="overflow-y-auto flex-1"
+                      style={{ maxHeight: "calc(100vh - 22rem)" }}
                     >
                       <div className="p-6">
                         {/* NEW: meta bar tóm tắt compensation */}
                         {(selectedJob.salaryRange ||
                           selectedJob.benefitSummary?.length) && (
-                          <div className="mb-6 rounded-lg border border-emerald-200 bg-gradient-to-r from-emerald-50 to-green-50 p-4 shadow-sm">
-                            <ul className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm text-gray-800">
-                              {selectedJob.salaryRange && (
-                                <li className="salary-badge inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-bold shadow-md w-fit">
-                                  <RiMoneyDollarCircleLine size={18} />
-                                  {selectedJob.salaryRange}
-                                </li>
-                              )}
-                              {selectedJob.benefitSummary
-                                ?.slice(0, 3)
-                                .map((x, i) => (
-                                  <li key={i}>• {x}</li>
-                                ))}
-                            </ul>
-                          </div>
-                        )}
+                            <div className="mb-6 rounded-lg border border-emerald-200 bg-gradient-to-r from-emerald-50 to-green-50 p-4 shadow-sm">
+                              <ul className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm text-gray-800">
+                                {selectedJob.salaryRange && (
+                                  <li className="salary-badge inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-bold shadow-md w-fit">
+                                    <RiMoneyDollarCircleLine size={18} />
+                                    {selectedJob.salaryRange}
+                                  </li>
+                                )}
+                                {selectedJob.benefitSummary
+                                  ?.slice(0, 3)
+                                  .map((x, i) => (
+                                    <li key={i}>• {x}</li>
+                                  ))}
+                              </ul>
+                            </div>
+                          )}
 
                         <div className="grid md:grid-cols-2 gap-6 mb-6">
                           <div>
@@ -963,7 +1134,7 @@ git add src/app/(home)/jobs-detail/page.tsx
                             </h3>
                             <div className="flex flex-wrap gap-2 mb-4">
                               {selectedJob.skills &&
-                              selectedJob.skills.length > 0 ? (
+                                selectedJob.skills.length > 0 ? (
                                 selectedJob.skills.map((skill, index) => (
                                   <span
                                     key={index}
@@ -1234,6 +1405,128 @@ git add src/app/(home)/jobs-detail/page.tsx
                   className="flex-1 px-6 py-3 bg-gradient-to-r from-[#3a4660] to-gray-400 text-white rounded-md hover:bg-gradient-to-r hover:from-[#3a4660] hover:to-[#3a4660] transition-colors"
                 >
                   Continue to login
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* No CV Default Modal */}
+      {showNoCVModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 relative">
+            {/* Close button */}
+            <button
+              onClick={() => setShowNoCVModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <FiX className="w-6 h-6" />
+            </button>
+
+            {/* Modal content */}
+            <div className="p-8">
+              <div className="flex items-center justify-center mb-4">
+                <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center">
+                  <svg className="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 mb-3 text-center">
+                No Default CV Attached
+              </h2>
+              <p className="text-gray-600 mb-6 text-center">
+                Currently you have no CV Default Attached. Would you like to attach new Default CV?
+              </p>
+
+              {/* Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowNoCVModal(false)}
+                  className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowNoCVModal(false);
+                    router.push("/candidate/cv-management");
+                  }}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-[#3a4660] to-gray-400 text-white rounded-md hover:bg-gradient-to-r hover:from-[#3a4660] hover:to-[#3a4660] transition-colors"
+                >
+                  Continue
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CV Analyse Upgrade Modal */}
+      {showCVAnalyseUpgradeModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 relative">
+            {/* Close button */}
+            <button
+              onClick={() => setShowCVAnalyseUpgradeModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <FiX className="w-6 h-6" />
+            </button>
+
+            {/* Modal content */}
+            <div className="p-8">
+              <div className="flex items-center justify-center mb-4">
+                <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center">
+                  <Lock className="w-8 h-8 text-indigo-600" />
+                </div>
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 mb-3 text-center">
+                Upgrade Required
+              </h2>
+              <p className="text-gray-600 mb-6 text-center">
+                CV Analyse is a premium feature. Upgrade your subscription to unlock AI-powered CV analysis and get personalized feedback on how well your CV matches this job.
+              </p>
+
+              {/* Features list */}
+              <div className="mb-6 space-y-2">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>AI-powered CV analysis</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Match score with job requirements</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Personalized improvement suggestions</span>
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowCVAnalyseUpgradeModal(false)}
+                  className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Maybe Later
+                </button>
+                <button
+                  onClick={() => {
+                    setShowCVAnalyseUpgradeModal(false);
+                    router.push("/candidate/subscription");
+                  }}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-md hover:from-indigo-700 hover:to-purple-700 transition-colors font-medium"
+                >
+                  Upgrade Now
                 </button>
               </div>
             </div>

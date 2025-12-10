@@ -13,6 +13,8 @@ import { PremiumAvatar } from "@/components/ui/premium-avatar";
 import { getMyInvoice } from "@/lib/invoice-api";
 import { fetchMyJobApplications, type JobApplication } from "@/lib/my-jobs-api";
 import { fetchSavedJobs, type SavedJobFeedback } from "@/lib/job-api";
+import { getCurrentUser } from "@/lib/user-api";
+import { calculateProfileCompletion } from "@/lib/profile-completion";
 import api from "@/lib/api";
 
 export default function CandidateDashboard() {
@@ -77,18 +79,54 @@ export default function CandidateDashboard() {
           setProfileName(profile.fullName || "");
           setProfileTitle(profile.title || "");
           setProfileImage(profile.image || "");
+          
+          // Calculate profile completion using same logic as cm-profile
+          const completionData = {
+            fullName: profile.fullName,
+            title: profile.title,
+            phone: profile.phone,
+            dob: profile.dob,
+            gender: profile.gender,
+            address: profile.address,
+            link: profile.link,
+            image: profile.image,
+            aboutMe: profile.aboutMe,
+            awards: profile.awards || [],
+            certificates: profile.certificates || [],
+            projects: profile.projects || [],
+            languages: profile.languages || [],
+            educations: profile.educations || [],
+            workExperiences: profile.workExperiences || [],
+            // Flatten skill groups to get total skill count
+            coreSkills: (profile.coreSkillGroups || []).flatMap((g: any) => g.items || []),
+            softSkills: (profile.softSkillGroups || []).flatMap((g: any) => g.items || []),
+          };
+          const completion = calculateProfileCompletion(completionData);
+          setProfileCompletion(completion);
         }
       } catch (error) {
         console.error("Failed to fetch profile:", error);
       }
     };
 
-    // Get email from user
-    if (user?.email) {
-      setUserEmail(user.email);
-    }
+    // Fetch current user info (including email) from API
+    const fetchCurrentUserInfo = async () => {
+      try {
+        const currentUser = await getCurrentUser();
+        if (currentUser?.email) {
+          setUserEmail(currentUser.email);
+        }
+      } catch (error) {
+        console.error("Failed to fetch current user:", error);
+        // Fallback to user from auth store
+        if (user?.email) {
+          setUserEmail(user.email);
+        }
+      }
+    };
 
     fetchProfile();
+    fetchCurrentUserInfo();
   }, [user]);
 
   // Check premium status
@@ -179,7 +217,7 @@ export default function CandidateDashboard() {
           </aside>
 
           {/* Main Content */}
-          <section className="space-y-6 min-w-0 lg:mt-[var(--sticky-offset)] transition-all duration-300">
+          <section className="space-y-6 min-w-0 transition-all duration-300">
             {/* Welcome Header - Profile Card */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="flex items-start justify-between">

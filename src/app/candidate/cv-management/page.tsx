@@ -39,11 +39,11 @@ const CVManagementPage = () => {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [currentPackage, setCurrentPackage] = useState<string>("FREE");
-  
+
   // Initialize CV Store (for Redux DevTools visibility)
   const cvStore = useCVStore();
   const { setCVs, setDefaultCv: setDefaultCvInStore } = cvStore;
-  
+
   // Get user info and profile fetcher
   const { candidateId, user, fetchCandidateProfile } = useAuthStore();
   const userId = candidateId || user?.id;
@@ -106,7 +106,7 @@ const CVManagementPage = () => {
         ...builtCVsConverted,
         ...draftCVsConverted,
       ];
-      
+
       console.log('🔄 Syncing CVs to Zustand store:', allCVs);
       setCVs(allCVs);
 
@@ -165,7 +165,7 @@ const CVManagementPage = () => {
   }, [activeTab, uploadedCVs, builtCVs, draftCVs]);
 
   // ✅ Memoize boolean check
-  const hasAnyResumes = useMemo(() => 
+  const hasAnyResumes = useMemo(() =>
     uploadedCVs.length > 0 || builtCVs.length > 0 || draftCVs.length > 0,
     [uploadedCVs.length, builtCVs.length, draftCVs.length]
   );
@@ -174,11 +174,11 @@ const CVManagementPage = () => {
   const handleCreateCV = useCallback(async () => {
     // Check package limits
     const builtCVCount = builtCVs.length;
-    
+
     // Determine limits based on package
     let canCreate = false;
     let limitMessage = '';
-    
+
     if (currentPackage === 'PREMIUM') {
       // PREMIUM: Unlimited
       canCreate = true;
@@ -187,14 +187,14 @@ const CVManagementPage = () => {
       if (builtCVCount < 5) {
         canCreate = true;
       } else {
-        limitMessage = `Bạn đã tạo đủ 5 CV (giới hạn của gói PLUS). Nâng cấp lên PREMIUM để tạo không giới hạn!`;
+        limitMessage = `You have reached the limit of 5 CVs for the PLUS package. Upgrade to PREMIUM for unlimited CV creation!`;
       }
     } else {
       // FREE: Max 1 CV builder
       if (builtCVCount < 1) {
         canCreate = true;
       } else {
-        limitMessage = `Bạn đã tạo đủ 1 CV (giới hạn của gói FREE). Nâng cấp lên PLUS hoặc PREMIUM để tạo thêm!`;
+        limitMessage = `You have reached the limit of 1 CV for the FREE package. Upgrade to PLUS or PREMIUM to create more CVs!`;
       }
     }
 
@@ -258,7 +258,7 @@ const CVManagementPage = () => {
           </aside>
 
           {/* Main Content */}
-          <section className="space-y-6 min-w-0 lg:mt-[var(--sticky-offset)] transition-all duration-300 relative z-[2] pointer-events-auto">
+          <section className="space-y-6 min-w-0 transition-all duration-300 relative z-[2] pointer-events-auto">
             {/* Header */}
             <div>
               <h1 className="text-2xl font-bold text-gray-900 mb-2">CV Management</h1>
@@ -267,14 +267,14 @@ const CVManagementPage = () => {
 
             {/* Default CV Card or No Active CV */}
             {defaultCV ? (
-            <div className="bg-gradient-to-r from-[#3a4660] to-gray-400 rounded-xl p-6 shadow-md">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-white mb-1 flex items-center gap-2">
-                    Active CV
-                    <span className="text-xs bg-white/20 backdrop-blur-sm text-white px-2 py-0.5 rounded-full">
-                      Active
-                    </span>
+              <div className="bg-gradient-to-r from-[#3a4660] to-gray-400 rounded-xl p-6 shadow-md">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h2 className="text-lg font-semibold text-white mb-1 flex items-center gap-2">
+                      Active CV
+                      <span className="text-xs bg-white/20 backdrop-blur-sm text-white px-2 py-0.5 rounded-full">
+                        Active
+                      </span>
                     </h2>
                     <p className="text-sm text-white/90">
                       This CV will be used automatically when applying for jobs
@@ -285,7 +285,7 @@ const CVManagementPage = () => {
                 <CVCardHorizontal
                   cv={defaultCV}
                   isDefault
-                  onSetDefault={() => {}}
+                  onSetDefault={() => { }}
                   onPreview={() => actionsHook.handlePreview(defaultCV)}
                   onSync={() => actionsHook.handleSyncToProfile(defaultCV)}
                   onEdit={() => actionsHook.handleEditCV(defaultCV)}
@@ -361,7 +361,7 @@ const CVManagementPage = () => {
       {/* Upgrade Modal for CV Builder Limit */}
       {showUpgradeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div 
+          <div
             className="bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
@@ -391,10 +391,10 @@ const CVManagementPage = () => {
                   <Sparkles className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="text-gray-900 font-medium mb-2">
-                      Bạn đã đạt giới hạn tạo CV Builder
+                      You have reached your CV Builder limit
                     </p>
                     <p className="text-sm text-gray-600 mb-3">
-                      Nâng cấp gói của bạn để tạo thêm CV và sử dụng nhiều tính năng hơn!
+                      Upgrade your plan to create more CVs and unlock additional features!
                     </p>
                   </div>
                 </div>
@@ -433,7 +433,7 @@ const CVManagementPage = () => {
                   onClick={() => setShowUpgradeModal(false)}
                   className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium text-sm"
                 >
-                  Để sau
+                  Not now
                 </button>
                 <button
                   onClick={() => {
@@ -442,7 +442,7 @@ const CVManagementPage = () => {
                   }}
                   className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl transition-all font-semibold text-sm shadow-lg hover:shadow-xl"
                 >
-                  Nâng cấp ngay
+                  Upgrade Now
                 </button>
               </div>
             </div>

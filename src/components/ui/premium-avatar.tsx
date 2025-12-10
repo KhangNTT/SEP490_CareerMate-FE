@@ -10,6 +10,7 @@ interface PremiumAvatarProps {
   alt?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   isPremium?: boolean;
+  showOnline?: boolean;
   className?: string;
 }
 
@@ -27,11 +28,20 @@ const iconSizes = {
   xl: 'w-10 h-10',
 };
 
+// Online indicator sizes based on avatar size
+const onlineSizes = {
+  sm: 'w-2.5 h-2.5',
+  md: 'w-3 h-3',
+  lg: 'w-4 h-4',
+  xl: 'w-5 h-5',
+};
+
 export function PremiumAvatar({
   src,
   alt = 'User Avatar',
   size = 'md',
   isPremium = false,
+  showOnline = false,
   className = '',
 }: PremiumAvatarProps) {
   // Use the hook to resolve storage paths to download URLs
@@ -77,11 +87,16 @@ export function PremiumAvatar({
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className={`${baseSize} bg-gray-200 flex items-center justify-center`}>
+          <div className={`${baseSize} bg-gray-200 flex items-center justify-center rounded-full`}>
             <User className={`${iconSize} text-gray-500`} />
           </div>
         )}
       </div>
+      
+      {/* Online Indicator - positioned outside avatar div */}
+      {showOnline && (
+        <span className={`absolute -bottom-0.5 -right-0.5 ${onlineSizes[size]} rounded-full border-2 border-background bg-green-500`} />
+      )}
     </div>
   );
 }

@@ -25,7 +25,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { ClientHeader, ClientFooter } from "@/modules/client/components";
 import CVSidebar from "@/components/layout/CVSidebar";
 import { useLayout } from "@/contexts/LayoutContext";
 import { useAuthStore } from "@/store/use-auth-store";
@@ -226,21 +225,16 @@ export default function CandidateEmploymentsPage() {
 
   if (loading) {
     return (
-      <>
-        <ClientHeader />
-        <main className="mx-auto max-w-7xl px-4 py-6 md:px-6">
-          <div className="flex items-center justify-center py-16">
-            <RefreshCw className="h-8 w-8 text-primary animate-spin" />
-          </div>
-        </main>
-      </>
+      <main className="mx-auto max-w-7xl px-4 py-6 md:px-6">
+        <div className="flex items-center justify-center py-16">
+          <RefreshCw className="h-8 w-8 text-primary animate-spin" />
+        </div>
+      </main>
     );
   }
 
   return (
-    <>
-      <ClientHeader />
-      <main className="mx-auto max-w-7xl px-4 py-6 md:px-6">
+    <main className="mx-auto max-w-7xl px-4 py-6 md:px-6">
         <div
           className="grid grid-cols-1 lg:grid-cols-[16rem_minmax(0,1fr)] gap-6 items-start"
           style={{
@@ -252,7 +246,7 @@ export default function CandidateEmploymentsPage() {
             <CVSidebar activePage="employments" />
           </aside>
 
-          <section className="space-y-6 min-w-0 lg:mt-[var(--sticky-offset)]">
+          <section className="space-y-6 min-w-0">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
@@ -433,8 +427,6 @@ export default function CandidateEmploymentsPage() {
             </div>
           </section>
         </div>
-      </main>
-      <ClientFooter />
 
       {/* Confirmation Dialog */}
       <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
@@ -527,6 +519,6 @@ export default function CandidateEmploymentsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </main>
   );
 }

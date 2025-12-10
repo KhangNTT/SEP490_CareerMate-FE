@@ -1,6 +1,17 @@
 import { notFound } from 'next/navigation';
 
 // ========================================
+// ⚠️ FONT WARNING
+// ========================================
+// This page relies on Inter font files at /public/fonts/
+// If font files are missing (Inter-Regular.ttf, Inter-Medium.ttf, etc.),
+// the page will automatically fallback to system fonts via font-display: swap.
+// 
+// To add fonts: Download Inter from Google Fonts and place in /public/fonts/
+// Fallback CSS stack: Inter, system-ui, -apple-system, sans-serif
+// ========================================
+
+// ========================================
 // TYPES
 // ========================================
 
@@ -312,7 +323,12 @@ async function getCVData(cvId: string): Promise<CVData | null> {
 // TEMPLATE COMPONENTS
 // ========================================
 
-function ClassicTemplate({ data }: { data: CVData }) {
+interface TemplateProps {
+  data: CVData;
+  showWatermark: boolean;
+}
+
+function ClassicTemplate({ data, showWatermark }: TemplateProps) {
   return (
     <div className="cv-page classic-template">
       {/* Header Section */}
@@ -437,11 +453,14 @@ function ClassicTemplate({ data }: { data: CVData }) {
           </div>
         </section>
       )}
+
+      {/* Watermark - only show for BASIC package */}
+      {showWatermark && <div className="cv-watermark" />}
     </div>
   );
 }
 
-function ModernTemplate({ data }: { data: CVData }) {
+function ModernTemplate({ data, showWatermark }: TemplateProps) {
   return (
     <div className="cv-page modern-template">
       {/* Sidebar */}
@@ -564,6 +583,9 @@ function ModernTemplate({ data }: { data: CVData }) {
           </section>
         )}
       </main>
+
+      {/* Watermark - only show for BASIC package */}
+      {showWatermark && <div className="cv-watermark" />}
     </div>
   );
 }
@@ -606,7 +628,7 @@ const GlobeIcon = () => (
   </svg>
 );
 
-function VintageTemplate({ data }: { data: CVData }) {
+function VintageTemplate({ data, showWatermark }: TemplateProps) {
   return (
     <div className="cv-page vintage-template">
       {/* Left Column */}
@@ -784,11 +806,14 @@ function VintageTemplate({ data }: { data: CVData }) {
           </section>
         )}
       </div>
+
+      {/* Watermark - only show for BASIC package */}
+      {showWatermark && <div className="cv-watermark" />}
     </div>
   );
 }
 
-function ProfessionalTemplate({ data }: { data: CVData }) {
+function ProfessionalTemplate({ data, showWatermark }: TemplateProps) {
   return (
     <div className="cv-page professional-template">
       {/* Header with accent */}
@@ -919,6 +944,9 @@ function ProfessionalTemplate({ data }: { data: CVData }) {
           )}
         </main>
       </div>
+
+      {/* Watermark - only show for BASIC package */}
+      {showWatermark && <div className="cv-watermark" />}
     </div>
   );
 }
@@ -927,15 +955,24 @@ function ProfessionalTemplate({ data }: { data: CVData }) {
 // MAIN PAGE COMPONENT
 // ========================================
 
+// 🔧 Next.js 15+ Fix: params and searchParams are now Promises
+// They must be awaited before accessing their properties
+// Otherwise, SSR crashes with "params/searchParams should be awaited before being accessed"
+
 export default async function PrintPage({
   params,
   searchParams,
 }: {
-  params: { templateId: string };
-  searchParams: { id?: string; data?: string };
+  params: Promise<{ templateId: string }>;
+  searchParams: Promise<{ id?: string; data?: string; package?: string }>;
 }) {
-  const { templateId } = params;
-  const { id: cvId, data: encodedData } = searchParams;
+  // ✅ Await both params and searchParams (Next.js 15+ requirement)
+  const { templateId } = await params;
+  const { id: cvId, data: encodedData, package: userPackage } = await searchParams;
+
+  // Determine if watermark should be shown
+  // Show watermark for FREE or BASIC package (or when no package specified)
+  const showWatermark = !userPackage || userPackage === 'FREE' || userPackage === 'BASIC';
 
   // Template mapping: CVPreview ID -> Print template ID
   const templateMapping: Record<string, string> = {
@@ -982,13 +1019,13 @@ export default async function PrintPage({
     );
   }
 
-  // Render appropriate template
+  // Render appropriate template with watermark flag
   return (
     <>
-      {mappedTemplate === 'classic' && <ClassicTemplate data={cvData} />}
-      {mappedTemplate === 'modern' && <ModernTemplate data={cvData} />}
-      {mappedTemplate === 'professional' && <ProfessionalTemplate data={cvData} />}
-      {mappedTemplate === 'vintage' && <VintageTemplate data={cvData} />}
+      {mappedTemplate === 'classic' && <ClassicTemplate data={cvData} showWatermark={showWatermark} />}
+      {mappedTemplate === 'modern' && <ModernTemplate data={cvData} showWatermark={showWatermark} />}
+      {mappedTemplate === 'professional' && <ProfessionalTemplate data={cvData} showWatermark={showWatermark} />}
+      {mappedTemplate === 'vintage' && <VintageTemplate data={cvData} showWatermark={showWatermark} />}
     </>
   );
 }
@@ -997,15 +1034,21 @@ export default async function PrintPage({
 // METADATA
 // ========================================
 
+// 🔧 Next.js 15+ Fix: params and searchParams are Promises in generateMetadata too
 export async function generateMetadata({
   params,
   searchParams,
 }: {
-  params: { templateId: string };
-  searchParams: { id?: string };
+  params: Promise<{ templateId: string }>;
+  searchParams: Promise<{ id?: string }>;
 }) {
+  // ✅ Await params before accessing (Next.js 15+ requirement)
+  const { templateId } = await params;
+  // Note: searchParams is awaited even if not used to avoid future issues
+  await searchParams;
+  
   return {
-    title: `CV Print - ${params.templateId}`,
+    title: `CV Print - ${templateId}`,
     robots: 'noindex, nofollow', // Prevent indexing of print pages
   };
 }

@@ -53,7 +53,7 @@ export default function SkillsSection({
                                         onAddCoreSkills();
                                     }}
                                 >
-                                    <Plus className="w-4 h-4 text-red-500" />
+                                    <Plus className="w-4 h-4 text-green-500" />
                                     Core skills
                                 </button>
                                 <button
@@ -63,7 +63,7 @@ export default function SkillsSection({
                                         onAddSoftSkills();
                                     }}
                                 >
-                                    <Plus className="w-4 h-4 text-red-500" />
+                                    <Plus className="w-4 h-4 text-green-500" />
                                     Soft skills
                                 </button>
                             </div>
