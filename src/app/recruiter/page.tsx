@@ -254,21 +254,19 @@ export default function RecruiterHomePage() {
                 <div className="flex items-center space-x-3">
                   <CheckCircle className="h-5 w-5 text-[#0ead43] flex-shrink-0" />
                   <span className="text-gray-700 text-lg">
-                    Đăng tin tuyển dụng miễn phí, dễ dàng và nhanh chóng
+                    Post job postings for free, easily and quickly
                   </span>
                 </div>
                 <div className="flex items-center space-x-3">
                   <CheckCircle className="h-5 w-5 text-[#0ead43] flex-shrink-0" />
                   <span className="text-gray-700 text-lg">
-                    Nguồn ứng viên không lo từ nhiều ngành nghề, kinh nghiệm
-                    khác nhau
+                    Reliable candidate sources from various industries and experience levels
                   </span>
                 </div>
                 <div className="flex items-center space-x-3">
                   <CheckCircle className="h-5 w-5 text-[#0ead43] flex-shrink-0" />
                   <span className="text-gray-700 text-lg">
-                    CareerMate AI đề xuất ứng viên tiềm năng, lọc thông tin nổi
-                    bật và tự động sắp xếp theo điểm phù hợp
+                    CareerMate AI recommends potential candidates, filters highlighted information and automatically ranks by compatibility
                   </span>
                 </div>
               </div>
@@ -286,22 +284,22 @@ export default function RecruiterHomePage() {
                     </div>
                     <div className="space-y-3">
                       <div className="bg-emerald-50 p-3 rounded">
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 mb-4">
                           <Briefcase className="h-4 w-4 text-[#466895]" />
                           <span className="text-sm font-medium">
-                            Việc làm mới
+                            New Jobs
                           </span>
                         </div>
                       </div>
                       <div className="space-y-2">
                         <div className="bg-gray-100 p-2 rounded text-xs">
-                          Senior Developer - 25M
+                          Senior Developer - $25K
                         </div>
                         <div className="bg-gray-100 p-2 rounded text-xs">
-                          Marketing Manager - 20M
+                          Marketing Manager - $20K
                         </div>
                         <div className="bg-gray-100 p-2 rounded text-xs">
-                          UI/UX Designer - 18M
+                          UI/UX Designer - $18K
                         </div>
                       </div>
                     </div>
@@ -419,11 +417,7 @@ export default function RecruiterHomePage() {
               </div>
 
               <p className="text-gray-600 leading-relaxed text-lg">
-                Nền tảng công nghệ AI và Machine Learning trong lĩnh vực
-                Recruitment Marketing, mang đến các giải pháp toàn diện giúp
-                doanh nghiệp giải quyết bài toán nguồn nhân lực trong quá trình
-                số hóa, từ việc tiếp cận CV, sàng lọc hồ sơ ứng viên cho đến
-                đánh giá ứng viên và đo lường hiệu quả.
+                An AI and Machine Learning–based technology platform in the field of Recruitment Marketing, providing comprehensive solutions that help enterprises address workforce challenges in the digital transformation process—from CV sourcing and resume screening to candidate assessment and performance measurement.
               </p>
             </div>
           </div>
@@ -435,7 +429,7 @@ export default function RecruiterHomePage() {
         <div className="container mx-auto px-6 max-w-7xl">
           <div className="text-center mb-12">
             <div className="text-[#305c96] font-extrabold text-sm tracking-wider uppercase mb-3">
-              Brand Promotion
+              About Us
             </div>
             <h2 className="text-3xl lg:text-4xl font-bold text-gray-900">
               CareerMate Vietnam
@@ -446,25 +440,16 @@ export default function RecruiterHomePage() {
             <div className="space-y-6">
               <div className="space-y-5 text-gray-600 text-lg leading-relaxed">
                 <p>
-                  CareerMate Việt Nam là công ty hàng đầu trong lĩnh vực HR Tech
-                  tại Việt Nam, ngay từ những ngày đầu thành lập và vận hành,
-                  sản phẩm của chúng tôi.
+                  CareerMate Vietnam is a leading company in the HR Tech field in Vietnam. Since our early days of establishment and operation, our products have continuously grown.
                 </p>
                 <p>
-                  Nền tảng tuyển dụng thông minh CareerMate, Nền tảng thiết lập
-                  và đánh giá năng lực nhân viên TestCenter, Nền tảng quản lý và
-                  gia tăng trải nghiệm nhân viên HappyTime và Giải pháp tri
-                  tuyển dụng thần tốc suất cao cấp Strings.
+                  The CareerMate intelligent recruitment platform, TestCenter employee assessment platform, HappyTime employee experience management platform, and Strings premium recruitment solution.
                 </p>
                 <p>
-                  CareerMate đang có nhiều hơn 6.3 triệu người dùng, 190.000 nhà
-                  tuyển dụng và 4 đối tác thành công hàng triệu lượt ứng viên
-                  mỗi năm tại các doanh nghiệp phù hợp.
+                  CareerMate has over 6.3 million users, 190,000 employers and 4 successful partners, connecting millions of candidates to suitable companies every year.
                 </p>
                 <p>
-                  Thông qua việc nghiên cứu và không ngừng phát triển năng lực
-                  công nghệ lõi xoay quanh tối ưu hóa b các giải pháp nhân sự
-                  hiệu quả hơn nữa trong tương lai.
+                  Through continuous research and development of core technology capabilities focused on optimization, CareerMate AI hopes to bring more effective HR solutions in the future.
                 </p>
               </div>
             </div>
@@ -533,11 +518,7 @@ export default function RecruiterHomePage() {
               </div>
 
               <p className="text-gray-600 leading-relaxed text-lg">
-                Nền tảng công nghệ AI và Machine Learning trong lĩnh vực
-                Recruitment Marketing, mang đến các giải pháp toàn diện giúp
-                doanh nghiệp giải quyết bài toán nguồn nhân lực trong quá trình
-                số hóa, từ việc tiếp cận CV, sàng lọc hồ sơ ứng viên cho đến
-                đánh giá ứng viên và đo lường hiệu quả.
+                An AI and Machine Learning–based technology platform in the field of Recruitment Marketing, providing comprehensive solutions that help enterprises address workforce challenges in the digital transformation process—from CV sourcing and resume screening to candidate assessment and performance measurement.
               </p>
             </div>
           </div>
@@ -560,26 +541,16 @@ export default function RecruiterHomePage() {
             <div className="space-y-6">
               <div className="space-y-5 text-gray-600 text-lg leading-relaxed">
                 <p>
-                  CareerMate Việt Nam là công ty hàng đầu trong lĩnh vực HR Tech
-                  tại Việt Nam, ngay từ những ngày đầu thành lập và vận hành,
-                  sản phẩm của chúng tôi.
+                  CareerMate Vietnam is a leading company in the HR Tech field in Vietnam. From the very early days of its establishment and operation, our products have been developed with a strong focus on innovation and value for businesses.
                 </p>
                 <p>
-                  Nền tảng tuyển dụng thông minh CareerMate, Nền tảng thiết lập
-                  và đánh giá năng lực nhân viên TestCenter, Nền tảng quản lý và
-                  gia tăng trải nghiệm nhân viên HappyTime và Giải pháp tri
-                  tuyển dụng thần tốc suất cao cấp Strings.
+                  CareerMate Smart Recruitment Platform, TestCenter Platform for setting up and evaluating employee capabilities, HappyTime Platform for managing and enhancing employee experience, and Strings High-Speed Premium Recruitment Solution.
                 </p>
                 <p>
-                  CareerMate đang có nhiều hơn 6.3 triệu người dùng, 190.000 nhà
-                  tuyển dụng và 4 đối tác thành công hàng triệu lượt ứng viên
-                  mỗi năm tại các doanh nghiệp phù hợp.
+                  CareerMate has more than 6.3 million users, 190,000 recruiters, and 4 successful partners with millions of candidates each year at suitable companies.
                 </p>
                 <p>
-                  Thông qua việc nghiên cứu và không ngừng phát triển năng lực
-                  công nghệ lõi xoay quanh tối ưu hóa biết là ứng dụng sâu tri
-                  tuệ nhân tạo, AI CareerMate kỳ vọng mang tới các giải pháp
-                  nhân sự hiệu quả hơn nữa trong tương lai.
+                  Through research and continuous development of core technology capabilities centered around deep application of artificial intelligence, AI CareerMate hopes to bring more effective HR solutions in the future.
                 </p>
               </div>
             </div>
@@ -652,60 +623,60 @@ export default function RecruiterHomePage() {
                 CareerMate
               </h3>
               <p className="text-gray-300">
-                Nền tảng tuyển dụng thông minh hàng đầu Việt Nam
+                Vietnam's leading intelligent recruitment platform
               </p>
             </div>
             <div className="space-y-4">
-              <h4 className="font-semibold">Dịch vụ</h4>
+              <h4 className="font-semibold">Services</h4>
               <ul className="space-y-2 text-gray-300">
                 <li>
                   <Link href="#" className="hover:text-[#3588f4]">
-                    Đăng tin tuyển dụng
+                    Post Jobs
                   </Link>
                 </li>
                 <li>
                   <Link href="#" className="hover:text-[#3588f4]">
-                    Tìm kiếm CV
+                    Search CVs
                   </Link>
                 </li>
                 <li>
                   <Link href="#" className="hover:text-[#3588f4]">
-                    Đánh giá năng lực
+                    Assess Candidates
                   </Link>
                 </li>
               </ul>
             </div>
             <div className="space-y-4">
-              <h4 className="font-semibold">Hỗ trợ</h4>
+              <h4 className="font-semibold">Support</h4>
               <ul className="space-y-2 text-gray-300">
                 <li>
                   <Link href="#" className="hover:text-[#3588f4]">
-                    Trung tâm trợ giúp
+                    Help Center
                   </Link>
                 </li>
                 <li>
                   <Link href="#" className="hover:text-[#3588f4]">
-                    Liên hệ
+                    Contact Us
                   </Link>
                 </li>
                 <li>
                   <Link href="#" className="hover:text-[#3588f4]">
-                    Báo cáo lỗi
+                    Report Bug
                   </Link>
                 </li>
               </ul>
             </div>
             <div className="space-y-4">
-              <h4 className="font-semibold">Công ty</h4>
+              <h4 className="font-semibold">Company</h4>
               <ul className="space-y-2 text-gray-300">
                 <li>
                   <Link href="#" className="hover:text-[#3588f4]">
-                    Về chúng tôi
+                    About Us
                   </Link>
                 </li>
                 <li>
                   <Link href="#" className="hover:text-[#3588f4]">
-                    Tuyển dụng
+                    Careers
                   </Link>
                 </li>
                 <li>

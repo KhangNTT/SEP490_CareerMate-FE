@@ -42,7 +42,6 @@ const NAV_ITEMS: NavItem[] = [
         subItems: [
             { label: "Job applications", href: "/recruiter/recruiter-feature/candidates/applications" },
             { label: "Saved candidates", href: "/recruiter/recruiter-feature/candidates/saved" },
-            { label: "Tag management", href: "/recruiter/recruiter-feature/candidates/tags" },
         ],
     },
     {
@@ -54,16 +53,6 @@ const NAV_ITEMS: NavItem[] = [
             { label: "Calendar Settings", href: "/recruiter/calendar/settings" },
             { label: "Interviews", href: "/recruiter/interviews" },
             { label: "Employments", href: "/recruiter/employments" },
-        ],
-    },
-    {
-        label: "Services",
-        href: "/recruiter/services",
-        icon: Sparkles,
-        subItems: [
-            { label: "Premium features", href: "/recruiter/recruiter-feature/services/premium" },
-            { label: "Job boosting", href: "/recruiter/recruiter-feature/services/boost" },
-            { label: "Candidate search", href: "/recruiter/recruiter-feature/services/search" },
         ],
     },
     {

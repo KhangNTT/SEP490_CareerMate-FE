@@ -1065,9 +1065,8 @@ export default function RoadmapFlowPage() {
 
     // Helper function to check if topic is locked
     const isTopicLocked = (index: number): boolean => {
-      if (index === 0) return false; // First topic is always unlocked
-      const prevTopicId = topics[index - 1]?.id;
-      return !completedTopics.has(prevTopicId);
+      // Unlock all topics - always return false
+      return false;
     };
 
     // START node - positioned at top left

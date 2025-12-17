@@ -1,37 +1,119 @@
 "use client";
 
-import { Users, Briefcase, Eye, TrendingUp, Calendar, FileText, Search, BarChart3, User, Building, CreditCard, CheckCircle, Package, Info, X } from "lucide-react";
+import { Users, Briefcase, Eye, TrendingUp, Calendar, FileText, Search, BarChart3, User, Building, CreditCard, CheckCircle, Package, Info, X, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { getRecruiterInvoice, formatRelativeTime, formatInvoicePrice, type RecruiterInvoice } from "@/lib/recruiter-invoice-api";
+import { getRecruiterProfile, getRecruiterStats, getRecruiterJobPostings, getRecruiterApplications, type RecruiterProfileData, type JobPostingStats, type RecruiterJobPosting, type JobApplication } from "@/lib/recruiter-api";
 
 export default function RecruiterDashboardPage() {
     const router = useRouter();
     const [invoice, setInvoice] = useState<RecruiterInvoice | null>(null);
     const [loadingInvoice, setLoadingInvoice] = useState(true);
     const [showDetails, setShowDetails] = useState(false);
+    
+    // New state for profile and stats
+    const [profile, setProfile] = useState<RecruiterProfileData | null>(null);
+    const [stats, setStats] = useState<JobPostingStats | null>(null);
+    const [recentJobs, setRecentJobs] = useState<RecruiterJobPosting[]>([]);
+    const [recentApplications, setRecentApplications] = useState<JobApplication[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [currentSlide, setCurrentSlide] = useState(0);
+
+    // Auto-carousel effect for applications with infinite loop
+    useEffect(() => {
+        if (recentApplications.length === 0) return;
+
+        const interval = setInterval(() => {
+            setCurrentSlide((prev) => (prev + 1) % recentApplications.length);
+        }, 3000); // Change slide every 3 seconds
+
+        return () => clearInterval(interval);
+    }, [recentApplications]);
 
     useEffect(() => {
-        const fetchInvoice = async () => {
+        const fetchAllData = async () => {
+            setIsLoading(true);
+            
             try {
+                // Fetch profile
+                const profileResponse = await getRecruiterProfile();
+                if (profileResponse.code === 200) {
+                    setProfile(profileResponse.result);
+                }
+            } catch (error: any) {
+                console.error('Failed to fetch profile:', error);
+            }
+
+            try {
+                // Fetch stats
+                const statsResponse = await getRecruiterStats();
+                if (statsResponse.code === 200) {
+                    setStats(statsResponse.result);
+                }
+            } catch (error: any) {
+                console.error('Failed to fetch stats:', error);
+            }
+
+            try {
+                // Fetch recent jobs (latest 5)
+                const jobsResponse = await getRecruiterJobPostings({ page: 0, size: 5 });
+                if (jobsResponse.code === 200) {
+                    setRecentJobs(jobsResponse.result.content);
+                }
+            } catch (error: any) {
+                console.error('Failed to fetch jobs:', error);
+            }
+
+            try {
+                // Fetch recent applications
+                const appsResponse = await getRecruiterApplications();
+                if (appsResponse.code === 200) {
+                    // Get latest 5 applications
+                    setRecentApplications(appsResponse.result.slice(0, 5));
+                }
+            } catch (error: any) {
+                console.error('Failed to fetch applications:', error);
+            }
+
+            try {
+                // Fetch invoice
                 const data = await getRecruiterInvoice();
                 setInvoice(data);
             } catch (error: any) {
-                // No invoice is ok, user might not have purchased anything yet
                 if (error.message !== 'NO_INVOICE_FOUND') {
                     console.error('Failed to fetch invoice:', error);
                 }
-            } finally {
-                setLoadingInvoice(false);
             }
+
+            setIsLoading(false);
+            setLoadingInvoice(false);
         };
 
-        fetchInvoice();
+        fetchAllData();
     }, []);
 
     const handleClick = () => {
-        router.push("/recruiter/jobs/create");
+        router.push("/recruiter/recruiter-feature/jobs/create");
     };
+
+    // Calculate match rate
+    const calculateMatchRate = () => {
+        if (!stats || stats.totalApplications === 0) return 0;
+        const matchedApps = stats.approvedApplications + stats.hiredApplications + stats.interviewScheduledApplications;
+        return Math.round((matchedApps / stats.totalApplications) * 100);
+    };
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="text-center">
+                    <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+                    <p className="text-gray-600">Loading dashboard...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <>
@@ -42,8 +124,13 @@ export default function RecruiterDashboardPage() {
                     {/* Left: Greeting and intro */}
                     <div className="flex-1">
                         <h1 className="text-2xl font-bold text-[#313131] mb-3">
-                            Hello, <span className="text-[#ff2f2f]">Ronaldo</span> welcome to CareerMate! 🎉
+                            Hello, <span className="text-[#ff2f2f]">{profile?.companyName || 'Recruiter'}</span> welcome to CareerMate! 🎉
                         </h1>
+                        {profile?.contactPerson && (
+                            <p className="text-sm text-gray-600">
+                                Contact Person: <span className="font-medium">{profile.contactPerson}</span>
+                            </p>
+                        )}
                     </div>
                 </div>
 
@@ -59,7 +146,7 @@ export default function RecruiterDashboardPage() {
                                 onClick={handleClick}
                                 className="rounded-lg bg-[#24497b] px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#436a9d]"
                             >
-                                Post your first job
+                                Post your job
                             </button>
                             <button className="rounded-lg border border-[#96add0] px-6 py-2.5 text-sm font-medium text-[#436a9d] transition-colors hover:bg-[#fff]">
                                 Learn more
@@ -87,7 +174,10 @@ export default function RecruiterDashboardPage() {
                         </div>
                         <div className="ml-4">
                             <p className="text-sm font-medium text-gray-600">Jobs Posted</p>
-                            <p className="text-2xl font-bold text-gray-900">0</p>
+                            <p className="text-2xl font-bold text-gray-900">{stats?.totalJobPostings || 0}</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                                {stats?.activeJobPostings || 0} active
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -98,8 +188,11 @@ export default function RecruiterDashboardPage() {
                             <Users className="h-6 w-6 text-green-600" />
                         </div>
                         <div className="ml-4">
-                            <p className="text-sm font-medium text-gray-600">Candidates</p>
-                            <p className="text-2xl font-bold text-gray-900">0</p>
+                            <p className="text-sm font-medium text-gray-600">Applications</p>
+                            <p className="text-2xl font-bold text-gray-900">{stats?.totalApplications || 0}</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                                {stats?.submittedApplications || 0} new
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -110,8 +203,11 @@ export default function RecruiterDashboardPage() {
                             <Eye className="h-6 w-6 text-yellow-600" />
                         </div>
                         <div className="ml-4">
-                            <p className="text-sm font-medium text-gray-600">Views</p>
-                            <p className="text-2xl font-bold text-gray-900">0</p>
+                            <p className="text-sm font-medium text-gray-600">Hired</p>
+                            <p className="text-2xl font-bold text-gray-900">{stats?.hiredApplications || 0}</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                                {stats?.interviewScheduledApplications || 0} in interview
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -123,7 +219,10 @@ export default function RecruiterDashboardPage() {
                         </div>
                         <div className="ml-4">
                             <p className="text-sm font-medium text-gray-600">Match Rate</p>
-                            <p className="text-2xl font-bold text-gray-900">0%</p>
+                            <p className="text-2xl font-bold text-gray-900">{calculateMatchRate()}%</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                                {((stats?.approvedApplications || 0) + (stats?.hiredApplications || 0) + (stats?.interviewScheduledApplications || 0))} / {stats?.totalApplications || 0} matched
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -131,28 +230,101 @@ export default function RecruiterDashboardPage() {
 
             {/* Two Column Layout for Available Points and All Jobs */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                {/* Left Column - Available Points */}
+                {/* Left Column - Package Info */}
                 <div className="rounded-lg bg-white p-6 shadow-sm shadow-sky-100">
-                    <h3 className="mb-4 text-lg font-semibold text-gray-900">Available Points</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="text-center p-4 rounded-lg bg-orange-50">
-                            <div className="text-2xl font-bold text-orange-500">0</div>
-                            <div className="text-sm text-gray-600">Job Posting Points</div>
-                        </div>
-                        <div className="text-center p-4 rounded-lg bg-orange-50">
-                            <div className="text-2xl font-bold text-orange-500">0</div>
-                            <div className="text-sm text-gray-600">Profile Viewing Points</div>
-                        </div>
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-gray-900">Recent Applications</h3>
+                        <button
+                            onClick={() => router.push('/recruiter/recruiter-feature/candidates/applications')}
+                            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                        >
+                            View All →
+                        </button>
                     </div>
+
+                    {recentApplications.length > 0 ? (
+                        <div className="relative overflow-hidden">
+                            <div className="overflow-hidden pb-2">
+                                <div 
+                                    className="flex transition-transform duration-700 ease-in-out"
+                                    style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+                                >
+                                    {recentApplications.map((app) => (
+                                        <div key={app.id} className="w-full flex-shrink-0 px-2">
+                                            <div className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                                                <div className="flex items-start space-x-3">
+                                                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                                        <User className="h-6 w-6 text-blue-600" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <h4 className="font-medium text-gray-900 truncate">{app.fullName}</h4>
+                                                        <p className="text-sm text-gray-600 truncate">Job: {app.jobTitle}</p>
+                                                        <p className="text-sm text-gray-600">Phone: {app.phoneNumber}</p>
+                                                        <p className="text-sm text-gray-600 truncate">Location: {app.preferredWorkLocation}</p>
+                                                        <div className="mt-2">
+                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                                                app.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                                                                app.status === 'SUBMITTED' ? 'bg-blue-100 text-blue-800' :
+                                                                app.status === 'REVIEWING' ? 'bg-yellow-100 text-yellow-800' :
+                                                                app.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
+                                                                app.status === 'HIRED' ? 'bg-purple-100 text-purple-800' :
+                                                                'bg-gray-100 text-gray-800'
+                                                            }`}>
+                                                                {app.status}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-3 text-right">
+                                                    <span className="text-xs text-gray-400">
+                                                        {formatRelativeTime(app.createAt)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            {/* Carousel indicators */}
+                            <div className="flex justify-center gap-2 mt-3">
+                                {recentApplications.map((_, index) => (
+                                    <div 
+                                        key={index}
+                                        className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                                            index === currentSlide ? 'bg-blue-500 w-4' : 'bg-gray-300'
+                                        }`}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="text-center py-8">
+                            <User className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                            <p className="text-gray-500">No applications yet</p>
+                            <p className="text-sm text-gray-400 mt-1">Applications will appear here</p>
+                        </div>
+                    )}
                 </div>
 
-                {/* Right Column - All Jobs */}
+                {/* Right Column - Application Overview */}
                 <div className="rounded-lg bg-white p-6 shadow-sm shadow-sky-100">
-                    <h3 className="mb-4 text-lg font-semibold text-gray-900">All Jobs</h3>
-                    <div className="flex items-center justify-center h-20">
-                        <div className="text-center">
-                            <Search className="h-8 w-8 mx-auto text-gray-300 mb-2" />
-                            <p className="text-sm text-gray-500">No data for this report</p>
+                    <h3 className="mb-4 text-lg font-semibold text-gray-900">Application Overview</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+                            <p className="text-xs text-gray-600 mb-1">Submitted</p>
+                            <p className="text-xl font-bold text-blue-600">{stats?.submittedApplications || 0}</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-yellow-50 border border-yellow-200">
+                            <p className="text-xs text-gray-600 mb-1">Reviewing</p>
+                            <p className="text-xl font-bold text-yellow-600">{stats?.reviewingApplications || 0}</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-green-50 border border-green-200">
+                            <p className="text-xs text-gray-600 mb-1">Approved</p>
+                            <p className="text-xl font-bold text-green-600">{stats?.approvedApplications || 0}</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-red-50 border border-red-200">
+                            <p className="text-xs text-gray-600 mb-1">Rejected</p>
+                            <p className="text-xl font-bold text-red-600">{stats?.rejectedApplications || 0}</p>
                         </div>
                     </div>
                 </div>
@@ -160,13 +332,49 @@ export default function RecruiterDashboardPage() {
 
             {/* Quick Job Post Management */}
             <div className="mb-8 rounded-lg bg-white p-6 shadow-sm shadow-sky-100">
-                <h3 className="mb-4 text-lg font-semibold text-gray-900">Quick Job Post Management</h3>
-                <div className="flex items-center justify-center h-32">
-                    <div className="text-center">
-                        <img src="/img/dashboard2.png" alt="No jobs" className="h-24 w-auto mx-auto mb-3 pl-16 object-contain" />
-                        <p className="text-gray-500">No jobs available</p>
-                    </div>
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Recent Job Postings</h3>
+                    <button
+                        onClick={() => router.push('/recruiter/recruiter-feature/jobs/active')}
+                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                        View All →
+                    </button>
                 </div>
+                {recentJobs.length > 0 ? (
+                    <div className="space-y-3 max-h-60 overflow-y-auto">
+                        {recentJobs.slice(0, 2).map((job) => (
+                            <div key={job.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                                <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                        <h4 className="font-medium text-gray-900">{job.title}</h4>
+                                        <p className="text-sm text-gray-600 mt-1">
+                                            {job.address} • {job.workModel}
+                                        </p>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Expires: {new Date(job.expirationDate).toLocaleDateString('vi-VN')}
+                                        </p>
+                                    </div>
+                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                        job.status === 'ACTIVE' ? 'bg-green-100 text-green-700' :
+                                        job.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
+                                        job.status === 'EXPIRED' ? 'bg-red-100 text-red-700' :
+                                        'bg-gray-100 text-gray-700'
+                                    }`}>
+                                        {job.status}
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="flex items-center justify-center h-32">
+                        <div className="text-center">
+                            <img src="/img/dashboard2.png" alt="No jobs" className="h-24 w-auto mx-auto mb-3 pl-16 object-contain" />
+                            <p className="text-gray-500">No jobs available</p>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Two Column Layout for Status and Candidates */}
@@ -176,59 +384,73 @@ export default function RecruiterDashboardPage() {
                     <h3 className="mb-4 text-lg font-semibold text-gray-900">Job Post Status</h3>
                     <div className="grid grid-cols-3 gap-4 text-center">
                         <div className="p-3">
-                            <div className="text-xl font-bold text-green-500">0</div>
-                            <div className="text-sm text-gray-600">Live</div>
+                            <div className="text-xl font-bold text-green-500">{stats?.activeJobPostings || 0}</div>
+                            <div className="text-sm text-gray-600">Active</div>
                         </div>
                         <div className="p-3">
-                            <div className="text-xl font-bold text-gray-500">0</div>
-                            <div className="text-sm text-gray-600">Hidden</div>
+                            <div className="text-xl font-bold text-yellow-500">{stats?.pendingJobPostings || 0}</div>
+                            <div className="text-sm text-gray-600">Pending</div>
                         </div>
                         <div className="p-3">
-                            <div className="text-xl font-bold text-gray-500">0</div>
-                            <div className="text-sm text-gray-600">Draft</div>
+                            <div className="text-xl font-bold text-gray-500">{stats?.pausedJobPostings || 0}</div>
+                            <div className="text-sm text-gray-600">Paused</div>
                         </div>
                     </div>
                     <div className="mt-4 grid grid-cols-3 gap-4 text-center">
                         <div className="p-3">
-                            <div className="text-xl font-bold text-orange-500">0</div>
-                            <div className="text-sm text-gray-600">Vacancies</div>
+                            <div className="text-xl font-bold text-orange-500">{stats?.totalJobPostings || 0}</div>
+                            <div className="text-sm text-gray-600">Total</div>
                         </div>
                         <div className="p-3">
-                            <div className="text-xl font-bold text-red-500">0</div>
+                            <div className="text-xl font-bold text-red-500">{stats?.expiredJobPostings || 0}</div>
                             <div className="text-sm text-gray-600">Expired</div>
                         </div>
                         <div className="p-3">
-                            <div className="text-xl font-bold text-yellow-500">0</div>
-                            <div className="text-sm text-gray-600">Expiring in 7 days</div>
+                            <div className="text-xl font-bold text-blue-500">{stats?.rejectedJobPostings || 0}</div>
+                            <div className="text-sm text-gray-600">Rejected</div>
                         </div>
                     </div>
                 </div>
 
                 {/* Right Column - Recently Updated Candidates */}
                 <div className="rounded-lg bg-white p-6 shadow-sm shadow-sky-100">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-gray-900">Recently Updated Candidates</h3>
-                        <div className="text-sm text-gray-500">1/5</div>
-                    </div>
-
-                    {/* Sample candidate */}
-                    <div className="border rounded-lg p-4">
-                        <div className="flex items-start space-x-3">
-                            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                                <User className="h-6 w-6 text-blue-600" />
+                    <h3 className="mb-4 text-lg font-semibold text-gray-900">Current Package</h3>
+                    {invoice ? (
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between p-4 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200">
+                                <div>
+                                    <p className="text-sm text-gray-600 mb-1">Package Name</p>
+                                    <p className="text-xl font-bold text-blue-600">{invoice.packageName}</p>
+                                </div>
+                                <Package className="h-10 w-10 text-blue-500" />
                             </div>
-                            <div className="flex-1">
-                                <h4 className="font-medium text-gray-900">Brain Victor Solomon</h4>
-                                <p className="text-sm text-gray-600">Title: Technical Specialist</p>
-                                <p className="text-sm text-gray-600">Experience: 8 years</p>
-                                <p className="text-sm text-gray-600">Location: Hanoi, Ho Chi Minh</p>
-                                <p className="text-sm text-gray-600">Salary: $1500</p>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="p-3 rounded-lg bg-green-50 border border-green-200">
+                                    <p className="text-xs text-gray-600 mb-1">Valid Until</p>
+                                    <p className="text-sm font-semibold text-gray-900">
+                                        {new Date(invoice.endDate).toLocaleDateString('vi-VN')}
+                                    </p>
+                                </div>
+                                <div className="p-3 rounded-lg bg-purple-50 border border-purple-200">
+                                    <p className="text-xs text-gray-600 mb-1">Amount Paid</p>
+                                    <p className="text-sm font-semibold text-gray-900">
+                                        {formatInvoicePrice(invoice.amount)}
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                        <div className="mt-3 text-right">
-                            <span className="text-xs text-gray-400">Updated 2 hours ago</span>
+                    ) : (
+                        <div className="text-center py-6">
+                            <Package className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                            <p className="text-gray-500">No active package</p>
+                            <button
+                                onClick={() => router.push('/recruiter/recruiter-feature/profile/billing')}
+                                className="mt-3 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                            >
+                                View Packages →
+                            </button>
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
 
@@ -237,17 +459,26 @@ export default function RecruiterDashboardPage() {
                 <div className="rounded-lg bg-white p-6 shadow-sm shadow-sky-100">
                     <h3 className="mb-4 text-lg font-semibold text-gray-900">Quick Actions</h3>
                     <div className="space-y-3">
-                        <button className="w-full rounded-lg border border-sky-200 p-3 text-left transition-colors hover:bg-sky-50">
+                        <button 
+                            onClick={() => router.push('/recruiter/recruiter-feature/jobs/create')}
+                            className="w-full rounded-lg border border-sky-200 p-3 text-left transition-colors hover:bg-sky-50"
+                        >
                             <p className="font-medium text-sky-800">Post a new job</p>
                             <p className="text-sm text-sky-600">Create and post jobs to attract candidates</p>
                         </button>
-                        <button className="w-full rounded-lg border border-sky-200 p-3 text-left transition-colors hover:bg-sky-50">
-                            <p className="font-medium text-sky-800">Search for candidates</p>
-                            <p className="text-sm text-sky-600">Browse through the candidate database</p>
+                        <button 
+                            onClick={() => router.push('/recruiter/recruiter-feature/candidates/applications')}
+                            className="w-full rounded-lg border border-sky-200 p-3 text-left transition-colors hover:bg-sky-50"
+                        >
+                            <p className="font-medium text-sky-800">Job applications</p>
+                            <p className="text-sm text-sky-600">View and manage job applications</p>
                         </button>
-                        <button className="w-full rounded-lg border border-sky-200 p-3 text-left transition-colors hover:bg-sky-50">
-                            <p className="font-medium text-sky-800">Complete company profile</p>
-                            <p className="text-sm text-sky-600">Update detailed company information</p>
+                        <button 
+                            onClick={() => router.push('/recruiter/recruiter-feature/jobs/active')}
+                            className="w-full rounded-lg border border-sky-200 p-3 text-left transition-colors hover:bg-sky-50"
+                        >
+                            <p className="font-medium text-sky-800">Active Job Posts</p>
+                            <p className="text-sm text-sky-600">Manage and update your active job postings</p>
                         </button>
                     </div>
                 </div>
