@@ -74,8 +74,8 @@ function isCandidate(token: string): boolean {
   }
 }
 
-// 🧱 Middleware
-export function middleware(request: NextRequest) {
+// 🧱 Proxy (renamed from middleware for Next.js 16)
+export default function proxy(request: NextRequest) {
   const refreshToken = request.cookies.get('refreshToken')?.value;
 
   // Don't log on every request - only when needed
@@ -192,7 +192,15 @@ export function middleware(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith('/candidate')) {
     // ✨ Allow unauthenticated access to print pages (for PDF export)
     if (request.nextUrl.pathname.startsWith('/candidate/cv/print/')) {
-      safeLog.middleware('✅ [MIDDLEWARE] Print page - allowing unauthenticated access', {
+      safeLog.middleware('✅ [MIDDLEWARE] CV print page - allowing unauthenticated access', {
+        path: request.nextUrl.pathname,
+      });
+      return NextResponse.next();
+    }
+
+    // ✨ Allow unauthenticated access to AI CV analysis print page (for PDF export)
+    if (request.nextUrl.pathname.startsWith('/candidate/ai-cv-result/print')) {
+      safeLog.middleware('✅ [MIDDLEWARE] AI CV result print page - allowing unauthenticated access', {
         path: request.nextUrl.pathname,
       });
       return NextResponse.next();

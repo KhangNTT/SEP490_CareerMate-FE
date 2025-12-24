@@ -3,9 +3,11 @@
 import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import CVSidebar from "@/components/layout/CVSidebar";
+import { useProfileCompletion } from "@/hooks/useProfileCompletion";
 import { useLayout } from "@/contexts/LayoutContext";
 import api from "@/lib/api";
 import { openCVTemplate } from "@/lib/cv-template-navigation";
+import { generateHighlightedResume } from "@/lib/resume-api";
 import {
   ProfileHeaderCard,
   AboutMeSection,
@@ -67,7 +69,7 @@ export default function CMProfile() {
   // Get resumeId from URL query param (set by CV Management Edit button or Sync)
   const searchParams = useSearchParams();
   const urlResumeId = searchParams.get('resumeId');
-  
+
   /**
    * Resume selection priority (handled by Zustand store with sessionStorage persist):
    * 0. resumeId from URL query param (highest priority - from Edit/Sync button)
@@ -79,7 +81,7 @@ export default function CMProfile() {
   const currentEditingResumeId = useCVStore((s) => s.currentEditingResumeId);
   const setCurrentEditingResume = useCVStore((s) => s.setCurrentEditingResume);
   const _hasHydrated = useCVStore((s) => s._hasHydrated);
-  
+
   // When URL has resumeId, save it to Zustand (which persists to sessionStorage)
   useEffect(() => {
     if (urlResumeId) {
@@ -89,10 +91,10 @@ export default function CMProfile() {
       setCurrentEditingResume(urlResumeId);
     }
   }, [urlResumeId, setCurrentEditingResume]);
-  
+
   // Get candidateId and setCandidateId from auth store for avatar upload
   const { candidateId, setCandidateId } = useAuthStore();
-  
+
   // Resume ID state - will be fetched from API
   const [resumeId, setResumeId] = useState<number | null>(null);
   const [isLoadingResume, setIsLoadingResume] = useState(true);
@@ -152,72 +154,25 @@ export default function CMProfile() {
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [selectedRoleData, setSelectedRoleData] = useState<any>(null);
 
-  // Memoized profile completion calculation to avoid recalculation on every render
-  const profileCompletion = useMemo(() => {
-    let completion = 0;
-
-    // 1. Awards, Certificates, Projects, Languages: +5% each if at least 1 item exists
-    if (awardsHook.awards.length > 0) completion += 5;
-    if (certificatesHook.certificates.length > 0) completion += 5;
-    if (projectsHook.projects.length > 0) completion += 5;
-    if (languagesHook.languages.length > 0) completion += 5;
-
-    // 2. Education, About Me: +10% each if exists
-    if (educationHook.educations.length > 0) completion += 10;
-    if (aboutMeHook.aboutMeText.trim().length > 0) completion += 10;
-
-    // 3. Work Experience: +10% per item (max 3 = 30%)
-    const workExpCount = Math.min(workExpHook.workExperiences.length, 3);
-    completion += workExpCount * 10;
-
-    // 4. Skills (Core + Soft combined): +2% per skill (max 10 = 20%)
-    const coreSkillsCount = skillsHook.coreSkillGroups.reduce(
-      (total, group) => total + (group.items?.length || 0),
-      0
-    );
-    const softSkillsCount = skillsHook.softSkillGroups.reduce(
-      (total, group) => total + (group.items?.length || 0),
-      0
-    );
-    const totalSkillsCount = coreSkillsCount + softSkillsCount;
-    const skillsBonus = Math.min(totalSkillsCount, 10) * 2;
-    completion += skillsBonus;
-
-    // 5. Profile Header fields (excluding image): distribute remaining % among filled fields
-    // Total possible from above: 5+5+5+5+10+10+30+20 = 90%
-    // Remaining for profile fields: 10%
-    const profileFields = [
-      profileName,
-      profileTitle,
-      profilePhone,
-      profileDob,
-      profileGender,
-      profileAddress,
-      profileLink
-    ];
-    const filledProfileFields = profileFields.filter(field => field && field.trim().length > 0).length;
-    const profileFieldBonus = (filledProfileFields / profileFields.length) * 10;
-    completion += profileFieldBonus;
-
-    return Math.round(completion);
-  }, [
-    awardsHook.awards.length,
-    certificatesHook.certificates.length,
-    projectsHook.projects.length,
-    languagesHook.languages.length,
-    educationHook.educations.length,
-    aboutMeHook.aboutMeText,
-    workExpHook.workExperiences.length,
-    skillsHook.coreSkillGroups,
-    skillsHook.softSkillGroups,
-    profileName,
-    profileTitle,
-    profilePhone,
-    profileDob,
-    profileGender,
-    profileAddress,
-    profileLink
-  ]);
+  // Calculate profile completion using shared hook
+  const profileCompletion = useProfileCompletion({
+    fullName: profileName,
+    title: profileTitle,
+    phone: profilePhone,
+    dob: profileDob,
+    gender: profileGender,
+    address: profileAddress,
+    link: profileLink,
+    aboutMe: aboutMeHook.aboutMeText,
+    awards: awardsHook.awards,
+    certificates: certificatesHook.certificates,
+    projects: projectsHook.projects,
+    languages: languagesHook.languages,
+    educations: educationHook.educations,
+    workExperiences: workExpHook.workExperiences,
+    coreSkillGroups: skillsHook.coreSkillGroups,
+    softSkillGroups: skillsHook.softSkillGroups,
+  });
 
   // Section completion data for ProfileStrengthSidebar
   const sectionCompletion = useMemo(() => {
@@ -230,31 +185,43 @@ export default function CMProfile() {
       0
     );
     const totalSkillsCount = coreSkillsCount + softSkillsCount;
-    
+
     return {
+      aboutMe: {
+        hasAny: aboutMeHook.aboutMeText.trim().length > 0
+      },
       workExperience: { 
         count: workExpHook.workExperiences.length, 
         maxCount: 3 
       },
-      education: { 
-        hasAny: educationHook.educations.length > 0 
+      education: {
+        hasAny: educationHook.educations.length > 0
       },
-      skills: { 
-        totalCount: totalSkillsCount, 
-        maxCount: 10 
+      skills: {
+        totalCount: totalSkillsCount,
+        maxCount: 10
+      },
+      languages: {
+        hasAny: languagesHook.languages.length > 0
+      },
+      projects: {
+        hasAny: projectsHook.projects.length > 0
       },
       certificates: { 
         hasAny: certificatesHook.certificates.length > 0 
       },
-      awards: { 
-        hasAny: awardsHook.awards.length > 0 
+      awards: {
+        hasAny: awardsHook.awards.length > 0
       }
     };
   }, [
+    aboutMeHook.aboutMeText,
     workExpHook.workExperiences.length,
     educationHook.educations.length,
     skillsHook.coreSkillGroups,
     skillsHook.softSkillGroups,
+    languagesHook.languages.length,
+    projectsHook.projects.length,
     certificatesHook.certificates.length,
     awardsHook.awards.length
   ]);
@@ -428,7 +395,7 @@ export default function CMProfile() {
 
       if (response.data?.result && response.data.result.length > 0) {
         const resumes = response.data.result;
-        
+
         /**
          * Resume selection logic with fallback
          * 
@@ -442,10 +409,10 @@ export default function CMProfile() {
          */
         let selectedResume = resumes[0]; // Default fallback
         let selectionSource = "default (first resume)";
-        
+
         // Priority 0: Check for resumeId from URL query param
         if (urlResumeId) {
-          const urlResume = resumes.find((r: any) => 
+          const urlResume = resumes.find((r: any) =>
             String(r.resumeId) === urlResumeId
           );
           if (urlResume) {
@@ -455,7 +422,7 @@ export default function CMProfile() {
         }
         // Priority 1: Check for currentEditingResumeId from Zustand (persisted to sessionStorage)
         else if (currentEditingResumeId) {
-          const storedResume = resumes.find((r: any) => 
+          const storedResume = resumes.find((r: any) =>
             String(r.resumeId) === currentEditingResumeId
           );
           if (storedResume) {
@@ -469,14 +436,14 @@ export default function CMProfile() {
           selectedResume = activeResume;
           selectionSource = "active resume (isActive=true)";
         }
-        
+
         if (process.env.NODE_ENV === 'development') {
           console.log("✅ Selected resume:", selectedResume.resumeId, "| Source:", selectionSource);
         }
-        
+
         const resume = selectedResume;
         setResumeId(resume.resumeId);
-        
+
         // Also update Zustand store to keep it in sync
         setCurrentEditingResume(String(resume.resumeId));
 
@@ -702,6 +669,17 @@ export default function CMProfile() {
 
     await skillsHook.saveSkills(skills, skillType, originalSkills);
 
+    // Generate highlighted resume (roadmap) after saving skills
+    if (resumeId) {
+      try {
+        await generateHighlightedResume(resumeId);
+        console.log('✅ Highlighted resume generated after saving skills');
+      } catch (error) {
+        console.error('❌ Error generating highlighted resume:', error);
+        // Don't show error to user as this is a background operation
+      }
+    }
+
     // Reset form after successful save
     setSkillType("");
     setSkills([]);
@@ -778,8 +756,8 @@ export default function CMProfile() {
   // Role recommendation handlers
   const handleGetRecommendRole = () => {
     // Đóng Personal Detail Dialog (nếu đang mở)
-    setIsPersonalDetailOpen(false); 
-    
+    setIsPersonalDetailOpen(false);
+
     // Mở Role Recommend Dialog
     setIsRoleRecommendOpen(true);
     setInputText("");
@@ -797,37 +775,88 @@ export default function CMProfile() {
 
     setIsAnalyzing(true);
     try {
+      // ✅ Get Python API URL from environment variable
       const API_BASE = process.env.NEXT_PUBLIC_PYTHON_API_URL || 'http://localhost:8000';
       console.log('🔗 Python API URL:', API_BASE);
-      
+
+      // ✅ Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
       const response = await fetch(`${API_BASE}/api/cv-creation/recommend-roles/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ text: inputText })
+        body: JSON.stringify({ text: inputText }),
+        signal: controller.signal
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        console.error('❌ Python API Error:', response.status, errorData);
-        throw new Error(errorData?.message || errorData?.detail || `Failed to analyze text (status ${response.status})`);
+        // Try to parse error response from backend
+        let errorMessage = `API Error: ${response.status}`;
+        let isValidationError = false;
+        try {
+          const errorData = await response.json();
+          
+          // Extract meaningful error message
+          if (errorData.error) {
+            errorMessage = errorData.error;
+            // Check if this is a validation error (400) vs server error (500)
+            isValidationError = response.status === 400;
+            // Add suggestion if available
+            if (errorData.suggestion) {
+              errorMessage += `. ${errorData.suggestion}`;
+            }
+          }
+          
+          // Only log to console for server errors, not validation errors
+          if (!isValidationError) {
+            console.error('❌ Python API Error:', response.status, errorData);
+          }
+        } catch {
+          // If JSON parsing fails, ignore
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
-      
+
+      // Check if backend returned success: false (even with 200 status)
+      if (data.success === false) {
+        throw new Error(data.error || 'Failed to analyze text');
+      }
+
       // Sort by confidence and store results
       const sortedResults = (data.recommendations || data.roles || []).sort((a: any, b: any) => b.confidence - a.confidence);
       setRoleResults(sortedResults);
-      
+
       if (sortedResults.length === 0) {
-        toast.error("No role recommendations found");
+        toast.error("No role recommendations found. Try describing your skills and experience.");
       } else {
         toast.success(`Found ${sortedResults.length} role recommendations!`);
       }
-    } catch (error) {
-      console.error('Error analyzing text:', error);
-      toast.error("Failed to analyze text. Please try again.");
+    } catch (error: any) {
+      // Only log unexpected errors to console
+      const isValidationError = error.message?.includes('Could not extract any skills') || 
+                                error.message?.includes('Text input is empty');
+      
+      if (!isValidationError && error.name !== 'AbortError') {
+        console.error('❌ Error analyzing text:', error.message || error);
+      }
+
+      // ✅ User-friendly error messages
+      if (error.name === 'AbortError') {
+        toast.error("Request timed out. Please try again.");
+      } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+        toast.error("Cannot connect to AI service. Please check if the Python service is running.");
+      } else if (error.message.includes('Could not extract any skills')) {
+        toast.error("No skills detected. Please mention specific technologies, frameworks, or programming languages.");
+      } else {
+        toast.error(error.message || "Failed to analyze text. Please try again.");
+      }
     } finally {
       setIsAnalyzing(false);
     }
@@ -893,7 +922,7 @@ export default function CMProfile() {
 
       toast.success('Professional Title updated successfully!');
       setIsRoleRecommendOpen(false);
-      
+
       // Reset states
       setInputText('');
       setRoleResults([]);
@@ -1116,6 +1145,7 @@ export default function CMProfile() {
             onToggleSection={toggleSection}
             onPreviewClick={handlePreviewCV}
             sectionCompletion={sectionCompletion}
+            onAddAboutMe={() => aboutMeHook.setIsAboutMeOpen(true)}
             onAddWorkExperience={() => workExpHook.openWorkExpDialog()}
             onAddEducation={() => educationHook.openEducationDialog()}
             onAddSkills={() => {
@@ -1124,6 +1154,8 @@ export default function CMProfile() {
               setOriginalSkills([]);
               skillsHook.setIsSkillDialogOpen(true);
             }}
+            onAddLanguages={() => languagesHook.openLanguageDialog()}
+            onAddProjects={() => projectsHook.openProjectDialog()}
             onAddCertificates={() => certificatesHook.openCertDialog()}
             onAddAwards={() => awardsHook.openAwardsDialog()}
           />
@@ -1185,18 +1217,18 @@ export default function CMProfile() {
           profileGender={profileGender}
           profileAddress={profileAddress}
           profileLink={profileLink}
-        profileImage={profileImage}
-        onProfileNameChange={setProfileName}
-        onProfileTitleChange={setProfileTitle}
-        onProfilePhoneChange={setProfilePhone}
-        onProfileDobChange={setProfileDob}
-        onProfileGenderChange={setProfileGender}
-        onProfileAddressChange={setProfileAddress}
-        onProfileLinkChange={setProfileLink}
-        onProfileImageChange={setProfileImage}
-        onSave={handleSavePersonalDetail}
-        onGetRecommendRole={handleGetRecommendRole} // ✅ Hàm mở Role Recommend Dialog
-      />
+          profileImage={profileImage}
+          onProfileNameChange={setProfileName}
+          onProfileTitleChange={setProfileTitle}
+          onProfilePhoneChange={setProfilePhone}
+          onProfileDobChange={setProfileDob}
+          onProfileGenderChange={setProfileGender}
+          onProfileAddressChange={setProfileAddress}
+          onProfileLinkChange={setProfileLink}
+          onProfileImageChange={setProfileImage}
+          onSave={handleSavePersonalDetail}
+          onGetRecommendRole={handleGetRecommendRole} // ✅ Hàm mở Role Recommend Dialog
+        />
       </Suspense>
 
       <Suspense fallback={<DialogFallback />}>
@@ -1307,18 +1339,17 @@ export default function CMProfile() {
               {roleResults.length > 0 && (
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-gray-900">Recommended Roles</h3>
-                  
+
                   {/* Top 3 or All Roles */}
                   <div className="space-y-3">
                     {(showAllRoles ? roleResults : roleResults.slice(0, 3)).map((role, index) => (
                       <div
                         key={index}
                         onClick={() => handleSelectRole(role)}
-                        className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                          selectedRole === role.role
+                        className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${selectedRole === role.role
                             ? 'border-blue-600 bg-blue-50'
                             : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex-1">

@@ -797,34 +797,91 @@ export default function CMProfile() {
 
     setIsAnalyzing(true);
     try {
-      // ✅ Lưu ý: Thay đổi API_BASE thành endpoint thực tế của bạn nếu khác
+      // ✅ Get Python API URL from environment variable
       const API_BASE = process.env.NEXT_PUBLIC_PYTHON_API_URL || 'http://localhost:8000';
+      
+      // ✅ Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
       const response = await fetch(`${API_BASE}/api/cv-creation/recommend-roles/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ text: inputText })
+        body: JSON.stringify({ text: inputText }),
+        signal: controller.signal
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        throw new Error('Failed to analyze text');
+        // Try to parse error response from backend
+        let errorMessage = `API Error: ${response.status}`;
+        let isValidationError = false;
+        try {
+          const errorData = await response.json();
+          
+          // Extract meaningful error message
+          if (errorData.error) {
+            errorMessage = errorData.error;
+            // Check if this is a validation error (400) vs server error (500)
+            isValidationError = response.status === 400;
+            // Add suggestion if available
+            if (errorData.suggestion) {
+              errorMessage += `. ${errorData.suggestion}`;
+            }
+          }
+          
+          // Only log to console for server errors, not validation errors
+          if (!isValidationError) {
+            console.error('❌ Python API Error:', response.status, errorData);
+          }
+        } catch {
+          // If JSON parsing fails, try text
+          const errorText = await response.text().catch(() => '');
+          if (errorText) {
+            errorMessage += `: ${errorText}`;
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
+      
+      // Check if backend returned success: false (even with 200 status)
+      if (data.success === false) {
+        throw new Error(data.error || 'Failed to analyze text');
+      }
       
       // Sort by confidence and store results
       const sortedResults = (data.recommendations || data.roles || []).sort((a: any, b: any) => b.confidence - a.confidence);
       setRoleResults(sortedResults);
       
       if (sortedResults.length === 0) {
-        toast.error("No role recommendations found");
+        toast.error("No role recommendations found. Try describing your skills and experience.");
       } else {
         toast.success(`Found ${sortedResults.length} role recommendations!`);
       }
-    } catch (error) {
-      console.error('Error analyzing text:', error);
-      toast.error("Failed to analyze text. Please try again.");
+    } catch (error: any) {
+      // Only log unexpected errors to console
+      const isValidationError = error.message?.includes('Could not extract any skills') || 
+                                error.message?.includes('Text input is empty');
+      
+      if (!isValidationError && error.name !== 'AbortError') {
+        console.error('❌ Error analyzing text:', error.message || error);
+      }
+      
+      // ✅ User-friendly error messages
+      if (error.name === 'AbortError') {
+        toast.error("Request timed out. Please try again.");
+      } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+        toast.error("Cannot connect to AI service. Please check if the Python service is running.");
+      } else if (error.message.includes('Could not extract any skills')) {
+        toast.error("No skills detected. Please mention specific technologies, frameworks, or programming languages.");
+      } else {
+        toast.error(error.message || "Failed to analyze text. Please try again.");
+      }
     } finally {
       setIsAnalyzing(false);
     }

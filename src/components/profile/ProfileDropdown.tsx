@@ -46,6 +46,14 @@ export function ProfileDropdown({
   const router = useRouter();
   const [isPremium, setIsPremium] = useState(false);
 
+  // Debug log for avatar
+  console.log("🖼️ ProfileDropdown - Avatar Debug:", {
+    userAvatar,
+    userName,
+    userEmail,
+    isPremium,
+  });
+
   // Normalize role - handle both "RECRUITER" and "ROLE_RECRUITER" formats
   // Must be defined before useEffect
   const normalizedRole =
@@ -250,7 +258,7 @@ export function ProfileDropdown({
                     Job Activities
                   </Link>
                   <Link
-                    href="/settings"
+                    href="/candidate/settings"
                     className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                     onClick={() => setIsOpen(false)}
                   >
