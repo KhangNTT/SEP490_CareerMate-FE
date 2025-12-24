@@ -233,7 +233,7 @@ export default function CVTemplatesIntroductionPage() {
                     />
 
                     {/* Overlay on hover */}
-                    <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-all duration-500 ease-out flex items-center justify-center">
+                    <div className="absolute inset-0 bg-white bg-opacity-0 opacity-0 group-hover:opacity-100 transition-all duration-500 ease-out flex items-center justify-center">
                       <div className="text-center text-white transform translate-y-4 group-hover:translate-y-0 transition-all duration-500 ease-out">
                         <h3 className="text-2xl font-bold mb-3 transition-all duration-300 ease-out">
                           {templates[selectedTemplate].name}

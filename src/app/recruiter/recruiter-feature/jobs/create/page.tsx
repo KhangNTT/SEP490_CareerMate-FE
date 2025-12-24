@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   PlusCircle,
@@ -41,6 +41,8 @@ export default function CreateJobPage() {
   const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
   const [isLoadingSkills, setIsLoadingSkills] = useState(false);
   const [skillsError, setSkillsError] = useState<string | null>(null);
+  // Track whether we've shown the "Loaded ... skills" toast to avoid duplicates
+  const skillsToastShownRef = useRef(false);
   
   // State for adding new skill
   const [selectedSkillId, setSelectedSkillId] = useState("");
@@ -80,7 +82,10 @@ export default function CreateJobPage() {
       if (response.code === 200 && response.result) {
         setAvailableSkills(response.result);
         if (response.result.length > 0) {
-          toast.success(`Loaded ${response.result.length} skills`);
+          if (!skillsToastShownRef.current) {
+            toast.success(`Loaded ${response.result.length} skills`);
+            skillsToastShownRef.current = true;
+          }
         } else {
           setSkillsError('No skills available. Please contact administrator.');
         }

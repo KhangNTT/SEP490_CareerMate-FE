@@ -102,7 +102,7 @@ export default function UpdateRequestHistoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Account Settings</h1>
         <p className="mt-2 text-gray-600">View your organization profile update request history</p>

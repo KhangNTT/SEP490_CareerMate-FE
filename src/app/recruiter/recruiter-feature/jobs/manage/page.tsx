@@ -101,7 +101,7 @@ export default function ManageJobsPage() {
     setFilteredJobs(filtered);
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusưBadge = (status: string) => {
     const styles: Record<string, string> = {
       PENDING: "bg-yellow-100 text-yellow-800",
       ACTIVE: "bg-green-100 text-green-800",
@@ -366,7 +366,7 @@ export default function ManageJobsPage() {
 
       {/* Confirmation Modal */}
       {showConfirmModal && selectedJob && confirmAction && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-white bg-opacity-0 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <div className="flex items-center gap-3 mb-4">
               {confirmAction === 'pause' && <Pause className="h-6 w-6 text-amber-600" />}

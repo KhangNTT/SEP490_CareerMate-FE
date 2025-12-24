@@ -477,7 +477,7 @@ export default function BlogManagement() {
 
                 {/* Blog Preview Dialog */}
                 {previewDialogOpen && previewBlog && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-6">
+                    <div className="fixed inset-0 bg-white bg-opacity-0 flex items-center justify-center z-50 p-6">
                         <div className="max-w-6xl w-full max-h-[95vh] overflow-hidden shadow-2xl bg-white rounded-lg">
                             {/* Close Button */}
                             <div className="flex justify-end p-4 border-b bg-gray-50">

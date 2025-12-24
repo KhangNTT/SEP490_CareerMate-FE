@@ -251,7 +251,7 @@ export default function ManageJobsPage() {
   const canDelete = (status: string) => ["PENDING", "REJECTED", "EXPIRED"].includes(status);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen p-6">
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
@@ -324,142 +324,169 @@ export default function ManageJobsPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredJobs.map((job) => {
-            const daysLeft = getDaysUntilExpiry(job.expirationDate);
-            return (
-              <div
-                key={job.id}
-                className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow overflow-hidden"
-              >
-                {/* Card Header */}
-                <div className="p-5 border-b border-gray-100">
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="text-lg font-semibold text-gray-900 line-clamp-2 flex-1">
-                      {job.title}
-                    </h3>
-                    <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(job.status)}`}>
-                      {job.status}
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-2 text-sm text-gray-600">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-gray-400" />
-                      <span className="line-clamp-1">{job.address}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-gray-400" />
-                      <span>Expires in {daysLeft} days</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Briefcase className="h-4 w-4 text-gray-400" />
-                      <span>{job.workModel}</span>
-                    </div>
-                  </div>
-                </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
+  {filteredJobs.map((job) => {
+    const daysLeft = getDaysUntilExpiry(job.expirationDate);
 
-                {/* Card Actions */}
-                <div className="p-4 bg-gray-50 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        setSelectedJob(job);
-                        setShowDetailModal(true);
-                      }}
-                      className="p-2 text-gray-600 hover:text-sky-600 hover:bg-white rounded-lg transition-colors"
-                      title="View Details"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </button>
-                    
-                    {canEdit(job.status) && (
-                      <button
-                        onClick={() => router.push(`/recruiter/recruiter-feature/jobs/edit/${job.id}`)}
-                        className="p-2 text-gray-600 hover:text-sky-600 hover:bg-white rounded-lg transition-colors"
-                        title="Edit Job"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                    )}
-                    
-                    {job.status === "ACTIVE" && (
-                      <button
-                        onClick={() => {
-                          setSelectedJob(job);
-                          setNewExpirationDate(job.expirationDate);
-                          setShowEditDateModal(true);
-                        }}
-                        className="p-2 text-gray-600 hover:text-sky-600 hover:bg-white rounded-lg transition-colors"
-                        title="Edit Expiration Date"
-                      >
-                        <Calendar className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
+    return (
+      <div
+        key={job.id}
+        className="
+          bg-white rounded-lg shadow-sm border border-gray-200
+          hover:shadow-md transition-shadow
+          overflow-hidden
+          flex flex-col h-full
+        "
+      >
+        {/* ================= Card Header ================= */}
+        <div className="p-5 border-b border-gray-100">
+          <div className="flex items-start justify-between mb-3">
+            <h3 className="text-lg font-semibold text-gray-900 line-clamp-2 min-h-[3.5rem] flex-1">
+              {job.title}
+            </h3>
 
-                  <div className="flex items-center gap-2">
-                    {canPause(job.status) && (
-                      <button
-                        onClick={() => handleAction(job, 'pause')}
-                        className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-                        title="Pause Job"
-                      >
-                        <Pause className="h-4 w-4" />
-                      </button>
-                    )}
-                    
-                    {canResume(job.status) && (
-                      <button
-                        onClick={() => handleAction(job, 'resume')}
-                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                        title="Resume Job"
-                      >
-                        <Play className="h-4 w-4" />
-                      </button>
-                    )}
-                    
-                    {canClose(job.status) && (
-                      <button
-                        onClick={() => handleAction(job, 'close')}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Close Job"
-                      >
-                        <CheckCircle className="h-4 w-4" />
-                      </button>
-                    )}
-                    
-                    {canDelete(job.status) && (
-                      <button
-                        onClick={() => handleAction(job, 'delete')}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Delete Job"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    )}
-                    
-                    {/* AI Recommendations Button - for ACTIVE jobs */}
-                    {job.status === "ACTIVE" && (
-                      <button
-                        onClick={() => handleViewRecommendations(job)}
-                        className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                        title="View AI-Recommended Candidates"
-                      >
-                        <Sparkles className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+            <span
+              className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(
+                job.status
+              )}`}
+            >
+              {job.status}
+            </span>
+          </div>
+
+          <div className="space-y-2 text-sm text-gray-600 min-h-[4.5rem]">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-gray-400" />
+              <span className="line-clamp-1">{job.address}</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-gray-400" />
+              <span>Expires in {daysLeft} days</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Briefcase className="h-4 w-4 text-gray-400" />
+              <span>{job.workModel}</span>
+            </div>
+          </div>
         </div>
+
+        {/* ================= Card Actions ================= */}
+        <div className="p-4 bg-gray-50 flex items-center justify-between gap-2 mt-auto">
+          {/* -------- Left Actions -------- */}
+          <div className="flex items-center gap-2">
+            {/* View detail */}
+            <button
+              onClick={() => {
+                setSelectedJob(job);
+                setShowDetailModal(true);
+              }}
+              className="p-2 text-gray-600 hover:text-sky-600 hover:bg-white rounded-lg transition-colors"
+              title="View Details"
+            >
+              <Eye className="h-4 w-4" />
+            </button>
+
+            {/* Edit job */}
+            {canEdit(job.status) && (
+              <button
+                onClick={() =>
+                  router.push(
+                    `/recruiter/recruiter-feature/jobs/edit/${job.id}`
+                  )
+                }
+                className="p-2 text-gray-600 hover:text-sky-600 hover:bg-white rounded-lg transition-colors"
+                title="Edit Job"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+            )}
+
+            {/* Edit expiration date */}
+            {job.status === "ACTIVE" && (
+              <button
+                onClick={() => {
+                  setSelectedJob(job);
+                  setNewExpirationDate(job.expirationDate);
+                  setShowEditDateModal(true);
+                }}
+                className="p-2 text-gray-600 hover:text-sky-600 hover:bg-white rounded-lg transition-colors"
+                title="Edit Expiration Date"
+              >
+                <Calendar className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          {/* -------- Right Actions -------- */}
+          <div className="flex items-center gap-2">
+            {/* Pause */}
+            {canPause(job.status) && (
+              <button
+                onClick={() => handleAction(job, "pause")}
+                className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                title="Pause Job"
+              >
+                <Pause className="h-4 w-4" />
+              </button>
+            )}
+
+            {/* Resume */}
+            {canResume(job.status) && (
+              <button
+                onClick={() => handleAction(job, "resume")}
+                className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                title="Resume Job"
+              >
+                <Play className="h-4 w-4" />
+              </button>
+            )}
+
+            {/* Close */}
+            {canClose(job.status) && (
+              <button
+                onClick={() => handleAction(job, "close")}
+                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                title="Close Job"
+              >
+                <CheckCircle className="h-4 w-4" />
+              </button>
+            )}
+
+            {/* Delete */}
+            {canDelete(job.status) && (
+              <button
+                onClick={() => handleAction(job, "delete")}
+                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                title="Delete Job"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
+
+            {/* AI Recommendations */}
+            {job.status === "ACTIVE" && (
+              <button
+                onClick={() => handleViewRecommendations(job)}
+                className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                title="View AI-Recommended Candidates"
+              >
+                <Sparkles className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  })}
+</div>
+
       )}
 
       {/* Confirmation Modal */}
       {showConfirmModal && selectedJob && confirmAction && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-white bg-opacity-0 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <div className="flex items-center gap-3 mb-4">
               {confirmAction === 'pause' && <Pause className="h-6 w-6 text-amber-600" />}
@@ -524,202 +551,272 @@ export default function ManageJobsPage() {
 
       {/* Detail View Modal */}
       {showDetailModal && selectedJob && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full p-6 my-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">{selectedJob.title}</h2>
-              <button
-                onClick={() => {
-                  setShowDetailModal(false);
-                  setSelectedJob(null);
-                }}
-                className="p-2 text-gray-400 hover:text-gray-600 rounded-lg transition-colors"
-              >
-                <XCircle className="h-6 w-6" />
-              </button>
-            </div>
+  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+    <div
+      className="
+        bg-white rounded-lg shadow-xl
+        max-w-3xl w-full
+        h-[85vh]
+        flex flex-col
+      "
+    >
+      {/* ================= Header ================= */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
+        <h2 className="text-2xl font-bold text-gray-900">
+          {selectedJob.title}
+        </h2>
+        <button
+          onClick={() => {
+            setShowDetailModal(false);
+            setSelectedJob(null);
+          }}
+          className="p-2 text-gray-400 hover:text-gray-600 rounded-lg transition-colors"
+        >
+          <XCircle className="h-6 w-6" />
+        </button>
+      </div>
 
-            <div className="space-y-6">
-              {/* Status Badge */}
-              <div className="flex items-center gap-4">
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadge(selectedJob.status)}`}>
-                  {selectedJob.status}
-                </span>
-                <span className="text-sm text-gray-500">
-                  ID: {selectedJob.id}
-                </span>
-              </div>
+      {/* ================= Body (Scrollable) ================= */}
+      <div className="px-6 py-4 overflow-y-auto flex-1">
+        <div className="space-y-6">
+          {/* Status */}
+          <div className="flex items-center gap-4">
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadge(
+                selectedJob.status
+              )}`}
+            >
+              {selectedJob.status}
+            </span>
+            <span className="text-sm text-gray-500">
+              ID: {selectedJob.id}
+            </span>
+          </div>
 
-              {/* Description */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">Description</h3>
-                <div className="text-gray-600 whitespace-pre-wrap bg-gray-50 p-4 rounded-lg">
-                  {selectedJob.description}
-                </div>
-              </div>
-
-              {/* Location */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">Location</h3>
-                <div className="flex items-center gap-2 text-gray-600">
-                  <MapPin className="h-4 w-4" />
-                  <span>{selectedJob.address}</span>
-                </div>
-              </div>
-
-              {/* Skills */}
-              {selectedJob.skills && selectedJob.skills.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-700 mb-2">Required Skills</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedJob.skills.map((skill, index) => (
-                      <span 
-                        key={index}
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          skill.mustToHave 
-                            ? 'bg-red-100 text-red-700' 
-                            : 'bg-blue-100 text-blue-700'
-                        }`}
-                      >
-                        {skill.name} {skill.mustToHave && '(Required)'}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Job Details Grid */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-700 mb-1">Work Model</h3>
-                  <p className="text-gray-600">{selectedJob.workModel || 'N/A'}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-700 mb-1">Experience Required</h3>
-                  <p className="text-gray-600">{selectedJob.yearsOfExperience} years</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-700 mb-1">Salary Range</h3>
-                  <p className="text-gray-600">{selectedJob.salaryRange}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-700 mb-1">Job Package</h3>
-                  <p className="text-gray-600">{selectedJob.jobPackage || 'N/A'}</p>
-                </div>
-              </div>
-
-              {/* Dates */}
-              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-700 mb-1">Created Date</h3>
-                  <p className="text-gray-600">{new Date(selectedJob.createdDate).toLocaleDateString()}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-700 mb-1">Expiration Date</h3>
-                  <p className="text-gray-600">{new Date(selectedJob.expirationDate).toLocaleDateString()}</p>
-                </div>
-              </div>
-
-              {/* Rejection Reason (only for REJECTED status) */}
-              {selectedJob.rejectionReason && selectedJob.status === 'REJECTED' && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <h3 className="text-sm font-semibold text-red-700 mb-2">Rejection Reason</h3>
-                  <p className="text-red-600">{selectedJob.rejectionReason}</p>
-                </div>
-              )}
-
-              {/* Benefits & Additional Information */}
-              {selectedJob.reason && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h3 className="text-sm font-semibold text-blue-700 mb-2">Benefits & Additional Information</h3>
-                  <p className="text-gray-700 whitespace-pre-wrap">{selectedJob.reason}</p>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-200">
-                {selectedJob.status === "ACTIVE" && (
-                  <button
-                    onClick={() => {
-                      setShowDetailModal(false);
-                      handleViewRecommendations(selectedJob);
-                    }}
-                    className="flex-1 min-w-[200px] px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Sparkles className="h-4 w-4" />
-                    View AI Recommendations
-                  </button>
-                )}
-                {canEdit(selectedJob.status) && (
-                  <button
-                    onClick={() => {
-                      setShowDetailModal(false);
-                      router.push(`/recruiter/recruiter-feature/jobs/edit/${selectedJob.id}`);
-                    }}
-                    className="flex-1 px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Pencil className="h-4 w-4" />
-                    Edit Job
-                  </button>
-                )}
-                {selectedJob.status === "ACTIVE" && (
-                  <button
-                    onClick={() => {
-                      setShowDetailModal(false);
-                      setNewExpirationDate(selectedJob.expirationDate);
-                      setShowEditDateModal(true);
-                    }}
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Calendar className="h-4 w-4" />
-                    Edit Expiration
-                  </button>
-                )}
-                {canPause(selectedJob.status) && (
-                  <button
-                    onClick={() => {
-                      setShowDetailModal(false);
-                      handleAction(selectedJob, 'pause');
-                    }}
-                    className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Pause className="h-4 w-4" />
-                    Pause
-                  </button>
-                )}
-                {canResume(selectedJob.status) && (
-                  <button
-                    onClick={() => {
-                      setShowDetailModal(false);
-                      handleAction(selectedJob, 'resume');
-                    }}
-                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Play className="h-4 w-4" />
-                    Resume
-                  </button>
-                )}
-                {canClose(selectedJob.status) && (
-                  <button
-                    onClick={() => {
-                      setShowDetailModal(false);
-                      handleAction(selectedJob, 'close');
-                    }}
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <CheckCircle className="h-4 w-4" />
-                    Close
-                  </button>
-                )}
-              </div>
+          {/* Description */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">
+              Description
+            </h3>
+            <div className="text-gray-600 whitespace-pre-wrap bg-gray-50 p-4 rounded-lg">
+              {selectedJob.description}
             </div>
           </div>
+
+          {/* Location */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">
+              Location
+            </h3>
+            <div className="flex items-center gap-2 text-gray-600">
+              <MapPin className="h-4 w-4" />
+              <span>{selectedJob.address}</span>
+            </div>
+          </div>
+
+          {/* Skills */}
+          {selectedJob.skills && selectedJob.skills.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-2">
+                Required Skills
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {selectedJob.skills.map((skill, index) => (
+                  <span
+                    key={index}
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      skill.mustToHave
+                        ? "bg-red-100 text-red-700"
+                        : "bg-blue-100 text-blue-700"
+                    }`}
+                  >
+                    {skill.name}
+                    {skill.mustToHave && " (Required)"}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Job Details */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-1">
+                Work Model
+              </h3>
+              <p className="text-gray-600">
+                {selectedJob.workModel || "N/A"}
+              </p>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-1">
+                Experience Required
+              </h3>
+              <p className="text-gray-600">
+                {selectedJob.yearsOfExperience} years
+              </p>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-1">
+                Salary Range
+              </h3>
+              <p className="text-gray-600">
+                {selectedJob.salaryRange}
+              </p>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-1">
+                Job Package
+              </h3>
+              <p className="text-gray-600">
+                {selectedJob.jobPackage || "N/A"}
+              </p>
+            </div>
+          </div>
+
+          {/* Dates */}
+          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-1">
+                Created Date
+              </h3>
+              <p className="text-gray-600">
+                {new Date(selectedJob.createdDate).toLocaleDateString()}
+              </p>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-1">
+                Expiration Date
+              </h3>
+              <p className="text-gray-600">
+                {new Date(selectedJob.expirationDate).toLocaleDateString()}
+              </p>
+            </div>
+          </div>
+
+          {/* Rejection Reason */}
+          {selectedJob.status === "REJECTED" &&
+            selectedJob.rejectionReason && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-red-700 mb-2">
+                  Rejection Reason
+                </h3>
+                <p className="text-red-600">
+                  {selectedJob.rejectionReason}
+                </p>
+              </div>
+            )}
+
+          {/* Benefits */}
+          {selectedJob.reason && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-blue-700 mb-2">
+                Benefits & Additional Information
+              </h3>
+              <p className="text-gray-700 whitespace-pre-wrap">
+                {selectedJob.reason}
+              </p>
+            </div>
+          )}
         </div>
-      )}
+      </div>
+
+      {/* ================= Footer (Fixed - Action Buttons) ================= */}
+<div className="px-6 py-4 border-t border-gray-200 flex flex-wrap gap-3 shrink-0 bg-white">
+  {selectedJob.status === "ACTIVE" && (
+    <button
+      onClick={() => {
+        setShowDetailModal(false);
+        handleViewRecommendations(selectedJob);
+      }}
+      className="flex-1 min-w-[200px] px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+    >
+      <Sparkles className="h-4 w-4" />
+      View AI Recommendations
+    </button>
+  )}
+
+  {canEdit(selectedJob.status) && (
+    <button
+      onClick={() => {
+        setShowDetailModal(false);
+        router.push(
+          `/recruiter/recruiter-feature/jobs/edit/${selectedJob.id}`
+        );
+      }}
+      className="flex-1 min-w-[180px] px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors flex items-center justify-center gap-2"
+    >
+      <Pencil className="h-4 w-4" />
+      Edit Job
+    </button>
+  )}
+
+  {selectedJob.status === "ACTIVE" && (
+    <button
+      onClick={() => {
+        setShowDetailModal(false);
+        setNewExpirationDate(selectedJob.expirationDate);
+        setShowEditDateModal(true);
+      }}
+      className="flex-1 min-w-[180px] px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+    >
+      <Calendar className="h-4 w-4" />
+      Edit Expiration
+    </button>
+  )}
+
+  {canPause(selectedJob.status) && (
+    <button
+      onClick={() => {
+        setShowDetailModal(false);
+        handleAction(selectedJob, "pause");
+      }}
+      className="flex-1 min-w-[140px] px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors flex items-center justify-center gap-2"
+    >
+      <Pause className="h-4 w-4" />
+      Pause
+    </button>
+  )}
+
+  {canResume(selectedJob.status) && (
+    <button
+      onClick={() => {
+        setShowDetailModal(false);
+        handleAction(selectedJob, "resume");
+      }}
+      className="flex-1 min-w-[140px] px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+    >
+      <Play className="h-4 w-4" />
+      Resume
+    </button>
+  )}
+
+  {canClose(selectedJob.status) && (
+    <button
+      onClick={() => {
+        setShowDetailModal(false);
+        handleAction(selectedJob, "close");
+      }}
+      className="flex-1 min-w-[140px] px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition-colors flex items-center justify-center gap-2"
+    >
+      <CheckCircle className="h-4 w-4" />
+      Close
+    </button>
+  )}
+</div>
+
+    </div>
+  </div>
+)}
+
 
       {/* Edit Expiration Date Modal */}
       {showEditDateModal && selectedJob && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-white bg-opacity-0 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-gray-900">Edit Expiration Date</h3>
@@ -811,7 +908,7 @@ export default function ManageJobsPage() {
 
       {/* AI Recommendations Modal */}
       {showRecommendationsModal && selectedJob && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-white bg-opacity-0 flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white rounded-lg shadow-xl max-w-5xl w-full my-8 max-h-[90vh] flex flex-col">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
