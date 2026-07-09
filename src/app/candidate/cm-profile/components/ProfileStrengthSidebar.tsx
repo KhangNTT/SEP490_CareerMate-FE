@@ -1,9 +1,13 @@
-import { Plus, ChevronDown, ChevronUp } from "lucide-react";
+import { SquarePlus, ChevronDown, ChevronUp } from "lucide-react";
+import { ProfileProgressCircle } from "@/components/ui/profile-progress-circle";
 
 interface SectionCompletion {
+    aboutMe: { hasAny: boolean };
     workExperience: { count: number; maxCount: number }; // max 3
     education: { hasAny: boolean };
     skills: { totalCount: number; maxCount: number }; // max 10 total skills
+    languages: { hasAny: boolean };
+    projects: { hasAny: boolean };
     certificates: { hasAny: boolean };
     awards: { hasAny: boolean };
 }
@@ -15,9 +19,12 @@ interface ProfileStrengthSidebarProps {
     onPreviewClick?: () => void;
     sectionCompletion?: SectionCompletion;
     // Dialog open handlers
-    onAddWorkExperience?: () => void;
+    onAddAboutMe?: () => void;
     onAddEducation?: () => void;
+    onAddWorkExperience?: () => void;
+    onAddLanguages?: () => void;
     onAddSkills?: () => void;
+    onAddProjects?: () => void;
     onAddCertificates?: () => void;
     onAddAwards?: () => void;
 }
@@ -45,59 +52,58 @@ const getStatusMessage = (completion: number) => {
     }
 };
 
-// Helper function to get progress circle color based on completion
-const getProgressColor = (completion: number) => {
-    if (completion >= 100) {
-        return { start: "#16a34a", end: "#22c55e" }; // green-600 to green-500
-    } else if (completion >= 70) {
-        return { start: "#163988", end: "#3b82f6" }; // blue
-    } else if (completion >= 40) {
-        return { start: "#d97706", end: "#fbbf24" }; // amber-600 to amber-400
-    } else {
-        return { start: "#6b7280", end: "#9ca3af" }; // gray
-    }
-};
-
 export default function ProfileStrengthSidebar({
     profileCompletion,
     expandedSections,
     onToggleSection,
     onPreviewClick,
     sectionCompletion,
+    onAddAboutMe,
     onAddWorkExperience,
     onAddEducation,
     onAddSkills,
+    onAddLanguages,
+    onAddProjects,
     onAddCertificates,
     onAddAwards
 }: ProfileStrengthSidebarProps) {
     const statusInfo = getStatusMessage(profileCompletion);
     const isEligible = profileCompletion >= 70;
-    const progressColor = getProgressColor(profileCompletion);
 
     // Calculate which sections are incomplete
     const incompleteSections = {
+        aboutMe: !sectionCompletion || !sectionCompletion.aboutMe.hasAny,
         workExperience: !sectionCompletion || sectionCompletion.workExperience.count < sectionCompletion.workExperience.maxCount,
         education: !sectionCompletion || !sectionCompletion.education.hasAny,
         skills: !sectionCompletion || sectionCompletion.skills.totalCount < sectionCompletion.skills.maxCount,
+        languages: !sectionCompletion || !sectionCompletion.languages.hasAny,
+        projects: !sectionCompletion || !sectionCompletion.projects.hasAny,
         certificates: !sectionCompletion || !sectionCompletion.certificates.hasAny,
         awards: !sectionCompletion || !sectionCompletion.awards.hasAny
     };
 
-    // Primary items to show (collapsed)
-    const primaryItems = [
-        { key: 'workExperience', label: 'Add Work Experience', onClick: onAddWorkExperience, show: incompleteSections.workExperience },
+    // All items in priority order - incomplete items will be shown first
+    const allItems = [
+        { key: 'aboutMe', label: 'Add About Me', onClick: onAddAboutMe, show: incompleteSections.aboutMe },
         { key: 'education', label: 'Add Education', onClick: onAddEducation, show: incompleteSections.education },
+        { key: 'workExperience', label: 'Add Work Experience', onClick: onAddWorkExperience, show: incompleteSections.workExperience },
+        { key: 'languages', label: 'Add Foreign Language', onClick: onAddLanguages, show: incompleteSections.languages },
         { key: 'skills', label: 'Add Skills', onClick: onAddSkills, show: incompleteSections.skills },
-    ].filter(item => item.show);
-
-    // Secondary items (expanded)
-    const secondaryItems = [
+        { key: 'projects', label: 'Add Highlight Project', onClick: onAddProjects, show: incompleteSections.projects },
         { key: 'certificates', label: 'Add Certificates', onClick: onAddCertificates, show: incompleteSections.certificates },
         { key: 'awards', label: 'Add Awards', onClick: onAddAwards, show: incompleteSections.awards },
     ].filter(item => item.show);
 
     const isExpanded = expandedSections.includes("more");
-    const hasSecondaryItems = secondaryItems.length > 0;
+    const totalIncompleteItems = allItems.length;
+    
+    // Show toggle only when there are more than 4 items
+    const shouldShowToggle = totalIncompleteItems > 4;
+    
+    // When 4 or fewer items, show all. Otherwise show 3 by default or all when expanded
+    const visibleItems = totalIncompleteItems <= 4 
+        ? allItems 
+        : (isExpanded ? allItems : allItems.slice(0, 3));
 
     return (
         <aside className="hidden xl:block space-y-6 sticky [top:calc(var(--sticky-offset)+var(--content-pad))] self-start transition-all duration-300">
@@ -106,52 +112,12 @@ export default function ProfileStrengthSidebar({
                     Profile Strength
                 </h3>
 
-                {/* Progress Circle with Dynamic Color */}
+                {/* Progress Circle - Using shared component */}
                 <div className="flex justify-center mb-6">
-                    <div className="relative w-32 h-32">
-                        <svg className="w-full h-full" viewBox="0 0 36 36">
-                            <defs>
-                                <linearGradient
-                                    id="progressGradient"
-                                    x1="0%"
-                                    y1="0%"
-                                    x2="0%"
-                                    y2="100%"
-                                >
-                                    <stop offset="0%" stopColor={progressColor.start} />
-                                    <stop offset="100%" stopColor={progressColor.end} />
-                                </linearGradient>
-                            </defs>
-
-                            {/* Background Circle */}
-                            <path
-                                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                fill="none"
-                                stroke="#eeeeee"
-                                strokeWidth="3"
-                            />
-
-                            {/* Progress Circle */}
-                            <path
-                                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                fill="none"
-                                stroke="url(#progressGradient)"
-                                strokeWidth="3"
-                                strokeDasharray={`${profileCompletion}, 100`}
-                            />
-                        </svg>
-
-                        {/* Text Center */}
-                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
-                            <div className={`text-2xl font-bold ${profileCompletion >= 100 ? "text-green-600" :
-                                    profileCompletion >= 70 ? "text-blue-600" :
-                                        profileCompletion >= 40 ? "text-amber-600" : "text-gray-600"
-                                }`}>
-                                {profileCompletion}%
-                            </div>
-                            <div className="text-xs text-gray-500">completed</div>
-                        </div>
-                    </div>
+                    <ProfileProgressCircle
+                        completion={profileCompletion}
+                        size="md"
+                    />
                 </div>
 
                 {/* Status Message Box */}
@@ -165,38 +131,26 @@ export default function ProfileStrengthSidebar({
                 </div>
 
                 {/* Action Items Section */}
-                {(primaryItems.length > 0 || hasSecondaryItems) && (
+                {visibleItems.length > 0 && (
                     <div className="space-y-3">
                         <p className="text-sm font-medium text-gray-700">
                             {statusInfo.actionLabel}
                         </p>
 
-                        {/* Primary Items */}
-                        {primaryItems.map((item) => (
+                        {/* Visible Items */}
+                        {visibleItems.map((item) => (
                             <button
                                 key={item.key}
                                 onClick={item.onClick}
                                 className="w-full text-left flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors"
                             >
-                                <Plus className="w-4 h-4" />
+                                <SquarePlus className="w-4 h-4" />
                                 <span>{item.label}</span>
                             </button>
                         ))}
 
-                        {/* Secondary Items (when expanded) */}
-                        {isExpanded && secondaryItems.map((item) => (
-                            <button
-                                key={item.key}
-                                onClick={item.onClick}
-                                className="w-full text-left flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors"
-                            >
-                                <Plus className="w-4 h-4" />
-                                <span>{item.label}</span>
-                            </button>
-                        ))}
-
-                        {/* Show More/Less Toggle - Always at bottom */}
-                        {hasSecondaryItems && (
+                        {/* Show More/Less Toggle - Only show when more than 4 items */}
+                        {shouldShowToggle && (
                             <button
                                 onClick={() => onToggleSection("more")}
                                 className="w-full flex items-center gap-2 text-gray-700 hover:text-gray-900 font-medium transition-colors text-sm"

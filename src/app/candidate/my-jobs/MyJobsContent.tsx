@@ -10,6 +10,9 @@ import { useAuthStore } from "@/store/use-auth-store";
 import {
   fetchMyJobApplications,
   formatApplicationDate,
+  confirmJobOffer,
+  declineJobOffer,
+  terminateEmployment,
   type JobApplication
 } from "@/lib/my-jobs-api";
 import {
@@ -21,7 +24,7 @@ import { updateJobApplicationStatus } from "@/lib/recruiter-api";
 import { getDaysDiff } from "@/lib/my-jobs-utils";
 import { ClockIcon, BriefcaseIcon, ChevronDownIcon } from "@/components/ui/icons";
 import { StatusBadgeFull } from "@/components/shared/StatusBadge";
-import { getCandidateActions, requiresCandidateAction } from "@/lib/status-utils";
+import { getCandidateActions, requiresCandidateAction, normalizeStatus } from "@/lib/status-utils";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -134,7 +137,13 @@ const MyJobsPage = () => {
       setIsLoading(true);
       try {
         const applications = await fetchMyJobApplications(candidateId);
-        setJobApplications(applications);
+        // Sort by createAt descending (newest first)
+        const sortedApplications = applications.sort((a, b) => {
+          const dateA = new Date(a.createAt).getTime();
+          const dateB = new Date(b.createAt).getTime();
+          return dateB - dateA; // Descending order (newest first)
+        });
+        setJobApplications(sortedApplications);
       } catch (error: any) {
         toast.error('Failed to load job applications');
       } finally {
@@ -144,7 +153,13 @@ const MyJobsPage = () => {
       // Load saved jobs in background (don't block UI)
       fetchSavedJobs(candidateId)
         .then(jobs => {
-          setSavedJobs(jobs);
+          // Sort by createdAt descending (most recently saved first)
+          const sortedJobs = jobs.sort((a, b) => {
+            const dateA = new Date(a.createdAt).getTime();
+            const dateB = new Date(b.createdAt).getTime();
+            return dateB - dateA; // Descending order (newest first)
+          });
+          setSavedJobs(sortedJobs);
           setSavedLoaded(true);
         })
         .catch(error => {
@@ -250,19 +265,40 @@ const MyJobsPage = () => {
           router.push('/candidate/interviews');
           break;
           
-        case 'accept_offer':
-          if (confirm('Are you sure you want to accept this job offer? The recruiter will be notified to proceed with onboarding.')) {
-            await updateJobApplicationStatus(applicationId, 'ACCEPTED');
-            toast.success('Job offer accepted! The company will contact you for next steps.');
+        case 'confirm_offer':
+          // v3.2: Candidate confirms job offer - no auto-withdrawal (platform-neutral)
+          if (confirm('🎉 Are you sure you want to accept this job offer?\n\nOnce accepted:\n• You will be marked as employed\n• The company will contact you for onboarding\n• Your other applications will remain active (you can withdraw them manually if needed)')) {
+            await confirmJobOffer(applicationId);
+            toast.success('🎉 Congratulations! Job offer accepted! You are now employed.');
             const updatedApplications = await fetchMyJobApplications(candidateId!);
             setJobApplications(updatedApplications);
           }
           break;
           
         case 'decline_offer':
-          if (confirm('Are you sure you want to decline this job offer?')) {
-            await updateJobApplicationStatus(applicationId, 'REJECTED');
-            toast.success('Job offer declined');
+          // v3.1: Candidate declines job offer using new endpoint
+          if (confirm('Are you sure you want to decline this job offer?\n\nThis action cannot be undone.')) {
+            await declineJobOffer(applicationId);
+            toast.success('Job offer declined. Your application has been withdrawn.');
+            const updatedApplications = await fetchMyJobApplications(candidateId!);
+            setJobApplications(updatedApplications);
+          }
+          break;
+
+        case 'terminate_employment':
+          if (confirm('End your employment for this job? This will set status to TERMINATED.')) {
+            await terminateEmployment(applicationId);
+            toast.success('Employment terminated successfully');
+            const updatedApplications = await fetchMyJobApplications(candidateId!);
+            setJobApplications(updatedApplications);
+          }
+          break;
+          
+        case 'accept_offer':
+          // Legacy: For backward compatibility with old ACCEPTED status
+          if (confirm('Are you sure you want to accept this job offer? The recruiter will be notified to proceed with onboarding.')) {
+            await updateJobApplicationStatus(applicationId, 'ACCEPTED');
+            toast.success('Job offer accepted! The company will contact you for next steps.');
             const updatedApplications = await fetchMyJobApplications(candidateId!);
             setJobApplications(updatedApplications);
           }
@@ -357,26 +393,34 @@ const MyJobsPage = () => {
               <div className="flex border-b border-gray-200 mb-6">
                 <button
                   onClick={() => handleTabChange("applied")}
-                  className={`pb-3 px-1 mr-8 relative ${activeTab === "applied"
-                    ? "text-gray-500 font-medium border-b-2 border-gray-500"
+                  className={`pb-3 px-1 mr-8 relative transition-all duration-200 ${activeTab === "applied"
+                    ? "text-gray-900 font-semibold border-b-2 border-gray-900"
                     : "text-gray-600 hover:text-gray-900"
                     }`}
                 >
                   Applied Jobs
-                  <span className="ml-2 px-2 py-0.5 text-xs bg-gray-500 text-white rounded-full">
+                  <span className={`ml-2 px-2 py-0.5 text-xs rounded-full transition-all duration-200 ${
+                    activeTab === "applied" 
+                      ? "bg-gray-900 text-white" 
+                      : "bg-gray-500 text-white"
+                  }`}>
                     {jobApplications.length}
                   </span>
                 </button>
 
                 <button
                   onClick={() => handleTabChange("saved")}
-                  className={`pb-3 px-1 mr-8 relative ${activeTab === "saved"
-                    ? "text-gray-500 font-medium border-b-2 border-gray-500"
+                  className={`pb-3 px-1 mr-8 relative transition-all duration-200 ${activeTab === "saved"
+                    ? "text-gray-900 font-semibold border-b-2 border-gray-900"
                     : "text-gray-600 hover:text-gray-900"
                     }`}
                 >
                   Saved Jobs
-                  <span className="ml-2 px-2 py-0.5 text-xs bg-gray-500 text-white rounded-full">
+                  <span className={`ml-2 px-2 py-0.5 text-xs rounded-full transition-all duration-200 ${
+                    activeTab === "saved" 
+                      ? "bg-gray-900 text-white" 
+                      : "bg-gray-500 text-white"
+                  }`}>
                     {savedJobs.length}
                   </span>
                 </button>
@@ -430,7 +474,7 @@ const MyJobsPage = () => {
                                       size="md"
                                     />
                                     {/* Action Required badge - for INTERVIEW_SCHEDULED, only show if interview not confirmed */}
-                                    {application.status === 'INTERVIEW_SCHEDULED' && interviewsMap[application.id] && !interviewsMap[application.id].candidateConfirmed && (
+                                    {normalizeStatus(application.status) === 'INTERVIEW_SCHEDULED' && interviewsMap[application.id] && !interviewsMap[application.id].candidateConfirmed && (
                                       <button
                                         onClick={() => router.push(`/candidate/interviews?action=confirm&id=${interviewsMap[application.id].id}`)}
                                         className="px-3 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800 border border-amber-300 animate-pulse hover:bg-amber-200 cursor-pointer transition-colors"
@@ -438,18 +482,39 @@ const MyJobsPage = () => {
                                         Action Required
                                       </button>
                                     )}
-                                    {/* Action Required badge - for APPROVED status (accept/decline offer) */}
-                                    {application.status === 'APPROVED' && (
-                                      <span className="px-3 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
-                                        Action Required
-                                      </span>
-                                    )}
                                     {new Date(application.expirationDate) < new Date() && (
                                       <span className="px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600">
                                         Expired
                                       </span>
                                     )}
                                   </div>
+                                  
+                                  {/* Accept/Decline buttons for OFFER_EXTENDED */}
+                                  {(() => {
+                                    const normalizedStatus = normalizeStatus(application.status);
+                                    console.log('Application status:', application.status, '-> normalized:', normalizedStatus);
+                                    if (normalizedStatus === 'OFFER_EXTENDED') {
+                                      return (
+                                        <div className="flex gap-2 mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                          <Button
+                                            size="sm"
+                                            onClick={() => handleCandidateAction('confirm_offer', application.id)}
+                                            className="bg-green-600 hover:bg-green-700 text-white"
+                                          >
+                                            ✅ Accept Offer
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="destructive"
+                                            onClick={() => handleCandidateAction('decline_offer', application.id)}
+                                          >
+                                            ❌ Decline Offer
+                                          </Button>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
                                 </div>
 
                                 {/* Expand Button */}
@@ -498,9 +563,20 @@ const MyJobsPage = () => {
                                             </svg>
                                           </div>
                                           <div>
-                                            <h4 className="font-semibold text-purple-900 text-sm">
-                                              {application.status === 'INTERVIEW_SCHEDULED' ? 'Upcoming Interview' : 'Interview Completed'}
-                                            </h4>
+                                            <div className="flex items-center gap-2">
+                                              <h4 className="font-semibold text-purple-900 text-sm">
+                                                {application.status === 'INTERVIEW_SCHEDULED' ? 'Upcoming Interview' : 'Interview Completed'}
+                                              </h4>
+                                              {/* Conflict Warning Badge */}
+                                              {interviewsMap[application.id].hasConflict && (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-800 border border-orange-300">
+                                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                  </svg>
+                                                  Conflict
+                                                </span>
+                                              )}
+                                            </div>
                                             <p className="text-purple-700 text-sm">
                                               {formatInterviewDateTime(getInterviewDateTimeStr(interviewsMap[application.id]))}
                                             </p>
@@ -518,6 +594,18 @@ const MyJobsPage = () => {
                                           View Details
                                         </Button>
                                       </div>
+                                      
+                                      {/* Conflict Warning - Full message */}
+                                      {interviewsMap[application.id].hasConflict && (
+                                        <div className="mt-3 pt-3 border-t border-orange-200 p-2 bg-orange-50 rounded-md">
+                                          <p className="text-xs text-orange-800">
+                                            <svg className="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                            </svg>
+                                            {interviewsMap[application.id].conflictDetails || "You have another interview scheduled at this time. Consider rescheduling one of them."}
+                                          </p>
+                                        </div>
+                                      )}
                                       
                                       {/* Quick info row */}
                                       <div className="mt-3 pt-3 border-t border-purple-200 flex flex-wrap gap-4 text-xs text-purple-700">
@@ -610,8 +698,8 @@ const MyJobsPage = () => {
                                   </div>
                                 )}
                                 
-                                {/* Contact Information - Only visible when status >= APPROVED */}
-                                {['APPROVED', 'ACCEPTED', 'WORKING'].includes(application.status) && application.companyEmail ? (
+                                {/* Contact Information - Only visible when status >= OFFER_EXTENDED */}
+                                {['OFFER_EXTENDED', 'APPROVED', 'ACCEPTED', 'WORKING'].includes(normalizeStatus(application.status)) && application.companyEmail ? (
                                   <div className="mt-4 pt-4 border-t border-gray-200">
                                     <h4 className="font-semibold text-green-700 mb-3 flex items-center gap-2">
                                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -655,7 +743,7 @@ const MyJobsPage = () => {
                                       </div>
                                     </div>
                                   </div>
-                                ) : !['APPROVED', 'ACCEPTED', 'WORKING'].includes(application.status) && (
+                                ) : !['OFFER_EXTENDED', 'APPROVED', 'ACCEPTED', 'WORKING'].includes(normalizeStatus(application.status)) && (
                                   <div className="mt-4 pt-4 border-t border-gray-200">
                                     <div className="bg-gray-100 border border-gray-200 rounded-lg p-4 flex items-center gap-3">
                                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -721,7 +809,7 @@ const MyJobsPage = () => {
                           You haven't applied to any jobs in the last 12 months.
                         </p>
                         <Link
-                          href="/jobs-list"
+                          href="/jobs-detail"
                           className="px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-md font-medium"
                         >
                           Explore jobs
@@ -758,7 +846,7 @@ const MyJobsPage = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-blue-500" />
-              Chi tiết lịch phỏng vấn
+              Interview Details
             </DialogTitle>
           </DialogHeader>
           {selectedInterviewDetail && (
@@ -769,13 +857,13 @@ const MyJobsPage = () => {
                   <Calendar className="h-4 w-4 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Thời gian</p>
+                  <p className="text-sm font-medium text-gray-600">Time</p>
                   <p className="text-base font-semibold">
-                    {formatInterviewDateTime(selectedInterviewDetail.scheduledTime)}
+                    {formatInterviewDateTime(selectedInterviewDetail.scheduledDate)}
                   </p>
-                  {selectedInterviewDetail.duration && (
+                  {selectedInterviewDetail.durationMinutes && (
                     <p className="text-sm text-gray-500">
-                      Thời lượng: {selectedInterviewDetail.duration} phút
+                      Duration: {selectedInterviewDetail.durationMinutes} minutes
                     </p>
                   )}
                 </div>
@@ -787,21 +875,21 @@ const MyJobsPage = () => {
                   <Video className="h-4 w-4 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Hình thức</p>
-                  <Badge variant={selectedInterviewDetail.interviewType === 0 ? "default" : "secondary"}>
+                  <p className="text-sm font-medium text-gray-600">Interview Type</p>
+                  <Badge variant={selectedInterviewDetail.interviewType === 'VIDEO_CALL' || selectedInterviewDetail.interviewType === 'ONLINE' ? "default" : "secondary"}>
                     {getInterviewTypeText(selectedInterviewDetail.interviewType)}
                   </Badge>
                 </div>
               </div>
 
               {/* Location/Meeting Link */}
-              {selectedInterviewDetail.interviewType === 0 && selectedInterviewDetail.meetingLink && (
+              {(selectedInterviewDetail.interviewType === 'VIDEO_CALL' || selectedInterviewDetail.interviewType === 'ONLINE' || selectedInterviewDetail.interviewType === 'ONLINE_ASSESSMENT') && selectedInterviewDetail.meetingLink && (
                 <div className="flex items-start gap-3">
                   <div className="rounded-full bg-green-100 p-2">
                     <ExternalLink className="h-4 w-4 text-green-600" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-600">Link phỏng vấn</p>
+                    <p className="text-sm font-medium text-gray-600">Meeting Link</p>
                     <a
                       href={selectedInterviewDetail.meetingLink}
                       target="_blank"
@@ -814,24 +902,24 @@ const MyJobsPage = () => {
                 </div>
               )}
 
-              {selectedInterviewDetail.interviewType === 1 && selectedInterviewDetail.location && (
+              {selectedInterviewDetail.interviewType === 'IN_PERSON' && selectedInterviewDetail.location && (
                 <div className="flex items-start gap-3">
                   <div className="rounded-full bg-orange-100 p-2">
                     <MapPin className="h-4 w-4 text-orange-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Địa điểm</p>
+                    <p className="text-sm font-medium text-gray-600">Location</p>
                     <p className="text-sm">{selectedInterviewDetail.location}</p>
                   </div>
                 </div>
               )}
 
               {/* Notes */}
-              {selectedInterviewDetail.notes && (
+              {selectedInterviewDetail.preparationNotes && (
                 <div className="border-t pt-4 mt-4">
-                  <p className="text-sm font-medium text-gray-600 mb-2">Ghi chú</p>
+                  <p className="text-sm font-medium text-gray-600 mb-2">Notes</p>
                   <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
-                    {selectedInterviewDetail.notes}
+                    {selectedInterviewDetail.preparationNotes}
                   </p>
                 </div>
               )}
@@ -839,9 +927,9 @@ const MyJobsPage = () => {
               {/* Status */}
               <div className="border-t pt-4 mt-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-600">Trạng thái xác nhận</span>
-                  <Badge variant={selectedInterviewDetail.isConfirmed ? "default" : "outline"}>
-                    {selectedInterviewDetail.isConfirmed ? "Đã xác nhận" : "Chờ xác nhận"}
+                  <span className="text-sm font-medium text-gray-600">Confirmation Status</span>
+                  <Badge variant={selectedInterviewDetail.candidateConfirmed ? "default" : "outline"}>
+                    {selectedInterviewDetail.candidateConfirmed ? "Confirmed" : "Pending Confirmation"}
                   </Badge>
                 </div>
               </div>
@@ -852,7 +940,7 @@ const MyJobsPage = () => {
                   href="/candidate/interviews"
                   className="block w-full text-center bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  Quản lý lịch phỏng vấn
+                  Manage Interviews
                 </a>
               </div>
             </div>

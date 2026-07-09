@@ -3,6 +3,14 @@
     "api/export-pdf/**": {
       "memory": 3008,
       "maxDuration": 120
+    },
+    "api/export-pdf-v2/**": {
+      "memory": 3008,
+      "maxDuration": 120
+    },
+    "candidate/cv/api/export-pdf/**": {
+      "memory": 3008,
+      "maxDuration": 120
     }
   }
 }

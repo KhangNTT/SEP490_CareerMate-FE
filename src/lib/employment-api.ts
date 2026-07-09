@@ -16,46 +16,31 @@ export interface EmploymentVerificationRequest {
   notes?: string;
 }
 
+// Simplified response from backend v3.1
 export interface EmploymentVerificationResponse {
   id: number;
   jobApplyId: number;
-  recruiterId: number;
-  candidateId: number;
-  jobTitle?: string;
   companyName?: string;
   candidateName?: string;
-  recruiterName?: string;
+  candidateEmail?: string;
+  candidatePhone?: string;
+  candidateImage?: string;
+  jobTitle?: string;
+  employmentStatus?: 'ACTIVE' | 'TERMINATED';
   startDate: string;
   endDate?: string;
-  position: string;
-  department?: string;
-  salary?: number;
-  probationEndDate?: string;
-  probationPassed?: boolean;
-  employmentStatus: 'ACTIVE' | 'TERMINATED';
   isActive?: boolean;
-  terminationReason?: string;
-  terminationDate?: string;
-  terminationType?: string;
-  reasonForLeaving?: string;
-  notes?: string;
+  daysEmployed?: number;
+  createdAt: string;
+  updatedAt?: string;
   // Verification checkpoints
   verified30Days?: boolean;
-  verifiedAt30Days?: string;
   verified90Days?: boolean;
-  verifiedAt90Days?: string;
   // Review eligibility
   reviewEligibility?: 'ELIGIBLE' | 'NOT_ELIGIBLE' | 'PENDING_VERIFICATION';
-  reviewEligibilityReason?: string;
-  daysEmployed?: number;
-  // Reminder tracking
-  reminder30DaySent?: boolean;
-  reminder30DaySentAt?: string;
-  reminder90DaySent?: boolean;
-  reminder90DaySentAt?: string;
-  // Timestamps
-  createdAt: string;
-  updatedAt: string;
+  // Computed fields from backend
+  isEligibleForWorkReview?: boolean;
+  isCurrentlyEmployed?: boolean;
 }
 
 export type TerminationType = 
@@ -166,7 +151,7 @@ export const getRecruiterActiveEmployments = async (): Promise<EmploymentVerific
 
 /**
  * Get employment verification by job application
- * GET /api/job-applies/{jobApplyId}/employment-verification
+ * GET /api/employment-verifications/job-apply/{jobApplyId}
  */
 export const getEmploymentByJobApply = async (
   jobApplyId: number
@@ -174,7 +159,7 @@ export const getEmploymentByJobApply = async (
   try {
     console.log(`💼 [GET EMPLOYMENT BY JOB APPLY] Job Apply ID: ${jobApplyId}`);
     const response = await api.get<ApiResponse<EmploymentVerificationResponse>>(
-      `/api/job-applies/${jobApplyId}/employment-verification`
+      `/api/employment-verifications/job-apply/${jobApplyId}`
     );
     console.log('✅ [GET EMPLOYMENT BY JOB APPLY] Response:', response.data);
     return response.data.result;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
@@ -30,6 +30,7 @@ import { useLayout } from "@/contexts/LayoutContext";
 import { useAuthStore } from "@/store/use-auth-store";
 import {
   fetchMyJobApplications,
+  terminateEmployment,
   type JobApplication
 } from "@/lib/my-jobs-api";
 import {
@@ -67,6 +68,7 @@ export default function CandidateEmploymentsPage() {
   
   const [loading, setLoading] = useState(true);
   const [employments, setEmployments] = useState<EmploymentWithVerification[]>([]);
+  const [activeTab, setActiveTab] = useState<"active" | "terminated">("active");
   
   // Confirmation dialog state
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
@@ -79,6 +81,18 @@ export default function CandidateEmploymentsPage() {
     reasonForLeaving: ''
   });
   const [submitting, setSubmitting] = useState(false);
+  const [terminatingId, setTerminatingId] = useState<number | null>(null);
+
+  // Memoize filtered employments to prevent re-filtering on every render
+  const activeEmployments = useMemo(
+    () => employments.filter(e => e.application.status === 'WORKING'),
+    [employments]
+  );
+
+  const terminatedEmployments = useMemo(
+    () => employments.filter(e => e.application.status === 'TERMINATED'),
+    [employments]
+  );
 
   useEffect(() => {
     const initAuth = async () => {
@@ -106,7 +120,7 @@ export default function CandidateEmploymentsPage() {
       // Get all applications with WORKING status
       const applications = await fetchMyJobApplications(candidateId!);
       const workingApplications = applications.filter(app => 
-        app.status === 'WORKING' || app.status === 'TERMINATED' || app.status === 'PROBATION_FAILED'
+        app.status === 'WORKING' || app.status === 'TERMINATED'
       );
       
       // Initialize employments with loading state
@@ -210,6 +224,24 @@ export default function CandidateEmploymentsPage() {
     return null;
   };
 
+  const handleTerminateEmployment = async (applicationId: number) => {
+    if (!confirm('End your employment for this job? This will set status to TERMINATED.')) {
+      return;
+    }
+
+    try {
+      setTerminatingId(applicationId);
+      await terminateEmployment(applicationId);
+      toast.success('Employment terminated successfully');
+      await loadEmployments();
+    } catch (error: any) {
+      console.error('Failed to terminate employment:', error);
+      toast.error(error.response?.data?.message || 'Failed to terminate employment');
+    } finally {
+      setTerminatingId(null);
+    }
+  };
+
   const getEligibilityBadge = (eligibility?: string) => {
     switch (eligibility) {
       case 'ELIGIBLE':
@@ -223,61 +255,177 @@ export default function CandidateEmploymentsPage() {
     }
   };
 
+  // Skeleton loading component that matches the actual layout
+  const EmploymentSkeleton = () => (
+    <main className="mx-auto max-w-7xl px-4 py-6 md:px-6">
+      <div
+        className="grid grid-cols-1 lg:grid-cols-[16rem_minmax(0,1fr)] gap-6 items-start"
+        style={{
+          ["--sticky-offset" as any]: `${headerHeight || 0}px`,
+          ["--content-pad" as any]: "24px",
+        }}
+      >
+        {/* Sidebar Skeleton */}
+        <aside className="hidden lg:block sticky [top:calc(var(--sticky-offset)+var(--content-pad))] self-start">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 space-y-2">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-10 bg-gray-200 rounded animate-pulse" />
+            ))}
+          </div>
+        </aside>
+
+        {/* Main Content Skeleton */}
+        <section className="space-y-6 min-w-0">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <div className="h-8 w-56 bg-gray-200 rounded animate-pulse mb-2" />
+                <div className="h-4 w-80 bg-gray-200 rounded animate-pulse" />
+              </div>
+              <div className="h-10 w-28 bg-gray-200 rounded animate-pulse" />
+            </div>
+
+            {/* Employment Cards */}
+            <div className="space-y-4">
+              {[1, 2].map((i) => (
+                <div key={i} className="border border-gray-200 rounded-lg p-6 animate-pulse">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="h-6 w-3/4 bg-gray-200 rounded mb-3" />
+                      <div className="h-5 w-1/2 bg-gray-200 rounded mb-2" />
+                      <div className="flex gap-2 mb-3">
+                        <div className="h-6 w-20 bg-gray-200 rounded" />
+                        <div className="h-6 w-24 bg-gray-200 rounded" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <div className="h-4 w-20 bg-gray-200 rounded mb-2" />
+                      <div className="h-5 w-32 bg-gray-200 rounded" />
+                    </div>
+                    <div>
+                      <div className="h-4 w-20 bg-gray-200 rounded mb-2" />
+                      <div className="h-5 w-28 bg-gray-200 rounded" />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="h-9 w-40 bg-gray-200 rounded" />
+                    <div className="h-9 w-32 bg-gray-200 rounded" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+
   if (loading) {
-    return (
-      <main className="mx-auto max-w-7xl px-4 py-6 md:px-6">
-        <div className="flex items-center justify-center py-16">
-          <RefreshCw className="h-8 w-8 text-primary animate-spin" />
-        </div>
-      </main>
-    );
+    return <EmploymentSkeleton />;
   }
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-6 md:px-6">
-        <div
-          className="grid grid-cols-1 lg:grid-cols-[16rem_minmax(0,1fr)] gap-6 items-start"
-          style={{
-            ["--sticky-offset" as any]: `${headerHeight || 0}px`,
-            ["--content-pad" as any]: "24px",
-          }}
-        >
-          <aside className="hidden lg:block sticky [top:calc(var(--sticky-offset)+var(--content-pad))] self-start">
-            <CVSidebar activePage="employments" />
-          </aside>
+      {/* GRID 2 cột: sidebar | content */}
+      <div
+        className="grid grid-cols-1 lg:grid-cols-[16rem_minmax(0,1fr)] gap-6 items-start transition-all duration-300"
+        style={{
+          ["--sticky-offset" as any]: `${headerHeight || 0}px`,
+          ["--content-pad" as any]: "24px",
+        }}
+      >
+        {/* Sidebar trái: sticky + ẩn mobile */}
+        <aside className="hidden lg:block sticky [top:calc(var(--sticky-offset)+var(--content-pad))] self-start transition-all duration-300">
+          <CVSidebar activePage="employments" />
+        </aside>
 
-          <section className="space-y-6 min-w-0">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h1 className="text-2xl font-semibold text-gray-900">My Employment</h1>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Track your employment status and verification checkpoints
-                  </p>
-                </div>
-                <Button variant="outline" onClick={loadEmployments} disabled={loading}>
-                  <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                  Refresh
-                </Button>
-              </div>
-
-              {employments.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16">
-                  <div className="bg-gray-100 p-4 rounded-full mb-4">
-                    <Briefcase className="h-8 w-8 text-gray-400" />
+        {/* Main Content */}
+        <section className="space-y-6 min-w-0 transition-all duration-300">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-2xl">My Employment</CardTitle>
+                    <CardDescription>
+                      Track your employment status and verification checkpoints
+                    </CardDescription>
                   </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Employment Records</h3>
-                  <p className="text-gray-500 text-center mb-6">
-                    You don't have any active or past employment records yet.<br />
-                    Once you're hired, your employment will appear here.
-                  </p>
-                  <Link href="/candidate/my-jobs">
-                    <Button>View My Applications</Button>
-                  </Link>
+                  <Button variant="outline" onClick={loadEmployments} disabled={loading}>
+                    <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </Button>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  {employments.map((employment) => {
+              </CardHeader>
+
+              <CardContent>
+                {/* Tabs - Job Activities Style */}
+                <div className="border-b border-gray-200 mb-6">
+                  <button
+                    onClick={() => setActiveTab("active")}
+                    className={`pb-3 px-1 mr-8 relative border-b-2 ${
+                      activeTab === "active"
+                        ? "text-black font-semibold border-black"
+                        : "text-gray-600 hover:text-gray-900 border-transparent"
+                    }`}
+                  >
+                    Current Employment
+                    <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
+                      activeTab === "active" 
+                        ? "bg-black text-white" 
+                        : "bg-gray-500 text-white"
+                    }`}>
+                      {activeEmployments.length}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => setActiveTab("terminated")}
+                    className={`pb-3 px-1 mr-8 relative border-b-2 ${
+                      activeTab === "terminated"
+                        ? "text-black font-semibold border-black"
+                        : "text-gray-600 hover:text-gray-900 border-transparent"
+                    }`}
+                  >
+                    Past Employment
+                    <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
+                      activeTab === "terminated" 
+                        ? "bg-black text-white" 
+                        : "bg-gray-500 text-white"
+                    }`}>
+                      {terminatedEmployments.length}
+                    </span>
+                  </button>
+                </div>
+
+                {/* Tab Content */}
+                <div className="py-4">
+                  {/* Active Employments Tab */}
+                  {activeTab === "active" && (
+                    <div className="space-y-4">
+                            {activeEmployments.length === 0 ? (
+                              <Card className="border-0 shadow-none">
+                                <CardContent className="py-16">
+                                  <div className="flex flex-col items-center justify-center">
+                                    <div className="bg-gray-100 p-4 rounded-full mb-4">
+                                      <Briefcase className="h-8 w-8 text-gray-400" />
+                                    </div>
+                                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Active Employment</h3>
+                                    <p className="text-gray-500 text-center mb-6">
+                                      You don't have any active employment records.<br />
+                                      Once you're hired, your employment will appear here.
+                                    </p>
+                                    <Link href="/candidate/my-jobs">
+                                      <Button>View My Applications</Button>
+                                    </Link>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ) : (
+                              <div className="space-y-4">
+                          {activeEmployments.map((employment) => {
                     const verificationNeeded = getVerificationStatus(employment.verification);
                     const isActive = employment.application.status === 'WORKING';
                     
@@ -315,7 +463,7 @@ export default function CandidateEmploymentsPage() {
                             </div>
                           ) : (
                             <>
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
                                 <div>
                                   <p className="text-xs text-gray-500 uppercase tracking-wider">Start Date</p>
                                   <p className="font-medium">
@@ -325,20 +473,12 @@ export default function CandidateEmploymentsPage() {
                                   </p>
                                 </div>
                                 <div>
-                                  <p className="text-xs text-gray-500 uppercase tracking-wider">Duration</p>
-                                  <p className="font-medium">
-                                    {employment.verification?.startDate 
-                                      ? formatEmploymentDuration(employment.verification.startDate, employment.verification.endDate)
-                                      : 'N/A'}
-                                  </p>
-                                </div>
-                                <div>
-                                  <p className="text-xs text-gray-500 uppercase tracking-wider">Days Employed</p>
-                                  <p className="font-medium">{employment.verification?.daysEmployed || 0} days</p>
+                                  <p className="text-xs text-gray-500 uppercase tracking-wider">Days Working</p>
+                                  <p className="font-medium">{employment.verification?.daysEmployed ?? 0} days</p>
                                 </div>
                                 <div>
                                   <p className="text-xs text-gray-500 uppercase tracking-wider">Position</p>
-                                  <p className="font-medium">{employment.verification?.position || employment.application.jobTitle}</p>
+                                  <p className="font-medium">{employment.application.jobTitle}</p>
                                 </div>
                               </div>
 
@@ -409,6 +549,16 @@ export default function CandidateEmploymentsPage() {
                                     </Button>
                                   </Link>
                                 )}
+                                {isActive && (
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    disabled={terminatingId === employment.application.id}
+                                    onClick={() => handleTerminateEmployment(employment.application.id)}
+                                  >
+                                    {terminatingId === employment.application.id ? 'Ending...' : 'End Employment'}
+                                  </Button>
+                                )}
                                 <Link href={`/jobs-detail?id=${employment.application.jobPostingId}`}>
                                   <Button variant="outline" size="sm">
                                     View Job Details
@@ -421,12 +571,122 @@ export default function CandidateEmploymentsPage() {
                         </CardContent>
                       </Card>
                     );
-                  })}
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Terminated Employments Tab */}
+                  {activeTab === "terminated" && (
+                    <div className="space-y-4">
+                      {terminatedEmployments.length === 0 ? (
+                        <Card className="border-0 shadow-none">
+                          <CardContent className="py-16">
+                            <div className="flex flex-col items-center justify-center">
+                              <div className="bg-gray-100 p-4 rounded-full mb-4">
+                                <Briefcase className="h-8 w-8 text-gray-400" />
+                              </div>
+                              <h3 className="text-lg font-medium text-gray-900 mb-2">No Past Employment</h3>
+                              <p className="text-gray-500 text-center">
+                                Your employment history will appear here when terminated.
+                              </p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ) : (
+                        <div className="space-y-4">
+                          {terminatedEmployments.map((employment) => {
+                            const { application, verification } = employment;
+                            const verificationStatus = getVerificationStatus(verification);
+                            const canTerminate = verification && !verification.terminated;
+                            
+                            return (
+                              <Card key={application.id} className="hover:shadow-md transition-shadow">
+                                <CardContent className="p-6">
+                                  {/* Company Header */}
+                                  <div className="flex items-start justify-between mb-4">
+                                    <div className="flex items-center gap-4">
+                                      {application.companyLogo ? (
+                                        <img
+                                          src={application.companyLogo}
+                                          alt={application.company}
+                                          className="w-12 h-12 rounded-lg object-contain bg-gray-50"
+                                        />
+                                      ) : (
+                                        <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
+                                          <Building2 className="h-6 w-6 text-gray-400" />
+                                        </div>
+                                      )}
+                                      <div>
+                                        <h3 className="font-semibold text-lg text-gray-900">
+                                          {application.jobTitle}
+                                        </h3>
+                                        <p className="text-sm text-gray-600">{application.company}</p>
+                                      </div>
+                                    </div>
+                                    <Badge variant="secondary" className="bg-gray-100 text-gray-800">
+                                      TERMINATED
+                                    </Badge>
+                                  </div>
+
+                                  {/* Employment Details */}
+                                  {verification && (
+                                    <div className="grid grid-cols-2 gap-4 mb-4">
+                                      <div className="flex items-center gap-2 text-sm">
+                                        <Calendar className="h-4 w-4 text-gray-400" />
+                                        <span className="text-gray-600">Started:</span>
+                                        <span className="font-medium">
+                                          {formatEmploymentDate(verification.startDate)}
+                                        </span>
+                                      </div>
+                                      {verification.terminationDate && (
+                                        <div className="flex items-center gap-2 text-sm">
+                                          <Calendar className="h-4 w-4 text-gray-400" />
+                                          <span className="text-gray-600">Ended:</span>
+                                          <span className="font-medium">
+                                            {formatEmploymentDate(verification.terminationDate)}
+                                          </span>
+                                        </div>
+                                      )}
+                                      <div className="flex items-center gap-2 text-sm">
+                                        <Clock className="h-4 w-4 text-gray-400" />
+                                        <span className="text-gray-600">Duration:</span>
+                                        <span className="font-medium">
+                                          {formatEmploymentDuration(verification.daysEmployed || 0)}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Termination Details */}
+                                  {verification?.terminationType && (
+                                    <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                                      <p className="text-sm text-gray-600 mb-1">
+                                        <span className="font-medium">Termination Type:</span>{' '}
+                                        {TERMINATION_TYPES.find(t => t.value === verification.terminationType)?.label || verification.terminationType}
+                                      </p>
+                                      {verification.reasonForLeaving && (
+                                        <p className="text-sm text-gray-600">
+                                          <span className="font-medium">Reason:</span>{' '}
+                                          {verification.reasonForLeaving}
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </section>
-        </div>
+              </CardContent>
+            </Card>
+        </section>
+      </div>
 
       {/* Confirmation Dialog */}
       <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>

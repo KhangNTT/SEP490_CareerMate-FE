@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import CVSidebar from "@/components/layout/CVSidebar";
 import { useLayout } from "@/contexts/LayoutContext";
 import { useRouter } from "next/navigation";
 import {
   Target,
-  Loader2,
   AlertCircle,
   RefreshCw,
   ChevronRight,
@@ -15,10 +14,12 @@ import {
   Lock,
   X,
   Sparkles,
+  Calendar,
 } from "lucide-react";
 import { fetchCurrentCandidateProfile } from "@/lib/candidate-profile-api";
-import { getRoadmapRecommendations, RoadmapRecommendation } from "@/lib/roadmap-api";
+import { getResumeRoadmaps, ResumeRoadmap } from "@/lib/roadmap-api";
 import { checkRoadmapRecommendationAccess } from "@/lib/entitlement-api";
+import { useCVStore } from "@/stores/cvStore";
 import toast from "react-hot-toast";
 
 // Skeleton Loading Component
@@ -29,7 +30,7 @@ function SkeletonCard() {
         <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
         <div className="flex-1 space-y-2">
           <div className="h-5 bg-gray-200 rounded w-3/4"></div>
-          <div className="h-2 bg-gray-200 rounded w-full"></div>
+          <div className="h-3 bg-gray-200 rounded w-1/2"></div>
         </div>
         <div className="w-24 h-10 bg-gray-200 rounded-lg"></div>
       </div>
@@ -41,15 +42,16 @@ export default function RoadMapPage() {
   const router = useRouter();
   const { headerHeight } = useLayout();
   const [headerH, setHeaderH] = useState(headerHeight || 0);
-  const [professionalTitle, setProfessionalTitle] = useState<string>("");
-  const [recommendations, setRecommendations] = useState<RoadmapRecommendation[]>([]);
+  const currentEditingResumeId = useCVStore((s) => s.currentEditingResumeId);
+  const [roadmaps, setRoadmaps] = useState<ResumeRoadmap[]>([]);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
-  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
+  const [isLoadingRoadmaps, setIsLoadingRoadmaps] = useState(false);
   const [error, setError] = useState<string>("");
   const [hasAccess, setHasAccess] = useState<boolean>(true);
   const [accessCode, setAccessCode] = useState<number | null>(null);
   const [accessResult, setAccessResult] = useState<any>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [totalElements, setTotalElements] = useState(0);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -62,7 +64,7 @@ export default function RoadMapPage() {
     }
   }, [headerHeight]);
 
-  // Fetch candidate profile on mount to get professional title
+  // Fetch candidate profile on mount to get resumeId
   useEffect(() => {
     fetchProfile();
   }, []);
@@ -71,98 +73,89 @@ export default function RoadMapPage() {
     try {
       setIsLoadingProfile(true);
       setError("");
-      
+
       console.log('🔵 [ROADMAP PAGE] Fetching candidate profile...');
-      
+
       // Check access first
       const accessRes = await checkRoadmapRecommendationAccess();
       setHasAccess(!!accessRes.hasAccess);
       setAccessCode(accessRes.code ?? null);
       setAccessResult(accessRes.result ?? null);
       console.log('🔵 [ROADMAP PAGE] Roadmap recommendation access:', accessRes);
-      
+
       const profile = await fetchCurrentCandidateProfile();
-      
       console.log('✅ [ROADMAP PAGE] Profile fetched:', profile);
-      console.log('✅ [ROADMAP PAGE] Professional title:', profile.title);
-      
-      if (profile.title) {
-        setProfessionalTitle(profile.title);
-        console.log('✅ [ROADMAP PAGE] Will fetch recommendations for:', profile.title);
-        // Automatically fetch recommendations when we have a title
-        fetchRecommendations(profile.title);
+
+      // Get resumeId from Zustand store (prioritizes currentEditingResumeId from sessionStorage)
+      const resumeId = currentEditingResumeId;
+      console.log('✅ [ROADMAP PAGE] Using resumeId from store:', resumeId);
+
+      if (resumeId) {
+        // Automatically fetch roadmaps when we have a resumeId
+        fetchRoadmaps(parseInt(resumeId));
       } else {
-        console.warn('⚠️ [ROADMAP PAGE] No professional title found in profile');
-        setError("Bạn chưa cập nhật Professional Title. Vui lòng cập nhật trong CM Profile.");
+        console.warn('⚠️ [ROADMAP PAGE] No resumeId found in store');
+        setError("Please select or create a resume in CM Profile first.");
         setIsLoadingProfile(false);
       }
     } catch (error: any) {
       console.error("❌ [ROADMAP PAGE] Error fetching profile:", error);
       if (error.message === "PROFILE_NOT_FOUND") {
-        setError("Bạn chưa có profile. Vui lòng tạo profile trong CM Profile.");
+        setError("You don't have a profile yet. Please create one in CM Profile.");
       } else {
-        setError("Không thể tải thông tin profile. Vui lòng thử lại.");
+        setError("Could not load profile information. Please try again.");
       }
       setIsLoadingProfile(false);
     }
-  }, []);
+  }, [currentEditingResumeId]);
 
-  const fetchRecommendations = useCallback(async (role: string) => {
+  const fetchRoadmaps = useCallback(async (resumeId: number) => {
     try {
-      setIsLoadingRecommendations(true);
+      setIsLoadingRoadmaps(true);
       setError("");
-      
-      console.log('🔵 [ROADMAP PAGE] Fetching recommendations for role:', role);
-      
-      const response = await getRoadmapRecommendations(role);
-      
+
+      console.log('🔵 [ROADMAP PAGE] Fetching roadmaps for resumeId:', resumeId);
+
+      const response = await getResumeRoadmaps(resumeId, 0, 10, "createdat_desc");
+
       console.log('✅ [ROADMAP PAGE] API Response:', response);
       console.log('✅ [ROADMAP PAGE] Response result:', response.result);
-      console.log('✅ [ROADMAP PAGE] Result length:', response.result?.length);
-      
+
       if (response.code === 200 && response.result) {
-        console.log('✅ [ROADMAP PAGE] Setting recommendations:', response.result);
-        setRecommendations(response.result);
-        
-        if (response.result.length > 0) {
-          toast.success(`Tìm thấy ${response.result.length} roadmap phù hợp!`);
-        } else {
-          toast("Không tìm thấy roadmap phù hợp với chuyên môn của bạn.");
-        }
+        console.log('✅ [ROADMAP PAGE] Setting roadmaps:', response.result.content);
+        setRoadmaps(response.result.content);
+        setTotalElements(response.result.totalElements);
       } else {
         console.warn('⚠️ [ROADMAP PAGE] Unexpected response format:', response);
-        setRecommendations([]);
-        toast("Không tìm thấy roadmap phù hợp với chuyên môn của bạn.");
+        setRoadmaps([]);
+        setTotalElements(0);
+        toast("Could not find roadmap list.");
       }
     } catch (error: any) {
-      console.error("❌ [ROADMAP PAGE] Error fetching recommendations:", error);
-      setError("Không thể tải danh sách roadmap. Vui lòng thử lại.");
-      toast.error("Lỗi khi tải roadmap recommendations");
-      setRecommendations([]);
+      console.error("❌ [ROADMAP PAGE] Error fetching roadmaps:", error);
+      setError("Could not load roadmap list. Please try again.");
+      toast.error("Error loading roadmaps");
+      setRoadmaps([]);
+      setTotalElements(0);
     } finally {
       setIsLoadingProfile(false);
-      setIsLoadingRecommendations(false);
+      setIsLoadingRoadmaps(false);
     }
   }, []);
 
-  const handleRefreshRecommendations = useCallback(() => {
-    if (professionalTitle) {
-      fetchRecommendations(professionalTitle);
+  const handleRefreshRoadmaps = useCallback(() => {
+    if (currentEditingResumeId) {
+      fetchRoadmaps(parseInt(currentEditingResumeId));
     }
-  }, [professionalTitle, fetchRecommendations]);
+  }, [currentEditingResumeId, fetchRoadmaps]);
 
-  const getSimilarityColor = (score: number): string => {
-    if (score >= 0.9) return "text-green-600 bg-green-100 border-green-200";
-    if (score >= 0.7) return "text-blue-600 bg-blue-100 border-blue-200";
-    if (score >= 0.5) return "text-yellow-600 bg-yellow-100 border-yellow-200";
-    return "text-gray-600 bg-gray-100 border-gray-200";
-  };
-
-  const getSimilarityBadge = (score: number): string => {
-    if (score >= 0.9) return "Rất phù hợp";
-    if (score >= 0.7) return "Phù hợp";
-    if (score >= 0.5) return "Khá phù hợp";
-    return "Ít phù hợp";
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
   };
 
   // Loading state with skeleton
@@ -180,7 +173,7 @@ export default function RoadMapPage() {
                 <div className="h-8 bg-gray-200 rounded w-1/3 mb-2"></div>
                 <div className="h-4 bg-gray-200 rounded w-1/2"></div>
               </div>
-              
+
               {/* Cards Skeleton */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-3">
                 <SkeletonCard />
@@ -195,7 +188,7 @@ export default function RoadMapPage() {
   }
 
   // Error state
-  if (error && !professionalTitle) {
+  if (error && !currentEditingResumeId) {
     return (
       <div className="bg-gray-50">
         <div className="mx-auto max-w-7xl px-4 py-6 md:px-6">
@@ -209,20 +202,20 @@ export default function RoadMapPage() {
                   <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <AlertCircle className="w-8 h-8 text-red-600" />
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">Thiếu thông tin</h3>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">Missing Information</h3>
                   <p className="text-gray-600 mb-6">{error}</p>
                   <div className="flex gap-3 justify-center">
                     <a
                       href="/candidate/cm-profile"
                       className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
                     >
-                      Cập nhật Profile
+                      Go to CM Profile
                     </a>
                     <button
                       onClick={fetchProfile}
                       className="px-6 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
                     >
-                      Thử lại
+                      Try Again
                     </button>
                   </div>
                 </div>
@@ -237,7 +230,7 @@ export default function RoadMapPage() {
   return (
     <div className="bg-gray-50">
       <div className="mx-auto max-w-7xl px-4 py-6 md:px-6">
-        <div 
+        <div
           className="grid grid-cols-1 lg:grid-cols-[16rem_minmax(0,1fr)] gap-6 items-start transition-all duration-300"
           style={{
             ["--sticky-offset" as any]: `${headerH}px`,
@@ -256,37 +249,37 @@ export default function RoadMapPage() {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900 mb-1">Career Road Map</h1>
-                  <p className="text-gray-600 text-sm">Roadmap recommendations based on your professional title</p>
+                  <p className="text-gray-600 text-sm">Your personalized career roadmaps</p>
                 </div>
-                {professionalTitle && (
+                {currentEditingResumeId && (
                   <button
-                    onClick={handleRefreshRecommendations}
-                    disabled={isLoadingRecommendations}
+                    onClick={handleRefreshRoadmaps}
+                    disabled={isLoadingRoadmaps}
                     className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium disabled:opacity-50"
                   >
-                    <RefreshCw className={`w-4 h-4 ${isLoadingRecommendations ? 'animate-spin' : ''}`} />
-                    Làm mới
+                    <RefreshCw className={`w-4 h-4 ${isLoadingRoadmaps ? 'animate-spin' : ''}`} />
+                    Refresh
                   </button>
                 )}
               </div>
 
-              {/* Professional Title */}
-              {professionalTitle && (
+              {/* Resume Info */}
+              {currentEditingResumeId && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-1">
                     <Target className="w-5 h-5 text-blue-600" />
-                    <span className="text-sm font-medium text-blue-900">Your Professional Title</span>
+                    <span className="text-sm font-medium text-blue-900">Current Resume</span>
                   </div>
-                  <p className="text-lg font-bold text-blue-900">{professionalTitle}</p>
+                  <p className="text-lg font-bold text-blue-900">Resume ID: {currentEditingResumeId}</p>
                   <p className="text-sm text-blue-700 mt-1">
-                    {recommendations.length} roadmap{recommendations.length !== 1 ? 's' : ''} found
+                    {totalElements} roadmap{totalElements !== 1 ? 's' : ''} found
                   </p>
                 </div>
               )}
             </div>
 
-            {/* Loading Recommendations với Skeleton */}
-            {isLoadingRecommendations && (
+            {/* Loading Roadmaps with Skeleton */}
+            {isLoadingRoadmaps && (
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <div className="h-6 bg-gray-200 rounded w-1/4 mb-4 animate-pulse"></div>
                 <div className="space-y-3">
@@ -297,43 +290,43 @@ export default function RoadMapPage() {
               </div>
             )}
 
-            {/* Recommendations List */}
-            {!isLoadingRecommendations && recommendations.length > 0 && (
+            {/* Roadmaps List */}
+            {!isLoadingRoadmaps && roadmaps.length > 0 && (
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-4">Recommended Roadmaps</h2>
+                <h2 className="text-lg font-bold text-gray-900 mb-4">Your Roadmaps</h2>
                 <div className="space-y-3">
-                  {recommendations.map((roadmap, index) => (
+                  {roadmaps.map((roadmap, index) => (
                     <div
-                      key={index}
+                      key={roadmap.id}
                       className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:bg-blue-50 transition-all group"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4 flex-1">
                           {/* Rank */}
-                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm ${
-                            index === 0 ? 'bg-yellow-100 text-yellow-700' :
-                            index === 1 ? 'bg-gray-100 text-gray-600' :
-                            index === 2 ? 'bg-orange-100 text-orange-600' :
-                            'bg-gray-50 text-gray-500'
-                          }`}>
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm ${index === 0 ? 'bg-yellow-100 text-yellow-700' :
+                              index === 1 ? 'bg-gray-100 text-gray-600' :
+                                index === 2 ? 'bg-orange-100 text-orange-600' :
+                                  'bg-gray-50 text-gray-500'
+                            }`}>
                             #{index + 1}
                           </div>
 
                           {/* Content */}
                           <div className="flex-1">
-                            <h3 className="font-bold text-gray-900 mb-1 capitalize">{roadmap.title}</h3>
-                            
-                            {/* Progress Bar */}
-                            <div className="flex items-center gap-3">
-                              <div className="flex-1 bg-gray-200 rounded-full h-2">
-                                <div
-                                  className="bg-blue-600 h-2 rounded-full transition-all"
-                                  style={{ width: `${roadmap.similarityScore * 100}%` }}
-                                />
-                              </div>
-                              <span className="text-sm font-semibold text-gray-700 min-w-[50px]">
-                                {Math.round(roadmap.similarityScore * 100)}%
-                              </span>
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-bold text-gray-900 capitalize">
+                                {roadmap.roadmapName.toLowerCase()}
+                              </h3>
+                              {roadmap.active && (
+                                <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                                  Active
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 text-sm text-gray-500">
+                              <Calendar className="w-4 h-4" />
+                              <span>Created {formatDate(roadmap.createdAt)}</span>
                             </div>
                           </div>
                         </div>
@@ -345,7 +338,7 @@ export default function RoadMapPage() {
                               setShowUpgradeModal(true);
                               return;
                             }
-                            router.push(`/candidate/road-map-flow/${encodeURIComponent(roadmap.title)}`);
+                            router.push(`/candidate/road-map-flow/${encodeURIComponent(roadmap.roadmapName)}`);
                           }}
                           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium ml-4"
                         >
@@ -361,22 +354,30 @@ export default function RoadMapPage() {
             )}
 
             {/* Empty State */}
-            {!isLoadingRecommendations && recommendations.length === 0 && professionalTitle && (
+            {!isLoadingRoadmaps && roadmaps.length === 0 && currentEditingResumeId && (
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Target className="w-8 h-8 text-gray-400" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Không tìm thấy roadmap</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Roadmaps Found</h3>
                 <p className="text-gray-600 mb-6">
-                  Chưa có roadmap phù hợp với "{professionalTitle}". Vui lòng thử lại sau.
+                  You don't have any roadmaps yet. Create a roadmap by syncing your CV in CM Profile.
                 </p>
-                <button
-                  onClick={handleRefreshRecommendations}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center gap-2 text-sm font-medium"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  Thử lại
-                </button>
+                <div className="flex gap-3 justify-center">
+                  <a
+                    href="/candidate/cm-profile"
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center gap-2 text-sm font-medium"
+                  >
+                    Go to CM Profile
+                  </a>
+                  <button
+                    onClick={handleRefreshRoadmaps}
+                    className="px-6 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors inline-flex items-center gap-2 text-sm font-medium"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Refresh
+                  </button>
+                </div>
               </div>
             )}
 
@@ -389,7 +390,7 @@ export default function RoadMapPage() {
               <ul className="space-y-2 text-sm text-gray-700">
                 <li className="flex items-start gap-2">
                   <span className="text-blue-600 mt-0.5">•</span>
-                  <span>Choose a roadmap that best matches your current career goals and skills</span>
+                  <span>Roadmaps are automatically generated when you sync your CV in CM Profile</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-blue-600 mt-0.5">•</span>
@@ -397,7 +398,7 @@ export default function RoadMapPage() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-blue-600 mt-0.5">•</span>
-                  <span>Update your Professional Title in CM Profile to get more accurate recommendations</span>
+                  <span>Update your skills and experience in CM Profile to get more accurate roadmaps</span>
                 </li>
               </ul>
             </div>
@@ -408,7 +409,7 @@ export default function RoadMapPage() {
       {/* Upgrade Modal */}
       {showUpgradeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div 
+          <div
             className="bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >

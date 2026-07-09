@@ -10,6 +10,9 @@ import { useAuthStore } from "@/store/use-auth-store";
 import {
   fetchMyJobApplications,
   formatApplicationDate,
+  confirmJobOffer,
+  declineJobOffer,
+  terminateEmployment,
   type JobApplication
 } from "@/lib/my-jobs-api";
 import {
@@ -38,8 +41,13 @@ import {
   getInterviewTypeText,
   type InterviewScheduleResponse
 } from "@/lib/interview-api";
-import { Calendar, Video, MapPin, ExternalLink, BriefcaseBusiness } from "lucide-react";
+import { Calendar, Video, MapPin, ExternalLink, BriefcaseBusiness, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+
+// Review components for inline review submission
+import { ReviewEligibilityBadge, QuickReviewDrawer } from "@/components/review";
+import { useBatchReviewEligibility } from "@/hooks/useReviewEligibility";
+import { type ReviewType } from "@/lib/review-api";
 
 // Lazy load tab components for better code splitting
 const SavedJobsTab = lazy(() => import("./SavedJobsTab"));
@@ -105,6 +113,43 @@ const MyJobsPage = () => {
   const [interviewDetailOpen, setInterviewDetailOpen] = useState(false);
   const [selectedInterviewDetail, setSelectedInterviewDetail] = useState<InterviewScheduleResponse | null>(null);
 
+  // Review drawer state
+  const [reviewDrawerOpen, setReviewDrawerOpen] = useState(false);
+  const [selectedReviewJob, setSelectedReviewJob] = useState<{
+    jobApplyId: number;
+    companyName: string;
+    jobTitle: string;
+    reviewType: ReviewType;
+  } | null>(null);
+
+  // Get job application IDs for batch eligibility check
+  const jobApplyIds = useMemo(() => jobApplications.map(app => app.id), [jobApplications]);
+  
+  // Batch check review eligibility for all applications
+  const { 
+    eligibilityMap, 
+    loading: eligibilityLoading, 
+    refetch: refetchEligibility 
+  } = useBatchReviewEligibility(candidateId, jobApplyIds, { enabled: !isLoading && jobApplyIds.length > 0 });
+
+  // Calculate days since application for each job
+  const getDaysSinceApplication = useCallback((createAt: string) => {
+    const created = new Date(createAt);
+    const now = new Date();
+    return Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
+  }, []);
+
+  // Handle review button click
+  const handleReviewClick = useCallback((application: JobApplication, reviewType: ReviewType) => {
+    setSelectedReviewJob({
+      jobApplyId: application.id,
+      companyName: application.companyName || 'Company',
+      jobTitle: application.jobTitle,
+      reviewType,
+    });
+    setReviewDrawerOpen(true);
+  }, []);
+
   // Check and fetch candidateId if needed - run once on mount
   useEffect(() => {
     const initAuth = async () => {
@@ -134,7 +179,13 @@ const MyJobsPage = () => {
       setIsLoading(true);
       try {
         const applications = await fetchMyJobApplications(candidateId);
-        setJobApplications(applications);
+        // Sort by createAt descending (newest first)
+        const sortedApplications = applications.sort((a, b) => {
+          const dateA = new Date(a.createAt).getTime();
+          const dateB = new Date(b.createAt).getTime();
+          return dateB - dateA; // Descending order (newest first)
+        });
+        setJobApplications(sortedApplications);
       } catch (error: any) {
         toast.error('Failed to load job applications');
       } finally {
@@ -144,7 +195,13 @@ const MyJobsPage = () => {
       // Load saved jobs in background (don't block UI)
       fetchSavedJobs(candidateId)
         .then(jobs => {
-          setSavedJobs(jobs);
+          // Sort by createdAt descending (most recently saved first)
+          const sortedJobs = jobs.sort((a, b) => {
+            const dateA = new Date(a.createdAt).getTime();
+            const dateB = new Date(b.createdAt).getTime();
+            return dateB - dateA; // Descending order (newest first)
+          });
+          setSavedJobs(sortedJobs);
           setSavedLoaded(true);
         })
         .catch(error => {
@@ -258,6 +315,40 @@ const MyJobsPage = () => {
           router.push('/candidate/employments');
           break;
           
+        case 'confirm_offer':
+          if (confirm('Are you sure you want to accept this job offer? This will start your employment with the company.')) {
+            const confirmResult = await confirmJobOffer(applicationId);
+            toast.success('Congratulations! Job offer accepted. You are now employed!');
+            // Refresh the job applications list
+            const updatedApps = await fetchMyJobApplications(candidateId!);
+            setJobApplications(updatedApps);
+          }
+          break;
+          
+        case 'decline_offer':
+          if (confirm('Are you sure you want to decline this job offer? This action cannot be undone.')) {
+            const declineResult = await declineJobOffer(applicationId);
+            toast.success('Job offer declined successfully');
+            // Refresh the job applications list
+            const updatedApps2 = await fetchMyJobApplications(candidateId!);
+            setJobApplications(updatedApps2);
+          }
+          break;
+
+        case 'terminate_employment':
+          if (confirm('End your employment for this job? This will set status to TERMINATED.')) {
+            await terminateEmployment(applicationId);
+            toast.success('Employment terminated successfully');
+            const updatedApps3 = await fetchMyJobApplications(candidateId!);
+            setJobApplications(updatedApps3);
+          }
+          break;
+          
+        case 'view_details':
+          // Just expand the job details section
+          toggleJobDetails(applicationId);
+          break;
+          
         case 'appeal_ban':
           toast.error('Ban appeal process not yet implemented');
           break;
@@ -331,35 +422,47 @@ const MyJobsPage = () => {
           {/* Main Content */}
           <section className="space-y-6 min-w-0 transition-all duration-300">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h1 className="text-2xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
-                {/* <BriefcaseBusiness className="w-6 h-6" /> */}
-                Job Activities
-              </h1>
+              <div className="mb-6">
+                <h1 className="text-2xl font-semibold text-gray-900">Job Activities</h1>
+                <p className="text-sm text-gray-600 mt-1">
+                  Track and manage your job applications and saved positions
+                </p>
+              </div>
 
               {/* Tabs */}
               <div className="flex border-b border-gray-200 mb-6">
                 <button
                   onClick={() => handleTabChange("applied")}
-                  className={`pb-3 px-1 mr-8 relative ${activeTab === "applied"
-                    ? "text-gray-500 font-medium border-b-2 border-gray-500"
-                    : "text-gray-600 hover:text-gray-900"
-                    }`}
+                  className={`pb-3 px-1 mr-8 relative border-b-2 ${
+                    activeTab === "applied"
+                      ? "text-black font-semibold border-black"
+                      : "text-gray-600 hover:text-gray-900 border-transparent"
+                  }`}
                 >
                   Applied Jobs
-                  <span className="ml-2 px-2 py-0.5 text-xs bg-gray-500 text-white rounded-full">
+                  <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
+                    activeTab === "applied"
+                      ? "bg-black text-white"
+                      : "bg-gray-500 text-white"
+                  }`}>
                     {jobApplications.length}
                   </span>
                 </button>
 
                 <button
                   onClick={() => handleTabChange("saved")}
-                  className={`pb-3 px-1 mr-8 relative ${activeTab === "saved"
-                    ? "text-gray-500 font-medium border-b-2 border-gray-500"
-                    : "text-gray-600 hover:text-gray-900"
-                    }`}
+                  className={`pb-3 px-1 mr-8 relative border-b-2 ${
+                    activeTab === "saved"
+                      ? "text-black font-semibold border-black"
+                      : "text-gray-600 hover:text-gray-900 border-transparent"
+                  }`}
                 >
                   Saved Jobs
-                  <span className="ml-2 px-2 py-0.5 text-xs bg-gray-500 text-white rounded-full">
+                  <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
+                    activeTab === "saved"
+                      ? "bg-black text-white"
+                      : "bg-gray-500 text-white"
+                  }`}>
                     {savedJobs.length}
                   </span>
                 </button>
@@ -407,11 +510,27 @@ const MyJobsPage = () => {
                                       </p>
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-2 mt-2">
+                                  <div className="flex flex-wrap items-center gap-2 mt-2">
                                     <StatusBadgeFull 
                                       status={application.status} 
                                       size="md"
                                     />
+                                    
+                                    {/* Review Eligibility Badge - shows for all eligible applications */}
+                                    {eligibilityMap.has(application.id) && (
+                                      <ReviewEligibilityBadge
+                                        eligible={eligibilityMap.get(application.id)!.eligible}
+                                        reviewTypes={eligibilityMap.get(application.id)!.reviewTypes}
+                                        qualification={eligibilityMap.get(application.id)!.qualification}
+                                        message={eligibilityMap.get(application.id)!.message}
+                                        loading={eligibilityLoading}
+                                        existingReviews={eligibilityMap.get(application.id)!.existingReviews}
+                                        daysSinceApplication={getDaysSinceApplication(application.createAt)}
+                                        onReviewClick={(reviewType) => handleReviewClick(application, reviewType)}
+                                        variant="inline"
+                                      />
+                                    )}
+                                    
                                     {/* Action Required badge - for INTERVIEW_SCHEDULED, only show if interview not confirmed */}
                                     {application.status === 'INTERVIEW_SCHEDULED' && interviewsMap[application.id] && !interviewsMap[application.id].candidateConfirmed && (
                                       <button
@@ -421,11 +540,25 @@ const MyJobsPage = () => {
                                         Action Required
                                       </button>
                                     )}
-                                    {/* Action Required badge - for APPROVED status (accept/decline offer) */}
-                                    {application.status === 'APPROVED' && (
-                                      <span className="px-3 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
-                                        Action Required
-                                      </span>
+                                    {/* Action Required badge - for OFFER_EXTENDED status (accept/decline offer) */}
+                                    {application.status === 'OFFER_EXTENDED' && (
+                                      <div className="flex items-center gap-2">
+                                        <Button
+                                          size="sm"
+                                          onClick={() => handleCandidateAction('confirm_offer', application.id)}
+                                          className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1"
+                                        >
+                                          ✅ Accept Offer
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="destructive"
+                                          onClick={() => handleCandidateAction('decline_offer', application.id)}
+                                          className="text-xs px-3 py-1"
+                                        >
+                                          ❌ Decline
+                                        </Button>
+                                      </div>
                                     )}
                                     {new Date(application.expirationDate) < new Date() && (
                                       <span className="px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600">
@@ -434,6 +567,7 @@ const MyJobsPage = () => {
                                     )}
                                   </div>
                                 </div>
+
 
                                 {/* Expand Button */}
                                 <button
@@ -594,7 +728,7 @@ const MyJobsPage = () => {
                                 )}
                                 
                                 {/* Contact Information - Only visible when status >= APPROVED */}
-                                {['APPROVED', 'ACCEPTED', 'WORKING'].includes(application.status) && application.companyEmail ? (
+                                {['APPROVED', 'OFFER_EXTENDED', 'ACCEPTED', 'WORKING'].includes(application.status) && application.companyEmail ? (
                                   <div className="mt-4 pt-4 border-t border-gray-200">
                                     <h4 className="font-semibold text-green-700 mb-3 flex items-center gap-2">
                                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -638,7 +772,7 @@ const MyJobsPage = () => {
                                       </div>
                                     </div>
                                   </div>
-                                ) : !['APPROVED', 'ACCEPTED', 'WORKING'].includes(application.status) && (
+                                ) : !['APPROVED', 'OFFER_EXTENDED', 'ACCEPTED', 'WORKING'].includes(application.status) && (
                                   <div className="mt-4 pt-4 border-t border-gray-200">
                                     <div className="bg-gray-100 border border-gray-200 rounded-lg p-4 flex items-center gap-3">
                                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -704,7 +838,7 @@ const MyJobsPage = () => {
                           You haven't applied to any jobs in the last 12 months.
                         </p>
                         <Link
-                          href="/jobs-list"
+                          href="/jobs-detail"
                           className="px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-md font-medium"
                         >
                           Explore jobs
@@ -741,7 +875,7 @@ const MyJobsPage = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-blue-500" />
-              Chi tiết lịch phỏng vấn
+              Interview Details
             </DialogTitle>
           </DialogHeader>
           {selectedInterviewDetail && (
@@ -752,13 +886,13 @@ const MyJobsPage = () => {
                   <Calendar className="h-4 w-4 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Thời gian</p>
+                  <p className="text-sm font-medium text-gray-600">Time</p>
                   <p className="text-base font-semibold">
-                    {formatInterviewDateTime(selectedInterviewDetail.scheduledTime)}
+                    {formatInterviewDateTime(selectedInterviewDetail.scheduledDate)}
                   </p>
-                  {selectedInterviewDetail.duration && (
+                  {selectedInterviewDetail.durationMinutes && (
                     <p className="text-sm text-gray-500">
-                      Thời lượng: {selectedInterviewDetail.duration} phút
+                      Duration: {selectedInterviewDetail.durationMinutes} minutes
                     </p>
                   )}
                 </div>
@@ -770,21 +904,21 @@ const MyJobsPage = () => {
                   <Video className="h-4 w-4 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Hình thức</p>
-                  <Badge variant={selectedInterviewDetail.interviewType === 0 ? "default" : "secondary"}>
+                  <p className="text-sm font-medium text-gray-600">Interview Type</p>
+                  <Badge variant={selectedInterviewDetail.interviewType === 'VIDEO_CALL' || selectedInterviewDetail.interviewType === 'ONLINE' ? "default" : "secondary"}>
                     {getInterviewTypeText(selectedInterviewDetail.interviewType)}
                   </Badge>
                 </div>
               </div>
 
               {/* Location/Meeting Link */}
-              {selectedInterviewDetail.interviewType === 0 && selectedInterviewDetail.meetingLink && (
+              {(selectedInterviewDetail.interviewType === 'VIDEO_CALL' || selectedInterviewDetail.interviewType === 'ONLINE' || selectedInterviewDetail.interviewType === 'ONLINE_ASSESSMENT') && selectedInterviewDetail.meetingLink && (
                 <div className="flex items-start gap-3">
                   <div className="rounded-full bg-green-100 p-2">
                     <ExternalLink className="h-4 w-4 text-green-600" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-600">Link phỏng vấn</p>
+                    <p className="text-sm font-medium text-gray-600">Meeting Link</p>
                     <a
                       href={selectedInterviewDetail.meetingLink}
                       target="_blank"
@@ -797,24 +931,24 @@ const MyJobsPage = () => {
                 </div>
               )}
 
-              {selectedInterviewDetail.interviewType === 1 && selectedInterviewDetail.location && (
+              {selectedInterviewDetail.interviewType === 'IN_PERSON' && selectedInterviewDetail.location && (
                 <div className="flex items-start gap-3">
                   <div className="rounded-full bg-orange-100 p-2">
                     <MapPin className="h-4 w-4 text-orange-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Địa điểm</p>
+                    <p className="text-sm font-medium text-gray-600">Location</p>
                     <p className="text-sm">{selectedInterviewDetail.location}</p>
                   </div>
                 </div>
               )}
 
               {/* Notes */}
-              {selectedInterviewDetail.notes && (
+              {selectedInterviewDetail.preparationNotes && (
                 <div className="border-t pt-4 mt-4">
-                  <p className="text-sm font-medium text-gray-600 mb-2">Ghi chú</p>
+                  <p className="text-sm font-medium text-gray-600 mb-2">Notes</p>
                   <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
-                    {selectedInterviewDetail.notes}
+                    {selectedInterviewDetail.preparationNotes}
                   </p>
                 </div>
               )}
@@ -822,9 +956,9 @@ const MyJobsPage = () => {
               {/* Status */}
               <div className="border-t pt-4 mt-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-600">Trạng thái xác nhận</span>
-                  <Badge variant={selectedInterviewDetail.isConfirmed ? "default" : "outline"}>
-                    {selectedInterviewDetail.isConfirmed ? "Đã xác nhận" : "Chờ xác nhận"}
+                  <span className="text-sm font-medium text-gray-600">Confirmation Status</span>
+                  <Badge variant={selectedInterviewDetail.candidateConfirmed ? "default" : "outline"}>
+                    {selectedInterviewDetail.candidateConfirmed ? "Confirmed" : "Pending Confirmation"}
                   </Badge>
                 </div>
               </div>
@@ -835,13 +969,30 @@ const MyJobsPage = () => {
                   href="/candidate/interviews"
                   className="block w-full text-center bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  Quản lý lịch phỏng vấn
+                  Manage Interviews
                 </a>
               </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Quick Review Drawer */}
+      {selectedReviewJob && candidateId && (
+        <QuickReviewDrawer
+          open={reviewDrawerOpen}
+          onOpenChange={setReviewDrawerOpen}
+          candidateId={candidateId}
+          jobApplyId={selectedReviewJob.jobApplyId}
+          companyName={selectedReviewJob.companyName}
+          jobTitle={selectedReviewJob.jobTitle}
+          reviewType={selectedReviewJob.reviewType}
+          onSuccess={() => {
+            refetchEligibility();
+            toast.success('Thank you for your review!');
+          }}
+        />
+      )}
 
     </>
   );

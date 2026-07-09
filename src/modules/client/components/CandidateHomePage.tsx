@@ -3,6 +3,7 @@
 import { TopEmployers } from "./TopEmployers";
 import { FeedbackButton } from "./FeedbackButton";
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 
 // Animated Counter Component
 function AnimatedCounter({ end, duration = 2000, suffix = "" }) {
@@ -77,19 +78,30 @@ export function CandidateHomePage() {
         {/* Added margin-top equal to header height */}
         {/* Hero Section */}
         <section 
-          className="relative text-white py-20 pb-32 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: "url('/images/general/job-search-bg.png')" }}
+          className="relative text-white py-20 pb-32 overflow-hidden"
         >
+          {/* Background Image with Next.js Image for optimization */}
+          <Image
+            src="/images/general/job-search-bg.png"
+            alt="Job search background"
+            fill
+            priority
+            quality={75}
+            className="object-cover object-center"
+            sizes="100vw"
+          />
           {/* Dark overlay for better text readability */}
           <div className="absolute inset-0 bg-black/60"></div>
           
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-              Find Your Dream Job
+              {/* Find Your Dream Job */}
+              Welcome to CareerMate
             </h1>
             <p className="text-xl md:text-2xl mb-12 text-blue-100 max-w-3xl mx-auto">
-              AI-powered job matching for IT professionals. Discover
-              opportunities that match your skills and career goals.
+              {/* AI-powered job matching for IT professionals. Discover
+              opportunities that match your skills and career goals. */}
+              The bridge between opportunity and success.
             </p>
 
             {/* Search Bar */}

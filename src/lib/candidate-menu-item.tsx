@@ -1,5 +1,14 @@
 import React from "react";
-import { BriefcaseBusiness, FileText, IdCardLanyard, LayoutDashboard, Settings } from "lucide-react";
+import {
+  BriefcaseBusiness,
+  CreditCard,
+  FileText,
+  IdCardLanyard,
+  LayoutDashboard,
+  Route,
+  Star,
+  Settings,
+} from "lucide-react";
 
 export type MenuItem = {
   href: string;
@@ -149,6 +158,12 @@ export const candidateMenuItems: MenuItem[] = [
     // ),
     icon: <IdCardLanyard className="w-5 h-5" />,
   },
+  {
+    href: "/my-reviews",
+    label: "My Reviews",
+    key: "my-reviews",
+    icon: <Star className="w-5 h-5" />,
+  },
   // Future Feature
   // {
   //   href: "/job-invitation",
@@ -171,18 +186,25 @@ export const candidateMenuItems: MenuItem[] = [
     href: "/road-map",
     label: "Recommend roadmap",
     key: "roadmap-recommendation",
-    icon: (
-      <svg
-        className="w-5 h-5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-      >
-        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-      </svg>
-    ),
+    // icon: (
+    //   <svg
+    //     className="w-5 h-5"
+    //     viewBox="0 0 24 24"
+    //     fill="none"
+    //     stroke="currentColor"
+    //     strokeWidth="2"
+    //   >
+    //     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+    //     <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    //   </svg>
+    // ),
+    icon:     <Route className="w-5 h-5" />,
+  },
+  {
+    href: "/transaction-history",
+    label: "Payment History",
+    key: "transaction-history",
+    icon: <CreditCard className="w-5 h-5" />,
   },
   // {
   //   href: "/email-subscriptions",

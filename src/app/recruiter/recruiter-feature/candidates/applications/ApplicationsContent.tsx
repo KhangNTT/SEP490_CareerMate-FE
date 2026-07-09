@@ -1,13 +1,13 @@
 "use client";
 
-import { Search, Filter, Download, FileText, Calendar, MapPin, Clock, CheckCircle, XCircle, Eye, RefreshCw, AlertCircle, MoreHorizontal, ChevronDown } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Search, Filter, Download, FileText, Calendar, MapPin, Clock, CheckCircle, XCircle, Eye, RefreshCw, AlertCircle, MoreHorizontal, ChevronDown, Briefcase } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getJobApplications, getRecruiterApplications, getRecruiterApplicationsFiltered, approveJobApplication, rejectJobApplication, setReviewingJobApplication, JobApplication, updateJobApplicationStatus } from "@/lib/recruiter-api";
+import { getJobApplications, getRecruiterApplications, getRecruiterApplicationsFiltered, approveJobApplication, rejectJobApplication, setReviewingJobApplication, JobApplication, updateJobApplicationStatus, extendJobOffer, getRecruiterJobPostings, RecruiterJobPosting } from "@/lib/recruiter-api";
 import { createEmploymentVerification } from "@/lib/employment-api";
-import { StatusBadgeFull } from "@/components/shared/StatusBadge";
+import { getInterviewByJobApplyId, InterviewScheduleResponse } from "@/lib/interview-api";
 import { getRecruiterActions, sortStatuses } from "@/lib/status-utils";
-import { JobApplicationStatus } from "@/types/status";
+import { JobApplicationStatus, StatusAction } from "@/types/status";
 import toast from "react-hot-toast";
 import {
   Dialog,
@@ -26,20 +26,33 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 
 export function ApplicationsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [filteredApplications, setFilteredApplications] = useState<JobApplication[]>([]);
+  const [jobPostings, setJobPostings] = useState<RecruiterJobPosting[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
+  const [selectedJobId, setSelectedJobId] = useState<string>("all");
   // Get jobPostingId from URL params if provided, otherwise fetch all
   const jobPostingIdParam = searchParams.get('jobPostingId');
   const [jobPostingId, setJobPostingId] = useState<number | null>(
     jobPostingIdParam ? parseInt(jobPostingIdParam) : null
   );
+  
+  // Interview data cache for checking if reschedule should be disabled
+  const [interviewDataMap, setInterviewDataMap] = useState<Record<number, InterviewScheduleResponse>>({});
 
   // Dialog states
   const [selectedApplication, setSelectedApplication] = useState<JobApplication | null>(null);
@@ -49,11 +62,12 @@ export function ApplicationsContent() {
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [isBanDialogOpen, setIsBanDialogOpen] = useState(false);
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
+  const [isExtendOfferDialogOpen, setIsExtendOfferDialogOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [banReason, setBanReason] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
 
-  // Available statuses for filtering (13 statuses)
+  // Simplified status filters - only commonly used ones
   const availableStatuses: Array<JobApplicationStatus | 'ALL'> = [
     'ALL',
     'SUBMITTED',
@@ -61,15 +75,61 @@ export function ApplicationsContent() {
     'INTERVIEW_SCHEDULED',
     'INTERVIEWED',
     'APPROVED',
-    'ACCEPTED',
-    'WORKING',
+    'OFFER_EXTENDED',
     'REJECTED',
-    'PROBATION_FAILED',
-    'TERMINATED',
-    'NO_RESPONSE',
-    'WITHDRAWN',
-    'BANNED'
   ];
+
+  // Helper to check if interview has ended (past scheduled time + duration)
+  const hasInterviewEnded = (interview: InterviewScheduleResponse | undefined): boolean => {
+    if (!interview) return false;
+    const dateStr = interview.scheduledDate || interview.interviewDateTime;
+    if (!dateStr) return false;
+    
+    const startTime = new Date(dateStr).getTime();
+    const endTime = startTime + (interview.durationMinutes || 60) * 60 * 1000;
+    return Date.now() >= endTime;
+  };
+
+  // Get filtered recruiter actions - removes reschedule for past interviews
+  const getFilteredRecruiterActions = (application: JobApplication): StatusAction[] => {
+    const actions = getRecruiterActions(application.status);
+    
+    // For INTERVIEW_SCHEDULED status, check if interview has ended
+    if (application.status === 'INTERVIEW_SCHEDULED') {
+      const interview = interviewDataMap[application.id];
+      if (hasInterviewEnded(interview)) {
+        // Filter out reschedule action for past interviews
+        return actions.filter(action => action.action !== 'reschedule');
+      }
+    }
+    
+    return actions;
+  };
+
+  // Compact status badge component
+  const StatusBadge = ({ status }: { status: string }) => {
+    const statusConfig: Record<string, { label: string; className: string }> = {
+      'SUBMITTED': { label: 'Submitted', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+      'REVIEWING': { label: 'Reviewing', className: 'bg-blue-100 text-blue-800 border-blue-200' },
+      'INTERVIEW_SCHEDULED': { label: 'Interview', className: 'bg-purple-100 text-purple-800 border-purple-200' },
+      'INTERVIEWED': { label: 'Interviewed', className: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
+      'APPROVED': { label: 'Approved', className: 'bg-green-100 text-green-800 border-green-200' },
+      'OFFER_EXTENDED': { label: 'Offer Sent', className: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+      'ACCEPTED': { label: 'Accepted', className: 'bg-teal-100 text-teal-800 border-teal-200' },
+      'WORKING': { label: 'Working', className: 'bg-cyan-100 text-cyan-800 border-cyan-200' },
+      'REJECTED': { label: 'Rejected', className: 'bg-red-100 text-red-800 border-red-200' },
+      'TERMINATED': { label: 'Terminated', className: 'bg-gray-100 text-gray-800 border-gray-200' },
+      'NO_RESPONSE': { label: 'No Reply', className: 'bg-slate-100 text-slate-600 border-slate-200' },
+      'WITHDRAWN': { label: 'Withdrawn', className: 'bg-orange-100 text-orange-800 border-orange-200' },
+      'BANNED': { label: 'Banned', className: 'bg-red-200 text-red-900 border-red-300' },
+    };
+    const config = statusConfig[status] || { label: status, className: 'bg-gray-100 text-gray-800 border-gray-200' };
+    return (
+      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${config.className}`}>
+        {config.label}
+      </span>
+    );
+  };
 
   // Handle recruiter actions
   const handleRecruiterAction = async (action: string, applicationId: number) => {
@@ -121,6 +181,7 @@ export function ApplicationsContent() {
 
         case 'start_employment':
           // For APPROVED/ACCEPTED status - transition to WORKING and create employment record
+          // Note: In v3.1, recruiters should use extend_offer instead for APPROVED candidates
           if (confirm('Are you sure you want to start this employee? This will mark them as currently working and begin employment tracking.')) {
             try {
               // First create employment verification record
@@ -146,16 +207,14 @@ export function ApplicationsContent() {
           }
           break;
 
-        case 'terminate':
-          router.push('/recruiter/employments');
+        case 'extend_offer':
+          // v3.1: Recruiter extends job offer to candidate (APPROVED → OFFER_EXTENDED)
+          setSelectedApplication(application || null);
+          setIsExtendOfferDialogOpen(true);
           break;
 
-        case 'probation_failed':
-          if (confirm('Are you sure you want to mark this employee as probation failed?')) {
-            await updateJobApplicationStatus(applicationId, 'PROBATION_FAILED');
-            toast.success('Marked as probation failed');
-            await fetchApplications();
-          }
+        case 'terminate':
+          router.push('/recruiter/employments');
           break;
 
         case 'view_employment':
@@ -185,15 +244,29 @@ export function ApplicationsContent() {
     }
   };
 
+  // Fetch job postings for the dropdown
+  const fetchJobPostings = async () => {
+    try {
+      const response = await getRecruiterJobPostings({ page: 0, size: 100 });
+      if (response.code === 0 || response.code === 200) {
+        setJobPostings(response.result.content || []);
+      }
+    } catch (error: any) {
+      console.error("Error fetching job postings:", error);
+    }
+  };
+
   // Fetch applications
   const fetchApplications = async () => {
     try {
       setIsLoading(true);
 
       let response;
-      if (jobPostingId) {
+      const effectiveJobId = selectedJobId !== 'all' ? parseInt(selectedJobId) : jobPostingId;
+      
+      if (effectiveJobId) {
         // Fetch applications for specific job posting
-        response = await getJobApplications(jobPostingId);
+        response = await getJobApplications(effectiveJobId);
       } else {
         // Fetch all applications for this recruiter
         response = await getRecruiterApplications();
@@ -202,10 +275,26 @@ export function ApplicationsContent() {
       if (response.code === 200 && response.result) {
         setApplications(response.result);
         setFilteredApplications(response.result);
+        
+        // Fetch interview data for INTERVIEW_SCHEDULED applications
+        const interviewScheduledApps = response.result.filter(
+          (app: JobApplication) => app.status === 'INTERVIEW_SCHEDULED'
+        );
+        if (interviewScheduledApps.length > 0) {
+          fetchInterviewData(interviewScheduledApps);
+        }
       } else if (response.code === 0 && response.result) {
         // Legacy response format
         setApplications(response.result);
         setFilteredApplications(response.result);
+        
+        // Fetch interview data for INTERVIEW_SCHEDULED applications
+        const interviewScheduledApps = response.result.filter(
+          (app: JobApplication) => app.status === 'INTERVIEW_SCHEDULED'
+        );
+        if (interviewScheduledApps.length > 0) {
+          fetchInterviewData(interviewScheduledApps);
+        }
       } else {
         toast.error(response.message || "Failed to fetch applications");
       }
@@ -219,19 +308,43 @@ export function ApplicationsContent() {
     }
   };
 
+  // Fetch interview data for applications with scheduled interviews
+  const fetchInterviewData = async (apps: JobApplication[]) => {
+    const newInterviewData: Record<number, InterviewScheduleResponse> = {};
+    
+    await Promise.all(
+      apps.map(async (app) => {
+        try {
+          const result = await getInterviewByJobApplyId(app.id);
+          if (result.found) {
+            newInterviewData[app.id] = result.interview;
+          }
+        } catch (error) {
+          // Interview data not found - ignore
+          console.log(`No interview data for application ${app.id}`);
+        }
+      })
+    );
+    
+    setInterviewDataMap(prev => ({ ...prev, ...newInterviewData }));
+  };
+
   useEffect(() => {
+    fetchJobPostings();
     fetchApplications();
-  }, [jobPostingId]);
+  }, [jobPostingId, selectedJobId]);
 
   // Filter applications
   useEffect(() => {
     let filtered = applications;
 
     if (searchQuery) {
+      const query = searchQuery.toLowerCase();
       filtered = filtered.filter(app =>
-        app.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        app.fullName.toLowerCase().includes(query) ||
         app.phoneNumber.includes(searchQuery) ||
-        app.preferredWorkLocation.toLowerCase().includes(searchQuery.toLowerCase())
+        app.jobTitle.toLowerCase().includes(query) ||
+        app.preferredWorkLocation.toLowerCase().includes(query)
       );
     }
 
@@ -300,70 +413,75 @@ export function ApplicationsContent() {
 
   return (
     <>
-      <header className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-sky-800">Job applications</h1>
-          <p className="text-sm text-gray-600 mt-1">Manage candidate applications for your job postings</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600">Job Posting ID:</label>
-            <input
-              type="number"
-              value={jobPostingId ?? ''}
-              onChange={(e) => setJobPostingId(e.target.value ? Number(e.target.value) : null)}
-              className="w-24 rounded-md border px-3 py-2 text-sm"
-              placeholder="All"
-            />
+      <header className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Job Applications</h1>
+            <p className="text-sm text-gray-500 mt-1">Manage candidate applications for your job postings</p>
           </div>
-          <button
+          <Button
             onClick={fetchApplications}
             disabled={isLoading}
-            className="inline-flex h-9 items-center gap-2 rounded-md bg-sky-600 px-4 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50"
+            className="bg-sky-600 hover:bg-sky-700"
           >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            {isLoading ? 'Loading...' : 'Refresh'}
-          </button>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
+
+        {/* Search and Job Filter */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by name, phone, job title, or location..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-lg border border-gray-200 bg-white pl-10 pr-4 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all"
+            />
+          </div>
+          
+          <Select value={selectedJobId} onValueChange={setSelectedJobId}>
+            <SelectTrigger className="w-full sm:w-[260px] bg-white border-gray-200">
+              <Briefcase className="h-4 w-4 mr-2 text-gray-400" />
+              <SelectValue placeholder="All Job Postings" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Job Postings</SelectItem>
+              {jobPostings.map((job) => (
+                <SelectItem key={job.id} value={job.id.toString()}>
+                  {job.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </header>
 
-      {/* Filters */}
-      <div className="mb-6 rounded-lg bg-white p-4 shadow-sm shadow-sky-100">
-        <div className="mb-4 flex items-center gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search by name, phone, or location..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-md border bg-background pl-9 pr-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex items-center gap-1 border-b overflow-x-auto">
-          {availableStatuses.map(status => (
+      {/* Status Tabs - Pill style */}
+      <div className="mb-6 flex items-center gap-2 overflow-x-auto pb-2">
+        {availableStatuses.map(status => {
+          const count = getStatusCount(status);
+          const isActive = selectedStatus === status;
+          return (
             <button
               key={status}
               onClick={() => setSelectedStatus(status)}
-              className={`px-4 py-2 text-sm font-medium whitespace-nowrap ${selectedStatus === status
-                ? "border-b-2 border-sky-600 text-sky-700"
-                : "text-slate-600 hover:text-slate-800"
-                }`}
+              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${isActive
+                ? "bg-sky-600 text-white shadow-sm"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
             >
-              {status === "ALL" ? "All" : status.replace(/_/g, ' ')}{" "}
-              <span className="ml-1 text-xs">({getStatusCount(status)})</span>
+              {status === "ALL" ? "All" : status === "INTERVIEW_SCHEDULED" ? "Interview" : status === "OFFER_EXTENDED" ? "Offer Sent" : status.charAt(0) + status.slice(1).toLowerCase().replace(/_/g, ' ')}
+              <span className={`ml-1.5 text-xs ${isActive ? "opacity-80" : "text-gray-500"}`}>({count})</span>
             </button>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
       {/* Table */}
-      <div className="rounded-lg bg-white shadow-sm shadow-sky-100">
+      <div className="rounded-xl bg-white shadow-sm border border-gray-100">
         <div className="border-b p-4">
           <h3 className="text-sm font-medium text-sky-900">
             Total Applications: {filteredApplications.length}
@@ -425,61 +543,90 @@ export function ApplicationsContent() {
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      <StatusBadgeFull status={application.status} size="sm" />
+                      <StatusBadge status={application.status} />
                     </td>
 
                     {/* Actions */}
                     <td className="px-4 py-4">
-                      <div className="flex items-center justify-end gap-2">
-                        {/* View Details Button - Always visible */}
+                      <div className="flex items-center gap-2 w-[250px]">
+                        {/* View Details Button - Fixed position */}
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
                           onClick={() => {
                             setSelectedApplication(application);
                             setIsDetailDialogOpen(true);
                           }}
-                          className="h-8 w-8 p-0"
+                          className="h-8 w-8 p-0 shrink-0"
                           title="View details"
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
 
-                        {/* Primary Action Button - First action prominent */}
-                        {getRecruiterActions(application.status).length > 0 && (
-                          <Button
-                            variant={getRecruiterActions(application.status)[0].variant as any}
-                            size="sm"
-                            onClick={() => handleRecruiterAction(
-                              getRecruiterActions(application.status)[0].action,
-                              application.id
-                            )}
-                            className="h-8 text-xs whitespace-nowrap"
-                          >
-                            {getRecruiterActions(application.status)[0].label}
-                          </Button>
-                        )}
+                        {/* Primary Action Button - Fixed width */}
+                        <div className="w-[130px] shrink-0">
+                          {getFilteredRecruiterActions(application).length > 0 && (
+                            <Button
+                              variant={getFilteredRecruiterActions(application)[0].variant as any}
+                              size="sm"
+                              onClick={() => handleRecruiterAction(
+                                getFilteredRecruiterActions(application)[0].action,
+                                application.id
+                              )}
+                              className="h-8 text-xs w-full justify-center"
+                            >
+                              {(() => {
+                                const label = getFilteredRecruiterActions(application)[0].label;
+                                if (label === 'Terminate Employment') return 'Terminate';
+                                if (label === 'Schedule Interview') return 'Schedule';
+                                if (label === 'Start Employment') return 'Start';
+                                if (label === 'Extend Offer') return 'Send Offer';
+                                return label;
+                              })()}
+                            </Button>
+                          )}
+                        </div>
 
-                        {/* More Actions Dropdown - If more than 1 action */}
-                        {getRecruiterActions(application.status).length > 1 && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="outline" size="sm" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                              {getRecruiterActions(application.status).slice(1).map((statusAction, index) => (
-                                <DropdownMenuItem
-                                  key={statusAction.action}
-                                  onClick={() => handleRecruiterAction(statusAction.action, application.id)}
-                                  className={statusAction.variant === 'destructive' ? 'text-red-600 focus:text-red-600' : ''}
-                                >
-                                  {statusAction.label}
-                                </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                        {/* More Actions Dropdown - Fixed position */}
+                        <div className="w-8 shrink-0">
+                          {getFilteredRecruiterActions(application).length > 1 && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48">
+                                {getFilteredRecruiterActions(application).slice(1).map((statusAction, index) => (
+                                  <DropdownMenuItem
+                                    key={statusAction.action}
+                                    onClick={() => handleRecruiterAction(statusAction.action, application.id)}
+                                    className={statusAction.variant === 'destructive' ? 'text-red-600 focus:text-red-600' : ''}
+                                  >
+                                    {statusAction.label}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
+
+                        {/* Note icon for cancelled interview - shows when there are notes */}
+                        {application.hasCancelledInterview && application.cancelledInterviewNotes && (
+                          <div className="shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                              onClick={() => {
+                                setSelectedApplication(application);
+                                setIsDetailDialogOpen(true);
+                              }}
+                              title={application.cancelledInterviewNotes}
+                            >
+                              <FileText className="h-4 w-4" />
+                            </Button>
+                          </div>
                         )}
                       </div>
                     </td>
@@ -519,7 +666,7 @@ export function ApplicationsContent() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-700">Status</p>
-                  <StatusBadgeFull status={selectedApplication.status} size="sm" />
+                  <StatusBadge status={selectedApplication.status} />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-700">Applied Date</p>
@@ -553,6 +700,33 @@ export function ApplicationsContent() {
                   {selectedApplication.coverLetter}
                 </div>
               </div>
+
+              {/* Cancelled Interview History */}
+              {selectedApplication.hasCancelledInterview && (
+                <div className="bg-orange-50 border border-orange-200 rounded-md p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertCircle className="h-4 w-4 text-orange-600" />
+                    <p className="text-sm font-medium text-orange-800">Previous Interview Was Cancelled</p>
+                  </div>
+                  {selectedApplication.cancelledInterviewDate && (
+                    <p className="text-sm text-orange-700 mb-1">
+                      <span className="font-medium">Scheduled Date:</span>{' '}
+                      {new Date(selectedApplication.cancelledInterviewDate).toLocaleString('vi-VN')}
+                    </p>
+                  )}
+                  {selectedApplication.cancelledInterviewNotes && (
+                    <p className="text-sm text-orange-700">
+                      <span className="font-medium">Reason:</span>{' '}
+                      {selectedApplication.cancelledInterviewNotes.replace('Cancelled: ', '')}
+                    </p>
+                  )}
+                  {selectedApplication.totalInterviewRounds && selectedApplication.totalInterviewRounds > 0 && (
+                    <p className="text-sm text-orange-600 mt-2">
+                      Total interview rounds: {selectedApplication.totalInterviewRounds}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
@@ -750,6 +924,76 @@ export function ApplicationsContent() {
                 <>
                   <XCircle className="mr-2 h-4 w-4" />
                   Confirm Ban
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Extend Offer Dialog */}
+      <Dialog open={isExtendOfferDialogOpen} onOpenChange={setIsExtendOfferDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              Extend Job Offer
+            </DialogTitle>
+            <DialogDescription>
+              You are about to extend a job offer to this candidate. They will receive a notification and must confirm or decline before they can start working.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedApplication && (
+            <div className="bg-green-50 p-4 rounded-md border border-green-200 my-4">
+              <p className="font-medium text-gray-900">{selectedApplication.fullName}</p>
+              <p className="text-sm text-gray-600">{selectedApplication.jobTitle}</p>
+              <p className="text-sm text-gray-500 mt-1">Current Status: {selectedApplication.status}</p>
+            </div>
+          )}
+          <div className="bg-amber-50 p-3 rounded-md border border-amber-200 text-sm">
+            <p className="font-medium text-amber-800">⚠️ Important:</p>
+            <ul className="list-disc list-inside text-amber-700 mt-1 space-y-1">
+              <li>The candidate will be notified immediately</li>
+              <li>They must accept or decline the offer</li>
+              <li>You cannot extend offers to candidates already employed elsewhere</li>
+            </ul>
+          </div>
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsExtendOfferDialogOpen(false)}
+              disabled={actionLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!selectedApplication) return;
+                try {
+                  setActionLoading(true);
+                  await extendJobOffer(selectedApplication.id);
+                  toast.success('🎉 Job offer extended! Waiting for candidate confirmation.');
+                  setIsExtendOfferDialogOpen(false);
+                  await fetchApplications();
+                } catch (error: any) {
+                  console.error("Failed to extend offer:", error);
+                  toast.error(error.message || "Failed to extend job offer. The candidate may already be employed.");
+                } finally {
+                  setActionLoading(false);
+                }
+              }}
+              disabled={actionLoading}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {actionLoading ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Extending Offer...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Confirm & Extend Offer
                 </>
               )}
             </Button>

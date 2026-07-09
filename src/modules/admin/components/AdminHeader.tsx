@@ -7,16 +7,13 @@ import { useAuthStore } from "@/store/use-auth-store";
 import { decodeJWT } from "@/lib/auth-admin";
 import { getCurrentUser } from "@/lib/user-api";
 import { NotificationBell } from "@/components/notifications";
-import { useUserProfile } from "@/hooks/useUserProfile";
 
 interface AdminHeaderProps {
   sidebarOpen?: boolean;
 }
 
 export function AdminHeader({ sidebarOpen = false }: AdminHeaderProps) {
-  const { user } = useAuthStore();
-  const { isAuthenticated, accessToken, logout, role } = useAuthStore();
-  const { avatarUrl } = useUserProfile();
+  const { user, isAuthenticated, accessToken, logout, role } = useAuthStore();
   const [isOpen, setIsOpen] = useState(false);
   const [userInfo, setUserInfo] = useState<{
     name: string;
@@ -138,11 +135,13 @@ export function AdminHeader({ sidebarOpen = false }: AdminHeaderProps) {
                   For Admin {userInfo?.username || userInfo?.name || "Admin"}
                 </span>
 
+                {/* Notification Bell with SSE */}
+                <NotificationBell />
+
                 <ProfileDropdown
                   userName={userInfo?.username || userInfo?.name || user?.email || "Admin"}
                   userEmail={userInfo?.email || user?.email}
                   role={role || undefined}
-                  userAvatar={avatarUrl || undefined}
                 />
               </>
             ) : (

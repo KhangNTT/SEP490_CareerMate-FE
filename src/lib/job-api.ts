@@ -151,15 +151,12 @@ export const transformJobPosting = (job: JobPosting) => {
     skills: job.skills.map(s => s.name),
     mustHaveSkills: mustHaveSkills, // ✅ Skills required
     niceToHaveSkills: niceToHaveSkills, // ✅ Skills nice to have
-    highlights: [
-      ...(mustHaveSkills.length > 0 ? [`Must have: ${mustHaveSkills.join(', ')}`] : []),
-      ...(job.reason ? [job.reason] : []) // ✅ Why you should join
-    ],
+    highlights: job.reason ? job.reason.split('\n').filter(line => line.trim() !== '') : [], // ✅ Chỉ lấy reason, không duplicate skills
     description: job.description ? job.description.split('\n').filter(line => line.trim() !== '') : [], // ✅ Full job description
     whyYouShouldJoin: job.reason || '', // ✅ Reason to join
     salaryRange: job.salaryRange,
     benefitSummary: job.jobPackage ? [job.jobPackage] : [],
-    benefits: job.jobPackage ? [job.jobPackage] : [],
+    benefits: job.jobPackage ? job.jobPackage.split('\n').filter(line => line.trim() !== '') : [], // ✅ Split benefits thành nhiều dòng
     isHot: job.jobPackage === 'Premium', // Mark premium jobs as hot
     isNegotiable: job.salaryRange.toLowerCase().includes('negotiable') || job.salaryRange.toLowerCase().includes('thỏa thuận'),
     companyType: job.recruiterInfo.about || '',
@@ -266,11 +263,21 @@ export const fetchJobPostings = async (params: JobQueryParams = {}): Promise<Job
 // Fetch single job posting by ID
 export const fetchJobPostingById = async (id: number): Promise<JobPosting | null> => {
   try {
-    const response = await fetchJobPostings({ page: 0, size: 100 });
-    const job = response.result.content.find(j => j.id === id);
-    return job || null;
-  } catch (error) {
-    console.error(`Error fetching job posting ${id}:`, error);
+    console.log('📡 Fetching job posting detail for ID:', id);
+    
+    const response = await api.get<any>(`/api/job-postings/${id}`);
+    
+    console.log('✅ Job posting detail response:', response.data);
+    
+    if (response.data.code === 200 || response.data.code === 1000) {
+      return response.data.result;
+    }
+    
+    console.warn('⚠️ Unexpected response code:', response.data.code);
+    return null;
+  } catch (error: any) {
+    console.error(`❌ Error fetching job posting ${id}:`, error);
+    console.error('Error details:', error.response?.data || error.message);
     return null;
   }
 };
@@ -280,8 +287,8 @@ export const fetchJobPostingById = async (id: number): Promise<JobPosting | null
 export interface SaveJobRequest {
   candidateId: number;
   jobId: number;
-  feedbackType: 'save';
-  score: number; // typically 1 for save
+  feedbackType: 'save' | 'apply' | 'like' | 'view';
+  score: number; // typically 1 for feedback
 }
 
 export interface SaveJobResponse {
@@ -331,6 +338,36 @@ export const unsaveJob = async (candidateId: number, jobId: number): Promise<voi
     console.log('✅ Job unsaved successfully');
   } catch (error: any) {
     console.error('❌ Error unsaving job:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+/**
+ * Submit application feedback after candidate applies to a job
+ * POST /api/job-feedback
+ * Similar to likeJob/saveJob - throws error on failure
+ */
+export const submitApplyFeedback = async (candidateId: number, jobId: number): Promise<SaveJobResponse> => {
+  const requestBody: SaveJobRequest = {
+    candidateId,
+    jobId,
+    feedbackType: 'apply',
+    score: 1
+  };
+
+  try {
+    console.log('📝 Submitting apply feedback:', requestBody);
+    console.log('📊 candidateId type:', typeof candidateId, 'value:', candidateId);
+    console.log('📊 jobId type:', typeof jobId, 'value:', jobId);
+    
+    const response = await api.post('/api/job-feedback', requestBody);
+    console.log('✅ Apply feedback submitted successfully:', response.data);
+    
+    return response.data;
+  } catch (error: any) {
+    console.error('❌ Error submitting apply feedback:', error.response?.data || error.message);
+    console.error('❌ Full error response:', error.response);
+    // ✅ Throw error like likeJob/saveJob do - don't swallow it
     throw error;
   }
 };

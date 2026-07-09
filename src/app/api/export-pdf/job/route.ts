@@ -56,19 +56,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Create job in store (now async with KV)
+    // Create job in store (now async for KV support)
     const job = await exportJobStore.createJob(resumeId, templateId);
     const { jobId } = job;
 
-    console.log(`[ExportJob] Created job ${jobId} for resume ${resumeId}`);
+    console.log(`[ExportJob] ✅ Created job ${jobId} for resume ${resumeId}`);
+    console.log(`[ExportJob] Job details:`, { jobId, resumeId, templateId, status: job.status });
 
     // =======================================================================
     // Background Processing using setImmediate
     // This allows the response to return immediately while PDF generates
     // =======================================================================
     
+    console.log(`[ExportJob] 🚀 Scheduling background processing for job ${jobId}`);
     setImmediate(async () => {
-      console.log(`[ExportJob] Starting background processing for job ${jobId}`);
+      console.log(`[ExportJob] 🔄 Starting background processing for job ${jobId}`);
       const startTime = Date.now();
 
       try {
@@ -83,14 +85,7 @@ export async function POST(req: NextRequest) {
 
         if (!result.success) {
           console.error(`[ExportJob] PDF generation failed for job ${jobId}:`, result.error);
-          console.error(`[ExportJob] Error details:`, result.details || "No details available");
-          
-          // Include more helpful error message for debugging
-          const errorMessage = result.error?.includes("chromium") 
-            ? `Chromium setup failed: ${result.error}. Please check server configuration.`
-            : result.error;
-          
-          await exportJobStore.failJob(jobId, errorMessage);
+          await exportJobStore.failJob(jobId, result.error);
           return;
         }
 
@@ -108,7 +103,7 @@ export async function POST(req: NextRequest) {
 
         console.log(`[ExportJob] Upload complete for job ${jobId}: ${downloadURL.substring(0, 60)}...`);
 
-        // Step 3: Mark job as complete (now async with KV)
+        // Step 3: Mark job as complete
         await exportJobStore.completeJob(jobId, downloadURL);
 
         const duration = ((Date.now() - startTime) / 1000).toFixed(2);

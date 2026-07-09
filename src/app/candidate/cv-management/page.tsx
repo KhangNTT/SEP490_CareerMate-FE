@@ -11,7 +11,6 @@ import { useResumeData } from "@/hooks/useResumeData";
 import { resumesToCVsSync } from "@/utils/resumeConverter";
 import { useAuthStore } from "@/store/use-auth-store";
 import { useCVStore } from "@/stores/cvStore"; // Import CV Store for Redux DevTools
-import { checkCVBuilderAccess } from "@/lib/entitlement-api";
 import { getMyInvoice, type Invoice } from "@/lib/invoice-api";
 import { Lock, X, Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
@@ -21,12 +20,12 @@ import {
   CVGrid,
   EmptyState,
   PreviewModal,
-  NoActiveCV,
   CVPageSkeleton,
   SyncCVSummaryDialog,
   SyncConfirmDialog,
   DraftConversionDialog,
-  SwitchCVConfirmDialog
+  SwitchCVConfirmDialog,
+  DeleteConfirmDialog
 } from "@/components/cv-management";
 
 type TabType = "built" | "uploaded" | "draft";
@@ -150,6 +149,28 @@ const CVManagementPage = () => {
     }
   }, [headerHeight]);
 
+  // Listen for CV updates from CVPreview and refresh the list
+  useEffect(() => {
+    const handleCVUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      console.log("🔔 Received cvUpdated event:", customEvent.detail);
+      
+      toast.success("CV list updated!", { id: "cv-updated" });
+      
+      // Refresh the CV data from API
+      if (refresh) {
+        console.log("🔄 Refreshing CV list...");
+        refresh();
+      }
+    };
+
+    window.addEventListener('cvUpdated', handleCVUpdated);
+
+    return () => {
+      window.removeEventListener('cvUpdated', handleCVUpdated);
+    };
+  }, [refresh]);
+
   // ✅ Memoize current CVs based on active tab to avoid recalculation on every render
   const currentCVs = useMemo(() => {
     switch (activeTab) {
@@ -164,14 +185,95 @@ const CVManagementPage = () => {
     }
   }, [activeTab, uploadedCVs, builtCVs, draftCVs]);
 
-  // ✅ Memoize boolean check
+  // ✅ Memoize boolean checks for empty state logic
   const hasAnyResumes = useMemo(() =>
     uploadedCVs.length > 0 || builtCVs.length > 0 || draftCVs.length > 0,
     [uploadedCVs.length, builtCVs.length, draftCVs.length]
   );
 
+  /**
+   * ========================================
+   * CHECK FOR REAL CVs (WEB or UPLOAD type only)
+   * ========================================
+   * Business Rule: Empty state should only consider WEB/UPLOAD CVs.
+   * Draft CVs (type="DRAFT") don't count as "real" CVs yet.
+   */
+  const hasRealCVs = useMemo(() => {
+    const webAndUploadCVs = [...uploadedCVs, ...builtCVs];
+    return webAndUploadCVs.length > 0;
+  }, [uploadedCVs.length, builtCVs.length]);
+
+  const hasDefaultCV = useMemo(() => defaultCV !== null, [defaultCV]);
+
+  /**
+   * ========================================
+   * UNIFIED EMPTY STATE LOGIC
+   * ========================================
+   * Three possible states:
+   * 1. No WEB/UPLOAD CVs → Show "no-cvs" mode (Upload/Build CTAs)
+   * 2. Has WEB/UPLOAD CVs but no default → Show "no-default" mode (Instructions)
+   * 3. Has default CV → Don't show empty state (show default CV card)
+   */
+  const shouldShowUnifiedEmptyState = useMemo(() => {
+    return !hasDefaultCV;
+  }, [hasDefaultCV]);
+
+  const emptyStateMode = useMemo(() => {
+    if (!hasRealCVs) return "no-cvs";
+    if (hasRealCVs && !hasDefaultCV) return "no-default";
+    return "tab-empty"; // Fallback (shouldn't reach here)
+  }, [hasRealCVs, hasDefaultCV]);
+
   // Handler for Create CV button
   const handleCreateCV = useCallback(async () => {
+    // Get current editing resume from Zustand store
+    const currentEditingResumeId = useCVStore.getState().currentEditingResumeId;
+    const untypedResumeId = useCVStore.getState().untypedResumeId;
+
+    // Check if there's a currently editing CV
+    if (currentEditingResumeId || untypedResumeId) {
+      // Find the current editing CV
+      const allCVs = [...uploadedCVs, ...builtCVs, ...draftCVs];
+      const currentCV = allCVs.find(cv => 
+        cv.id === currentEditingResumeId || cv.id === untypedResumeId
+      );
+
+      if (currentCV) {
+        console.log('📋 Found current editing CV:', currentCV.id, 'type:', currentCV.type);
+
+        // Case 1: CV has empty/null type -> Show DRAFT conversion dialog
+        // Check if type is empty, null, or undefined (untyped resume)
+        const cvType = currentCV.type as string | undefined | null;
+        if (!cvType || cvType === '') {
+          console.log('⚠️ Current CV has empty type, showing DRAFT conversion dialog');
+          // Use the actions hook to handle this
+          actionsHook.setPendingAction({ 
+            type: 'edit', 
+            cv: { ...currentCV, id: 'new-cv-creation' } as CV 
+          });
+          actionsHook.setShowDraftConversionConfirm(true);
+          return;
+        }
+
+        // Case 2: CV has type "DRAFT" or "WEB" -> Show switch CV confirmation
+        if (cvType === 'DRAFT' || cvType === 'WEB') {
+          console.log('⚠️ Currently editing CV with type:', cvType, '- showing switch confirmation');
+          actionsHook.setPendingAction({ 
+            type: 'edit', 
+            cv: { ...currentCV, id: 'new-cv-creation' } as CV 
+          });
+          actionsHook.setShowSwitchCVConfirm(true);
+          return;
+        }
+      }
+    }
+
+    // No blocking conditions, proceed with CV creation
+    await proceedWithCVCreation();
+  }, [uploadedCVs, builtCVs, draftCVs, actionsHook]);
+
+  // Separate function to handle actual CV creation
+  const proceedWithCVCreation = useCallback(async () => {
     // Check package limits
     const builtCVCount = builtCVs.length;
 
@@ -207,10 +309,58 @@ const CVManagementPage = () => {
       return;
     }
 
-    // If can create, navigate to CV builder with clean slate
-    // The cv-templates page will use SAMPLE_CV_DATA as default when no data is provided
-    router.push('/cv-templates');
-  }, [builtCVs.length, currentPackage, router]);
+    // Create new resume via API
+    try {
+      toast.loading('Creating new CV...', { id: 'create-cv' });
+      
+      const { createResume } = await import('@/services/resumeService');
+      
+      // Auto-set as default ONLY if this is the FIRST WEB/UPLOAD CV
+      // (Don't count DRAFT CVs)
+      const webAndUploadCount = uploadedCVs.length + builtCVs.length;
+      const isActive = webAndUploadCount === 0 && !defaultCV;
+      
+      console.log("📊 Auto-default check (Create CV):", {
+        uploadedCVsCount: uploadedCVs.length,
+        builtCVsCount: builtCVs.length,
+        webAndUploadCount,
+        hasDefaultCV: !!defaultCV,
+        willSetAsDefault: isActive
+      });
+      
+      // Call API to create resume - backend will set type as "WEB" by default
+      const newResume = await createResume({
+        aboutMe: "",
+        isActive: isActive
+      });
+
+      if (isActive) {
+        toast.success('CV created and set as default!', { id: 'create-cv' });
+      } else {
+        toast.success('CV created successfully!', { id: 'create-cv' });
+      }
+      
+      // Navigate to cm-profile with resumeId
+      router.push(`/candidate/cm-profile?resumeId=${newResume.resumeId}`);
+    } catch (error: any) {
+      console.error('Failed to create CV:', error);
+      toast.error(error?.message || 'Failed to create CV. Please try again.', { id: 'create-cv' });
+    }
+  }, [builtCVs.length, uploadedCVs.length, defaultCV, currentPackage, router]);
+
+  // Listen for the custom event from useCVActions to proceed with CV creation
+  useEffect(() => {
+    const handleProceedWithCVCreation = () => {
+      console.log("📢 Received proceedWithCVCreation event");
+      proceedWithCVCreation();
+    };
+
+    window.addEventListener('proceedWithCVCreation', handleProceedWithCVCreation);
+
+    return () => {
+      window.removeEventListener('proceedWithCVCreation', handleProceedWithCVCreation);
+    };
+  }, [proceedWithCVCreation]);
 
   // Loading state - use skeleton
   if (loading) {
@@ -265,15 +415,44 @@ const CVManagementPage = () => {
               <p className="text-gray-600">Upload or create CVs to use during job applications</p>
             </div>
 
-            {/* Default CV Card or No Active CV */}
-            {defaultCV ? (
+            {/* 
+              ========================================
+              UNIFIED EMPTY STATE / DEFAULT CV DISPLAY
+              ========================================
+              Business Rules:
+              1. If user has NO CVs → Show empty state with "no-cvs" mode
+              2. If user has CVs but NO default → Show empty state with "no-default" mode
+              3. If user has default CV → Show default CV card (no empty state)
+              
+              Auto Default Logic (Backend enforced):
+              - Backend MUST auto-set default CV when:
+                * cvCount === 1
+                * AND no default CV exists yet
+                * AND the trigger is FIRST create/upload
+              - Backend MUST NOT auto-set on:
+                * sync, edit, re-fetch, page reload
+              - Database MUST guarantee only ONE default CV per user
+              - Frontend only reflects state (hasCV, hasDefaultCV)
+            */}
+            {shouldShowUnifiedEmptyState ? (
+              <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
+                <EmptyState
+                  mode={emptyStateMode}
+                  onUploadClick={() => {
+                    setActiveTab("uploaded");
+                    document.getElementById("cv-upload-input")?.click();
+                  }}
+                  onBuildClick={handleCreateCV}
+                />
+              </div>
+            ) : (
               <div className="bg-gradient-to-r from-[#3a4660] to-gray-400 rounded-xl p-6 shadow-md">
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <h2 className="text-lg font-semibold text-white mb-1 flex items-center gap-2">
-                      Active CV
+                      Default CV
                       <span className="text-xs bg-white/20 backdrop-blur-sm text-white px-2 py-0.5 rounded-full">
-                        Active
+                        Default
                       </span>
                     </h2>
                     <p className="text-sm text-white/90">
@@ -283,28 +462,15 @@ const CVManagementPage = () => {
                 </div>
 
                 <CVCardHorizontal
-                  cv={defaultCV}
+                  cv={defaultCV!}
                   isDefault
                   onSetDefault={() => { }}
-                  onPreview={() => actionsHook.handlePreview(defaultCV)}
-                  onSync={() => actionsHook.handleSyncToProfile(defaultCV)}
-                  onEdit={() => actionsHook.handleEditCV(defaultCV)}
-                  onDelete={() => actionsHook.handleDelete(defaultCV.id)}
+                  onPreview={() => actionsHook.handlePreview(defaultCV!)}
+                  onSync={() => actionsHook.handleSyncToProfile(defaultCV!)}
+                  onEdit={() => actionsHook.handleEditCV(defaultCV!)}
+                  onDelete={() => actionsHook.handleDelete(defaultCV!.id)}
                 />
               </div>
-            ) : (
-              <NoActiveCV
-                hasResumes={hasAnyResumes}
-                onUploadClick={() => {
-                  // Scroll to upload tab
-                  setActiveTab("uploaded");
-                  document.getElementById("cv-upload-input")?.click();
-                }}
-                onBuildClick={() => {
-                  // Navigate to CV builder or show modal
-                  setActiveTab("built");
-                }}
-              />
             )}
 
             {/* Tabs */}
@@ -483,6 +649,15 @@ const CVManagementPage = () => {
         onOpenChange={actionsHook.handleCloseSwitchCVConfirm}
         onConfirm={actionsHook.handleConfirmSwitchCV}
         isLoading={actionsHook.isSyncing}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={actionsHook.showDeleteConfirm}
+        onOpenChange={actionsHook.handleCloseDeleteConfirm}
+        cv={actionsHook.cvToDelete}
+        onConfirm={actionsHook.handleConfirmDelete}
+        isDeleting={actionsHook.isSyncing}
       />
     </>
   );

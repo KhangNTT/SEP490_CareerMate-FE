@@ -23,7 +23,6 @@ import { useAuthStore } from "@/store/use-auth-store";
 import { getMyInvoice } from "@/lib/invoice-api";
 import { getRecruiterInvoice } from "@/lib/recruiter-invoice-api";
 import { PremiumAvatar } from "@/components/ui/premium-avatar";
-import { NotificationBell } from "@/components/notifications";
 
 interface ProfileDropdownProps {
   userName?: string;
@@ -45,6 +44,14 @@ export function ProfileDropdown({
   const { isAuthenticated, accessToken, logout, isLoading } = useAuthStore();
   const router = useRouter();
   const [isPremium, setIsPremium] = useState(false);
+
+  // Debug log for avatar
+  console.log("🖼️ ProfileDropdown - Avatar Debug:", {
+    userAvatar,
+    userName,
+    userEmail,
+    isPremium,
+  });
 
   // Normalize role - handle both "RECRUITER" and "ROLE_RECRUITER" formats
   // Must be defined before useEffect
@@ -138,9 +145,6 @@ export function ProfileDropdown({
           <Moon className="w-5 h-5" />
         )}
       </button> */}
-
-      {/* Notifications Button - Real implementation */}
-      <NotificationBell />
 
       {/* Profile Dropdown */}
       <div className="relative" ref={dropdownRef}>
@@ -250,7 +254,7 @@ export function ProfileDropdown({
                     Job Activities
                   </Link>
                   <Link
-                    href="/settings"
+                    href="/candidate/settings"
                     className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                     onClick={() => setIsOpen(false)}
                   >

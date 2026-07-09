@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import CVSidebar from "@/components/layout/CVSidebar";
 import Link from "next/link";
-import { FileText, Briefcase, Mail, Receipt, FolderOpen } from "lucide-react";
+import { FileText, Briefcase, Mail, Receipt, FolderOpen, BriefcaseBusiness } from "lucide-react";
 import { useLayout } from "@/contexts/LayoutContext";
 import { useAuthStore } from "@/store/use-auth-store";
 import { useResumeData } from "@/hooks/useResumeData";
@@ -14,24 +14,32 @@ import { getMyInvoice } from "@/lib/invoice-api";
 import { fetchMyJobApplications, type JobApplication } from "@/lib/my-jobs-api";
 import { fetchSavedJobs, type SavedJobFeedback } from "@/lib/job-api";
 import { getCurrentUser } from "@/lib/user-api";
-import { calculateProfileCompletion } from "@/lib/profile-completion";
+import { fetchCurrentCandidateProfile } from "@/lib/candidate-profile-api";
+import { useCVStore } from "@/stores/cvStore";
 import api from "@/lib/api";
+
 
 export default function CandidateDashboard() {
   const { headerHeight } = useLayout();
   const [headerH, setHeaderH] = useState(headerHeight || 0);
   
   // Auth store
-  const { user, candidateId, fetchCandidateProfile } = useAuthStore();
+  const { user, candidateId, fetchCandidateProfile, setProfile } = useAuthStore();
   const userId = candidateId || user?.id;
 
-  // Profile state
+  // Get current editing resume ID from Zustand (same as CM Profile)
+  const currentEditingResumeId = useCVStore((s) => s.currentEditingResumeId);
+  
+  // Resume ID state
+  const [resumeId, setResumeId] = useState<number | null>(null);
+
+  // Profile state (from Candidate Profile API - for user display)
   const [profileName, setProfileName] = useState("");
   const [profileTitle, setProfileTitle] = useState("");
   const [profileImage, setProfileImage] = useState("");
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [userEmail, setUserEmail] = useState("");
   const [isPremium, setIsPremium] = useState(false);
-  const [profileCompletion, setProfileCompletion] = useState(20);
 
   // CV state
   const [defaultCV, setDefaultCV] = useState<CV | null>(null);
@@ -69,47 +77,60 @@ export default function CandidateDashboard() {
     }
   }, [headerHeight]);
 
-  // Fetch profile data
+  // ✅ PRIMARY: Fetch profile data from Candidate Profile API (for user display)
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const response = await api.get("/api/candidates/profiles/current");
-        if (response.data?.result) {
-          const profile = response.data.result;
-          setProfileName(profile.fullName || "");
-          setProfileTitle(profile.title || "");
-          setProfileImage(profile.image || "");
-          
-          // Calculate profile completion using same logic as cm-profile
-          const completionData = {
-            fullName: profile.fullName,
-            title: profile.title,
-            phone: profile.phone,
-            dob: profile.dob,
-            gender: profile.gender,
-            address: profile.address,
-            link: profile.link,
-            image: profile.image,
-            aboutMe: profile.aboutMe,
-            awards: profile.awards || [],
-            certificates: profile.certificates || [],
-            projects: profile.projects || [],
-            languages: profile.languages || [],
-            educations: profile.educations || [],
-            workExperiences: profile.workExperiences || [],
-            // Flatten skill groups to get total skill count
-            coreSkills: (profile.coreSkillGroups || []).flatMap((g: any) => g.items || []),
-            softSkills: (profile.softSkillGroups || []).flatMap((g: any) => g.items || []),
-          };
-          const completion = calculateProfileCompletion(completionData);
-          setProfileCompletion(completion);
-        }
+        setIsLoadingProfile(true);
+        console.log('🔍 Dashboard: Fetching candidate profile...');
+        const profile = await fetchCurrentCandidateProfile();
+        
+        console.log('✅ Dashboard: Candidate profile fetched:', {
+          fullName: profile.fullName,
+          title: profile.title,
+          hasImage: !!profile.image,
+        });
+        
+        // Set profile display data (for user card)
+        setProfileName(profile.fullName || "");
+        setProfileTitle(profile.title || "Update your title");
+        setProfileImage(profile.image || "");
+        
+        // ✅ SYNC with AuthStore (single source of truth)
+        setProfile({
+          fullName: profile.fullName || "",
+          title: profile.title || "",
+          image: profile.image || "",
+        });
+        
       } catch (error) {
-        console.error("Failed to fetch profile:", error);
+        console.error("❌ Dashboard: Failed to fetch candidate profile:", error);
+        // Set defaults if profile not found
+        setProfileName("");
+        setProfileTitle("Update your title");
+        setProfileImage("");
+        setProfile(null);
+      } finally {
+        setIsLoadingProfile(false);
       }
     };
 
-    // Fetch current user info (including email) from API
+    fetchProfile();
+
+    // Refresh profile data when page becomes visible (user returns from cm-profile)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('📍 Page visible again, refreshing profile data...');
+        fetchProfile();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []); // Run once on mount and on visibility change
+
+  // Fetch current user info (including email) from API
+  useEffect(() => {
     const fetchCurrentUserInfo = async () => {
       try {
         const currentUser = await getCurrentUser();
@@ -125,7 +146,6 @@ export default function CandidateDashboard() {
       }
     };
 
-    fetchProfile();
     fetchCurrentUserInfo();
   }, [user]);
 
@@ -186,19 +206,8 @@ export default function CandidateDashboard() {
     loadJobActivities();
   }, [candidateId]);
 
-  // Calculate profile completion (simplified)
-  useEffect(() => {
-    let completion = 20; // Base
-    if (profileName) completion += 15;
-    if (profileTitle) completion += 15;
-    if (profileImage) completion += 10;
-    if (allCVs.length > 0) completion += 20;
-    if (appliedJobsCount > 0) completion += 20;
-    setProfileCompletion(Math.min(completion, 100));
-  }, [profileName, profileTitle, profileImage, allCVs, appliedJobsCount]);
-
   // Display name
-  const displayName = profileName || user?.fullName || user?.name || user?.email?.split('@')[0] || 'User';
+  const displayName = profileName || user?.fullName || user?.name || user?.email?.split('@')[0] || '';
   const initials = displayName.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase();
 
   return (
@@ -229,21 +238,35 @@ export default function CandidateDashboard() {
                     isPremium={isPremium}
                   />
                   <div>
-                    <h1 className="text-2xl font-semibold text-gray-900 mb-1">
-                      {displayName}
-                    </h1>
-                    <p className="text-sm text-gray-600 mb-1">
-                      💼 {profileTitle || 'Update your title'}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      ✉️ {userEmail || user?.email || 'No email'}
-                    </p>
-                    <Link
-                      href="/candidate/cm-profile"
-                      className="text-sm text-blue-600 hover:text-blue-700 font-medium mt-1 inline-block"
-                    >
-                      Update your profile →
-                    </Link>
+                    {isLoadingProfile && !displayName ? (
+                      <>
+                        <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-2"></div>
+                        <div className="h-4 w-32 bg-gray-200 rounded animate-pulse mb-2"></div>
+                        <div className="h-4 w-40 bg-gray-200 rounded animate-pulse"></div>
+                      </>
+                    ) : (
+                      <>
+                        <h1 className="text-2xl font-semibold text-gray-900 mb-2">
+                          {displayName}
+                        </h1>
+                        <div className="space-y-1">
+                          <p className="text-sm text-gray-600 flex items-center gap-2">
+                            <BriefcaseBusiness className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                            <span>{profileTitle || 'Update your title'}</span>
+                          </p>
+                          <p className="text-sm text-gray-600 flex items-center gap-2">
+                            <Mail className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                            <span>{userEmail || user?.email || 'No email'}</span>
+                          </p>
+                        </div>
+                        <Link
+                          href="/candidate/cm-profile"
+                          className="text-sm text-blue-600 hover:text-blue-700 font-medium mt-2 inline-block"
+                        >
+                          Update your profile →
+                        </Link>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -258,9 +281,9 @@ export default function CandidateDashboard() {
                 <div className="bg-gradient-to-r from-[#3a4660] to-gray-400 rounded-xl p-5">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-white font-medium">Active CV</span>
+                      <span className="text-white font-medium">Default CV</span>
                       <span className="text-xs bg-white/20 backdrop-blur-sm text-white px-2 py-0.5 rounded-full">
-                        Active
+                        Default
                       </span>
                     </div>
                   </div>
@@ -271,7 +294,7 @@ export default function CandidateDashboard() {
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-gray-900 truncate">{defaultCV.name}</h3>
                       <p className="text-sm text-gray-500">
-                        {defaultCV.type === 'UPLOADED' ? 'Uploaded CV' : 'Built CV'} • {defaultCV.fileSize || 'N/A'}
+                        {defaultCV.type === 'UPLOADED' ? 'Uploaded CV' : 'Built CV'}
                       </p>
                     </div>
                     <Link
@@ -304,101 +327,77 @@ export default function CandidateDashboard() {
               )}
             </div>
 
-            {/* CM Profile */}
+            {/* Getting Started */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">
-                CM Profile
+              <h2 className="text-xl font-semibold text-gray-900 mb-6 text-center">
+                Getting Started
               </h2>
               <div className="flex items-start gap-8 flex-wrap xl:flex-nowrap">
-                {/* Progress Circle */}
-                <div className="flex-shrink-0">
-                  <div className="relative w-36 h-36">
-                    <svg className="w-36 h-36 transform -rotate-90">
-                      <circle
-                        cx="72"
-                        cy="72"
-                        r="64"
-                        stroke="#fee2e2"
-                        strokeWidth="14"
-                        fill="none"
-                      />
-                      <circle
-                        cx="72"
-                        cy="72"
-                        r="64"
-                        stroke={profileCompletion >= 70 ? "#22c55e" : "#ef4444"}
-                        strokeWidth="14"
-                        fill="none"
-                        strokeDasharray={`${64 * 2 * Math.PI * (profileCompletion / 100)} ${64 * 2 * Math.PI}`}
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="text-4xl font-bold text-gray-900">
-                          {profileCompletion}%
-                        </div>
-                        <div className="text-sm text-gray-500">completed</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                {/* Chat bubble for complete profile */}
-                <div className="flex-1 flex flex-col justify-center min-w-[220px]">
-                  <div className="relative inline-block">
-                    <div
-                      className="bg-white border border-gray-200 shadow-md rounded-2xl px-5 py-4 text-gray-800 text-base leading-snug max-w-xs mb-2"
-                      style={{ position: "relative" }}
-                    >
-                      {profileCompletion >= 70 ? (
-                        <span>
-                          Great job! Your profile is{" "}
-                          <span className="text-green-600 font-semibold">{profileCompletion}%</span>{" "}
-                          complete. You can now generate CV templates!
-                        </span>
-                      ) : (
-                        <span>
-                          Complete profile to{" "}
-                          <span className="text-gray-600 font-semibold">70%</span>{" "}
-                          to generate CV template for IT professionals.
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                {/* Quick action content */}
+                <div className="flex-1 flex flex-col items-center justify-center min-w-[220px]">
+                  <p className="text-gray-600 text-base leading-relaxed mb-4 text-center">
+                    Start building your profile to generate CVs and explore AI career features.
+                  </p>
                   <Link
                     href="/candidate/cm-profile"
-                    className="inline-block text-base text-blue-600 hover:text-blue-700 font-medium mt-2"
+                    className="inline-flex items-center justify-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
                   >
-                    {profileCompletion >= 70 ? 'View your profile →' : 'Complete your profile →'}
+                    Build your profile →
                   </Link>
                 </div>
                 {/* CV Templates grid */}
                 <div className="flex-1 min-w-[260px]">
                   <div className="grid grid-cols-3 gap-4">
-                    {/* Template 1 */}
-                    <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-2 flex flex-col items-center justify-center min-h-[180px]">
-                      <div className="w-full h-24 bg-gray-100 rounded mb-2"></div>
-                      <div className="w-3/4 h-3 bg-gray-200 rounded mb-1"></div>
-                      <div className="w-1/2 h-2 bg-gray-100 rounded"></div>
-                    </div>
-                    {/* Template 2 */}
-                    <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-2 flex flex-col items-center justify-center min-h-[180px]">
-                      <div className="w-full h-24 bg-gray-100 rounded mb-2"></div>
-                      <div className="w-3/4 h-3 bg-gray-200 rounded mb-1"></div>
-                      <div className="w-1/2 h-2 bg-gray-100 rounded"></div>
-                    </div>
+                    {/* Template 1 - Modern */}
+                    <Link
+                      href="/cv-templates"
+                      className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+                    >
+                      <div className="aspect-[3/4] relative bg-gradient-to-br from-blue-50 to-white">
+                        <img
+                          src="/images/cvtemp/modern.png"
+                          alt="Modern CV Template"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="p-2">
+                        <p className="text-xs font-medium text-gray-700 truncate">Modern</p>
+                        <p className="text-[10px] text-gray-500">Professional design</p>
+                      </div>
+                    </Link>
+                    
+                    {/* Template 2 - Elegant */}
+                    <Link
+                      href="/cv-templates"
+                      className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+                    >
+                      <div className="aspect-[3/4] relative bg-gradient-to-br from-purple-50 to-white">
+                        <img
+                          src="/images/cvtemp/elegant.png"
+                          alt="Elegant CV Template"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="p-2">
+                        <p className="text-xs font-medium text-gray-700 truncate">Elegant</p>
+                        <p className="text-[10px] text-gray-500">Sophisticated look</p>
+                      </div>
+                    </Link>
+                    
                     {/* Explore CV templates */}
-                    <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-2 flex flex-col items-center justify-center min-h-[180px] relative cursor-pointer group">
+                    <Link
+                      href="/cv-templates"
+                      className="rounded-xl border border-gray-200 bg-white shadow-sm p-2 flex flex-col items-center justify-center min-h-[180px] relative cursor-pointer group hover:shadow-md transition-shadow"
+                    >
                       <div className="flex flex-col items-center justify-center h-full w-full">
-                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-50 mb-2">
-                          <span className="text-gray-600 text-xl">⊕</span>
+                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-50 mb-2 group-hover:bg-blue-50 transition-colors">
+                          <span className="text-gray-600 text-xl group-hover:text-blue-600 transition-colors">⊕</span>
                         </div>
-                        <span className="text-gray-600 font-semibold text-base text-center">
+                        <span className="text-gray-600 font-semibold text-base text-center group-hover:text-blue-600 transition-colors">
                           Explore CV templates
                         </span>
                       </div>
-                      <span className="absolute inset-0 rounded-xl border-2 border-gray-500 opacity-0 group-hover:opacity-100 transition"></span>
-                    </div>
+                    </Link>
                   </div>
                 </div>
               </div>

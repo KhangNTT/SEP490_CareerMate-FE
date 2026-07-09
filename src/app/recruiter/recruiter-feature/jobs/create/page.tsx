@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   PlusCircle,
   Calendar,
@@ -17,16 +18,22 @@ import {
   Package,
   Tag,
   Plus,
+  Pencil,
 } from "lucide-react";
-import { createJobPost, CreateJobPostRequest, getSkills, Skill, getRecruiterJobPostings, RecruiterJobPosting } from "@/lib/recruiter-api";
+import { createJobPost, CreateJobPostRequest, getSkills, Skill, getRecruiterJobPostings, RecruiterJobPosting, updateJobPosting } from "@/lib/recruiter-api";
 import toast from "react-hot-toast";
 
 export default function CreateJobPage() {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [viewJob, setViewJob] = useState<RecruiterJobPosting | null>(null);
   const [jobs, setJobs] = useState<RecruiterJobPosting[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingJobs, setIsLoadingJobs] = useState(false);
+  
+  // Edit mode state
+  const [editingJob, setEditingJob] = useState<RecruiterJobPosting | null>(null);
+  const isEditMode = editingJob !== null;
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0);
@@ -37,6 +44,7 @@ export default function CreateJobPage() {
   // Skills state
   const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
   const [isLoadingSkills, setIsLoadingSkills] = useState(false);
+  const [skillsError, setSkillsError] = useState<string | null>(null);
   
   // State for adding new skill
   const [selectedSkillId, setSelectedSkillId] = useState("");
@@ -63,28 +71,37 @@ export default function CreateJobPage() {
 
   // Fetch skills on component mount
   useEffect(() => {
-    const fetchSkills = async () => {
-      try {
-        setIsLoadingSkills(true);
-        const response = await getSkills();
-        console.log('📋 Skills response:', response);
-        
-        if (response.code === 200 && response.result) {
-          setAvailableSkills(response.result);
+    fetchSkillsData();
+  }, []);
+
+  const fetchSkillsData = async () => {
+    try {
+      setIsLoadingSkills(true);
+      setSkillsError(null);
+      const response = await getSkills();
+      console.log('📋 Skills response:', response);
+      
+      if (response.code === 200 && response.result) {
+        setAvailableSkills(response.result);
+        if (response.result.length > 0) {
           toast.success(`Loaded ${response.result.length} skills`);
         } else {
-          toast.error(response.message || "Failed to load skills");
+          setSkillsError('No skills available. Please contact administrator.');
         }
-      } catch (error: any) {
-        console.error("Failed to fetch skills:", error);
-        toast.error(error.message || "Failed to load skills");
-      } finally {
-        setIsLoadingSkills(false);
+      } else {
+        const errorMsg = response.message || "Failed to load skills";
+        setSkillsError(errorMsg);
+        toast.error(errorMsg);
       }
-    };
-    
-    fetchSkills();
-  }, []);
+    } catch (error: any) {
+      console.error("Failed to fetch skills:", error);
+      const errorMsg = error.message || "Failed to load skills";
+      setSkillsError(errorMsg);
+      toast.error(errorMsg);
+    } finally {
+      setIsLoadingSkills(false);
+    }
+  };
 
   // Fetch recruiter's job postings with pagination
   useEffect(() => {
@@ -157,6 +174,47 @@ export default function CreateJobPage() {
     }
   }, []);
 
+  // Load edit data from sessionStorage if available (from edit page redirect)
+  useEffect(() => {
+    const editData = sessionStorage.getItem('editJobData');
+    if (editData) {
+      try {
+        const job = JSON.parse(editData);
+        console.log('✏️ Loading job for edit:', job);
+        
+        // Set editing job and fill form
+        setEditingJob(job);
+        setFormData(prev => ({
+          ...prev,
+          title: job.title || '',
+          description: job.description || '',
+          address: job.address || '',
+          yearsOfExperience: job.yearsOfExperience?.toString() || '',
+          workModel: job.workModel || '',
+          salaryRange: job.salaryRange || '',
+          reason: job.reason || '',
+          jobPackage: job.jobPackage || '',
+          expirationDate: job.expirationDate || '',
+          skills: job.skills?.map((s: any) => ({
+            id: s.id,
+            mustToHave: s.mustToHave,
+            name: s.name
+          })) || [],
+        }));
+        
+        // Open the form modal
+        setIsOpen(true);
+        
+        // Clear sessionStorage
+        sessionStorage.removeItem('editJobData');
+        
+      } catch (error) {
+        console.error('Failed to parse edit data:', error);
+        toast.error('Failed to load job for editing');
+      }
+    }
+  }, []);
+
   // Handle input change
   const handleChange = (
     e: React.ChangeEvent<
@@ -211,6 +269,31 @@ export default function CreateJobPage() {
     }));
   };
 
+  // Open edit modal with job data
+  const handleEdit = (job: RecruiterJobPosting) => {
+    setEditingJob(job);
+    setFormData({
+      title: job.title || "",
+      description: job.description || "",
+      address: job.address || "",
+      expirationDate: job.expirationDate || "",
+      yearsOfExperience: job.yearsOfExperience?.toString() || "",
+      workModel: job.workModel || "",
+      salaryRange: job.salaryRange || "",
+      reason: job.reason || "",
+      jobPackage: job.jobPackage || "",
+      jdSkill: "",
+      mustToHave: true,
+      skills: job.skills?.map(s => ({
+        id: s.id,
+        mustToHave: s.mustToHave,
+        name: s.name
+      })) || [],
+    });
+    setErrors({});
+    setIsOpen(true);
+  };
+
   // Validate
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -232,18 +315,23 @@ export default function CreateJobPage() {
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
+      toast.error("Please fill in all required fields");
       return;
     }
 
     try {
       setIsSubmitting(true);
       
+      // Prepare job post data, ensuring skills only have id and mustToHave
       const jobPostData: CreateJobPostRequest = {
         title: formData.title,
         description: formData.description,
         address: formData.address,
         expirationDate: formData.expirationDate,
-        jdSkills: formData.skills,
+        jdSkills: formData.skills.map(skill => ({
+          id: skill.id,
+          mustToHave: skill.mustToHave
+        })),
         yearsOfExperience: parseInt(formData.yearsOfExperience),
         workModel: formData.workModel,
         salaryRange: formData.salaryRange,
@@ -251,50 +339,82 @@ export default function CreateJobPage() {
         jobPackage: formData.jobPackage,
       };
 
-      const response = await createJobPost(jobPostData);
+      let response;
       
-      if (response.code === 200 || response.code === 201 || response.code === 0) {
-        toast.success("Job post created successfully!");
+      if (isEditMode && editingJob) {
+        // Update existing job
+        console.log('📝 [EDIT JOB] Updating job post:', editingJob.id, jobPostData);
+        response = await updateJobPosting(editingJob.id, jobPostData);
         
-        // Refresh job list from server instead of adding locally
-        const jobsResponse = await getRecruiterJobPostings({ page: currentPage, size: pageSize });
-        if (jobsResponse.code === 0 || jobsResponse.code === 200) {
-          setJobs(jobsResponse.result.content);
-          setTotalPages(jobsResponse.result.totalPages);
-          setTotalElements(jobsResponse.result.totalElements);
+        if (response.code === 200 || response.code === 201 || response.code === 0) {
+          toast.success("Job post updated successfully!");
+          
+          // Refresh job list
+          const refreshResponse = await getRecruiterJobPostings({ page: currentPage, size: pageSize });
+          if (refreshResponse.code === 0 || refreshResponse.code === 200) {
+            setJobs(refreshResponse.result.content);
+            setTotalPages(refreshResponse.result.totalPages);
+            setTotalElements(refreshResponse.result.totalElements);
+          }
+          
+          setIsOpen(false);
+          setEditingJob(null);
+          resetForm();
+        } else {
+          toast.error(response.message || "Failed to update job post");
         }
+      } else {
+        // Create new job
+        console.log('📝 [CREATE JOB PAGE] Submitting job post:', jobPostData);
+        response = await createJobPost(jobPostData);
         
-        setIsOpen(false);
-
-        // Reset form
-        setFormData({
-          title: "",
-          description: "",
-          address: "",
-          expirationDate: "",
-          yearsOfExperience: "",
-          workModel: "",
-          salaryRange: "",
-          reason: "",
-          jobPackage: "",
-          jdSkill: "",
-          mustToHave: true,
-          skills: [],
-        });
-        setSelectedSkillId("");
-        setErrors({});
+        if (response.code === 200 || response.code === 201 || response.code === 0) {
+          toast.success("Job post created successfully! Redirecting to job management...");
+          
+          // Redirect to unified jobs management page
+          setTimeout(() => {
+            router.push("/recruiter/recruiter-feature/jobs/active");
+          }, 1500);
+          
+          setIsOpen(false);
+          resetForm();
+        } else {
+          toast.error(response.message || "Failed to create job post");
+        }
       }
     } catch (error: any) {
-      toast.error(error.message || "Failed to create job post");
+      toast.error(error.message || `Failed to ${isEditMode ? 'update' : 'create'} job post`);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // Reset form to initial state
+  const resetForm = () => {
+    setFormData({
+      title: "",
+      description: "",
+      address: "",
+      expirationDate: "",
+      yearsOfExperience: "",
+      workModel: "",
+      salaryRange: "",
+      reason: "",
+      jobPackage: "",
+      jdSkill: "",
+      mustToHave: true,
+      skills: [],
+    });
+    setSelectedSkillId("");
+    setErrors({});
+    setEditingJob(null);
+  };
+
   // Cancel form
   const handleCancel = () => {
     setIsOpen(false);
-    setErrors({});
+    setEditingJob(null);
+    resetForm();
   };
 
   // View job details
@@ -405,6 +525,16 @@ export default function CreateJobPage() {
                     >
                       <Eye className="w-4 h-4" />
                     </button>
+                    {/* Show Edit button only for PENDING or REJECTED jobs */}
+                    {(job.status === 'PENDING' || job.status === 'REJECTED') && (
+                      <button
+                        onClick={() => handleEdit(job)}
+                        className="text-amber-600 hover:text-amber-800 transition"
+                        title="Edit"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                    )}
                     <button
                       onClick={() => handleDelete(job)}
                       className="text-red-500 hover:text-red-700 transition"
@@ -503,7 +633,19 @@ export default function CreateJobPage() {
         </div>
       )}
 
-      {/* Popup Create Job */}
+      {/* Backdrop Overlay */}
+      {(isOpen || viewJob || confirmDelete) && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40"
+          onClick={() => {
+            if (isOpen) handleCancel();
+            if (viewJob) closeView();
+            if (confirmDelete) setConfirmDelete(null);
+          }}
+        />
+      )}
+
+      {/* Popup Create/Edit Job */}
       {isOpen && (
         <div
           className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 
@@ -511,16 +653,39 @@ export default function CreateJobPage() {
         >
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-800 flex items-center">
-              <PlusCircle className="w-5 h-5 mr-2 text-sky-600" /> Create Job
-              Post
+              {isEditMode ? (
+                <>
+                  <Pencil className="w-5 h-5 mr-2 text-amber-600" /> Edit Job Post
+                </>
+              ) : (
+                <>
+                  <PlusCircle className="w-5 h-5 mr-2 text-sky-600" /> Create Job Post
+                </>
+              )}
             </h2>
             <button
-              onClick={() => setIsOpen(false)}
+              onClick={handleCancel}
               className="text-gray-400 hover:text-gray-600"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
+
+          {/* Status badge for edit mode */}
+          {isEditMode && editingJob && (
+            <div className="mb-4 p-3 bg-gray-50 rounded-md">
+              <p className="text-sm text-gray-600">
+                Editing: <span className="font-medium">{editingJob.title}</span>
+                <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                  editingJob.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                  editingJob.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {editingJob.status}
+                </span>
+              </p>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-5 max-h-[70vh] overflow-y-auto">
             <div>
@@ -695,15 +860,40 @@ export default function CreateJobPage() {
                 <Tag className="w-4 h-4 mr-1 text-gray-500" /> Skills
                 <span className="text-red-500 ml-1">*</span>
               </label>
+              
+              {/* Skills Error State */}
+              {skillsError && !isLoadingSkills && (
+                <div className="mb-2 p-3 bg-red-50 border border-red-200 rounded-md">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className="text-sm text-red-700 font-medium">⚠️ {skillsError}</p>
+                      <p className="text-xs text-red-600 mt-1">
+                        Skills are required to create a job posting. Please try again or contact support.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={fetchSkillsData}
+                      className="ml-2 px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                </div>
+              )}
+              
               <div className="flex space-x-2 mb-2">
                 <select
                   value={selectedSkillId}
                   onChange={(e) => setSelectedSkillId(e.target.value)}
                   className="flex-1 p-2 border border-gray-300 rounded-md"
-                  disabled={isLoadingSkills}
+                  disabled={isLoadingSkills || !!skillsError}
                 >
                   <option value="">
-                    {isLoadingSkills ? "Loading skills..." : "Select a skill"}
+                    {isLoadingSkills ? "Loading skills..." : 
+                     skillsError ? "Skills unavailable" :
+                     availableSkills.length === 0 ? "No skills available" :
+                     "Select a skill"}
                   </option>
                   {availableSkills.map((jdskill) => (
                     <option key={jdskill.id} value={jdskill.id}>
@@ -774,9 +964,17 @@ export default function CreateJobPage() {
               </button>
               <button
                 type="submit"
-                className="flex items-center px-4 py-2 bg-sky-600 text-white rounded-md hover:bg-sky-700 transition"
+                disabled={isSubmitting}
+                className={`flex items-center px-4 py-2 text-white rounded-md transition ${
+                  isEditMode 
+                    ? 'bg-amber-600 hover:bg-amber-700' 
+                    : 'bg-sky-600 hover:bg-sky-700'
+                } disabled:opacity-50`}
               >
-                <Save className="w-4 h-4 mr-1" /> Save Job Post
+                <Save className="w-4 h-4 mr-1" /> 
+                {isSubmitting 
+                  ? (isEditMode ? 'Updating...' : 'Saving...') 
+                  : (isEditMode ? 'Update Job Post' : 'Save Job Post')}
               </button>
             </div>
           </form>

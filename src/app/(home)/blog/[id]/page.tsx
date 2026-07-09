@@ -45,12 +45,26 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
         if (!accessToken) return null;
         try {
             const decoded = decodeJWT(accessToken);
-            return {
-                id: decoded?.sub || decoded?.userId || decoded?.id,
-                email: decoded?.email || decoded?.username,
+            console.log('🔍 Full decoded JWT for user ID extraction:', decoded);
+            
+            // Try to extract numeric user ID from various possible fields
+            // Priority: accountId > userId > id (skip sub as it's usually email)
+            let userId = decoded?.accountId || decoded?.userId || decoded?.id;
+            
+            // If userId is still not found or is an email string, log all available fields
+            if (!userId || typeof userId === 'string') {
+                console.log('⚠️ Available JWT fields:', Object.keys(decoded || {}));
+                console.log('⚠️ JWT values:', decoded);
+            }
+            
+            const userObj = {
+                id: userId ? String(userId) : null, // Always store as string for consistent comparison
+                email: decoded?.email || decoded?.username || decoded?.sub,
                 name: decoded?.name || decoded?.username || decoded?.email,
                 username: decoded?.username || decoded?.email
             };
+            console.log('🔍 Extracted user object:', userObj);
+            return userObj;
         } catch (error) {
             console.error('Error decoding user from token:', error);
             return null;
@@ -67,6 +81,8 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
     const [hoveredRating, setHoveredRating] = useState(0);
     const [submittingComment, setSubmittingComment] = useState(false);
     const [submittingRating, setSubmittingRating] = useState(false);
+    const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+    const [editCommentText, setEditCommentText] = useState('');
 
     useEffect(() => {
         fetchBlogData();
@@ -266,6 +282,56 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
         }
     };
 
+    const handleEditComment = (comment: Comment) => {
+        setEditingCommentId(comment.id);
+        setEditCommentText(comment.content);
+    };
+
+    const handleUpdateComment = async (commentId: number) => {
+        if (!editCommentText.trim()) {
+            toast.error('Comment cannot be empty');
+            return;
+        }
+
+        try {
+            await blogApi.updateComment(blogId, commentId, {
+                content: editCommentText.trim()
+            });
+
+            // Refresh comments
+            await refreshComments();
+            setEditingCommentId(null);
+            setEditCommentText('');
+            toast.success('Comment updated successfully!');
+        } catch (error: any) {
+            console.error('Error updating comment:', error);
+            toast.error(error.response?.data?.message || 'Failed to update comment');
+        }
+    };
+
+    const handleDeleteComment = async (commentId: number) => {
+        if (!confirm('Are you sure you want to delete this comment?')) {
+            return;
+        }
+
+        try {
+            await blogApi.deleteComment(blogId, commentId);
+
+            // Refresh comments
+            await refreshComments();
+
+            // Update blog comment count
+            if (blog) {
+                setBlog(prev => prev ? { ...prev, commentCount: Math.max(0, (prev.commentCount || 1) - 1) } : null);
+            }
+
+            toast.success('Comment deleted successfully!');
+        } catch (error: any) {
+            console.error('Error deleting comment:', error);
+            toast.error(error.response?.data?.message || 'Failed to delete comment');
+        }
+    };
+
     const handleRatingSubmit = async (newRating: number) => {
         if (!isAuthenticated) {
             toast.error('Please sign in to rate');
@@ -354,7 +420,7 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="grid grid-cols-1 lg:grid-cols-7 gap-8">
                     {/* Main Content */}
@@ -364,64 +430,67 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
                             <Button
                                 variant="outline"
                                 onClick={() => router.push('/blog')}
-                                className="flex items-center"
+                                className="flex items-center hover:bg-slate-100 transition-colors"
                             >
                                 <ArrowLeft className="w-4 h-4 mr-2" />
                                 Back to Blog
                             </Button>
                         </div>
 
-                        {/* Blog Header */}
-                        <div className="mb-8">
-                            <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
-                                <div className="flex items-center gap-1">
-                                    <Calendar className="w-4 h-4" />
-                                    {formatDate(blog.createdAt)}
-                                </div>
-                                <div className="flex items-center gap-1">
-                                    <Clock className="w-4 h-4" />
-                                    5 min read
-                                </div>
-                                <div className="flex items-center gap-1">
-                                    <Eye className="w-4 h-4" />
-                                    {blog.viewCount || 0} views
-                                </div>
-                            </div>
-
-                            <h1 className="text-4xl font-bold text-gray-900 mb-4 leading-tight">
-                                {blog.title}
-                            </h1>
-
-                            <div className="flex items-center justify-between mb-6">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center">
-                                        <User className="w-6 h-6 text-white" />
+                        {/* Blog Content Card */}
+                        <article className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                            {/* Blog Header */}
+                            <div className="p-6 sm:p-8 border-b border-gray-100">
+                                <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
+                                    <div className="flex items-center gap-1 bg-gray-50 px-3 py-1 rounded-full">
+                                        <Calendar className="w-4 h-4" />
+                                        {formatDate(blog.createdAt)}
                                     </div>
-                                    <div>
-                                        <p className="font-medium text-gray-900">{blog.authorName || 'Unknown Author'}</p>
-                                        <p className="text-sm text-gray-500">Content Creator</p>
+                                    <div className="flex items-center gap-1 bg-gray-50 px-3 py-1 rounded-full">
+                                        <Clock className="w-4 h-4" />
+                                        5 min read
+                                    </div>
+                                    <div className="flex items-center gap-1 bg-gray-50 px-3 py-1 rounded-full">
+                                        <Eye className="w-4 h-4" />
+                                        {blog.viewCount || 0} views
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-2">
-                                    <Button variant="outline" size="sm">
-                                        <Share2 className="w-4 h-4 mr-2" />
-                                        Share
-                                    </Button>
-                                    <Button variant="outline" size="sm">
-                                        <Bookmark className="w-4 h-4 mr-2" />
-                                        Save
-                                    </Button>
+                                <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-6 leading-tight">
+                                    {blog.title}
+                                </h1>
+
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-violet-600 rounded-full flex items-center justify-center shadow-md">
+                                            <User className="w-6 h-6 text-white" />
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-gray-900">{blog.authorName || 'Unknown Author'}</p>
+                                            <p className="text-sm text-gray-500">Content Creator</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <Button variant="outline" size="sm" className="hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200">
+                                            <Share2 className="w-4 h-4 mr-2" />
+                                            Share
+                                        </Button>
+                                        <Button variant="outline" size="sm" className="hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200">
+                                            <Bookmark className="w-4 h-4 mr-2" />
+                                            Save
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
 
                             {/* Thumbnail */}
                             {blog.thumbnailUrl && !blog.thumbnailUrl.startsWith('blob:') ? (
-                                <div className="mb-8">
+                                <div className="aspect-video w-full">
                                     <img
                                         src={blog.thumbnailUrl}
                                         alt={blog.title}
-                                        className="w-full h-64 object-cover rounded-lg shadow-lg"
+                                        className="w-full h-full object-cover"
                                         onError={(e) => {
                                             console.error('❌ Image failed to load:', blog.thumbnailUrl);
                                             console.error('❌ Image error:', e);
@@ -431,19 +500,17 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
                                         }}
                                     />
                                 </div>
-                            ) : (
-                                <div className="mb-8 p-8 bg-gray-100 rounded-lg text-center">
-                                    <p className="text-gray-500">No thumbnail available</p>
-                                </div>
-                            )}
+                            ) : null}
 
                             {/* Blog Content */}
-                            <div className="prose prose-lg max-w-none">
-                                <div dangerouslySetInnerHTML={{ __html: blog.content }} />
+                            <div className="p-6 sm:p-8">
+                                <div className="prose prose-lg max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-a:text-blue-600 prose-strong:text-gray-900">
+                                    <div dangerouslySetInnerHTML={{ __html: blog.content }} />
+                                </div>
                             </div>
 
                             {/* Rating Section */}
-                            <div className="mt-12 p-6 bg-white rounded-lg border">
+                            <div className="p-6 sm:p-8 border-t border-gray-100 bg-gradient-to-r from-amber-50 to-orange-50">
                                 <h3 className="text-lg font-semibold mb-4">Rate this article</h3>
                                 <div className="flex items-center gap-2">
                                     {[1, 2, 3, 4, 5].map((star) => (
@@ -473,9 +540,10 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
                                     </p>
                                 )}
                             </div>
+                        </article>
 
-                            {/* Comments Section */}
-                            <div className="mt-12">
+                        {/* Comments Section - Outside the article card */}
+                        <div className="mt-8">
                                 <Card>
                                     <CardHeader>
                                         <CardTitle className="flex items-center gap-2">
@@ -524,24 +592,150 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
                                             </p>
                                         ) : (
                                             <div className="mt-6 space-y-4">
-                                                {(comments || []).map((comment, index) => (
-                                                    <div key={`comment-${comment.id || comment.userId || index}`} className="border-l-4 border-gray-200 pl-4 py-2">
-                                                        <div className="flex items-center gap-2 mb-2">
-                                                            <span className="font-medium text-gray-900">{comment.userName || 'Unknown User'}</span>
-                                                            <span className="text-sm text-gray-500">
-                                                                {formatDate(comment.createdAt)}
-                                                            </span>
-                                                        </div>
-                                                        <p className="text-gray-700">{comment.content}</p>
-                                                    </div>
-                                                ))}
+                                                {/* Sort comments - current user's comments first, then others */}
+                                                {(comments || [])
+                                                    .slice()
+                                                    .sort((a, b) => {
+                                                        // Match by userId - convert both to strings for comparison
+                                                        const aIsOwn = user && user.id && a.userId && 
+                                                            String(user.id) === String(a.userId);
+                                                        const bIsOwn = user && user.id && b.userId && 
+                                                            String(user.id) === String(b.userId);
+                                                        
+                                                        // User's own comments come first
+                                                        if (aIsOwn && !bIsOwn) return -1;
+                                                        if (!aIsOwn && bIsOwn) return 1;
+                                                        
+                                                        // Otherwise maintain original order (by date)
+                                                        return 0;
+                                                    })
+                                                    .map((comment, index) => {
+                                                        // Match by userId - convert both to strings for consistent comparison
+                                                        const isOwnComment = user && user.id && comment.userId && 
+                                                            String(user.id) === String(comment.userId);
+                                                        
+                                                        console.log('🔍 Comment ownership check:', {
+                                                            commentId: comment.id,
+                                                            commentUserId: comment.userId,
+                                                            commentUserIdType: typeof comment.userId,
+                                                            commentUserName: comment.userName,
+                                                            currentUserId: user?.id,
+                                                            currentUserIdType: typeof user?.id,
+                                                            currentUsername: user?.username,
+                                                            stringMatch: String(user?.id) === String(comment.userId),
+                                                            isOwnComment
+                                                        });
+                                                        
+                                                        return (
+                                                            <div 
+                                                                key={`comment-${comment.id || comment.userId || index}`} 
+                                                                className={`rounded-lg p-4 transition-all ${
+                                                                    isOwnComment 
+                                                                        ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200' 
+                                                                        : 'bg-gray-50 border border-gray-200'
+                                                                }`}
+                                                            >
+                                                                <div className="flex items-start justify-between gap-4 mb-3">
+                                                                    <div className="flex items-center gap-3 flex-1">
+                                                                        {/* Avatar */}
+                                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold ${
+                                                                            isOwnComment ? 'bg-blue-600' : 'bg-gray-600'
+                                                                        }`}>
+                                                                            {(comment.userName || 'U').charAt(0).toUpperCase()}
+                                                                        </div>
+                                                                        
+                                                                        <div className="flex flex-col">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className={`font-semibold text-base ${
+                                                                                    isOwnComment ? 'text-blue-900' : 'text-gray-900'
+                                                                                }`}>
+                                                                                    {comment.userName || 'Unknown User'}
+                                                                                </span>
+                                                                                {isOwnComment && (
+                                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-600 text-white">
+                                                                                        You
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                            <span className="text-sm text-gray-500">
+                                                                                {formatDate(comment.createdAt)}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                    
+                                                                    {/* Show edit/delete buttons for own comments */}
+                                                                    {isOwnComment && (
+                                                                        <div className="flex items-center gap-1">
+                                                                            {editingCommentId === comment.id ? (
+                                                                                <>
+                                                                                    <Button
+                                                                                        size="sm"
+                                                                                        variant="outline"
+                                                                                        className="h-8 px-3"
+                                                                                        onClick={() => {
+                                                                                            setEditingCommentId(null);
+                                                                                            setEditCommentText('');
+                                                                                        }}
+                                                                                    >
+                                                                                        Cancel
+                                                                                    </Button>
+                                                                                    <Button
+                                                                                        size="sm"
+                                                                                        className="h-8 px-3 bg-blue-600 hover:bg-blue-700"
+                                                                                        onClick={() => handleUpdateComment(comment.id)}
+                                                                                    >
+                                                                                        Save
+                                                                                    </Button>
+                                                                                </>
+                                                                            ) : (
+                                                                                <>
+                                                                                    <Button
+                                                                                        size="sm"
+                                                                                        variant="ghost"
+                                                                                        className="h-8 px-3 text-gray-700 hover:text-blue-600 hover:bg-blue-50"
+                                                                                        onClick={() => handleEditComment(comment)}
+                                                                                    >
+                                                                                        Edit
+                                                                                    </Button>
+                                                                                    <Button
+                                                                                        size="sm"
+                                                                                        variant="ghost"
+                                                                                        className="h-8 px-3 text-gray-700 hover:text-red-600 hover:bg-red-50"
+                                                                                        onClick={() => handleDeleteComment(comment.id)}
+                                                                                    >
+                                                                                        Delete
+                                                                                    </Button>
+                                                                                </>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                
+                                                                {editingCommentId === comment.id ? (
+                                                                    <div className="mt-2">
+                                                                        <Textarea
+                                                                            value={editCommentText}
+                                                                            onChange={(e) => setEditCommentText(e.target.value)}
+                                                                            rows={3}
+                                                                            className="bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                                                                        />
+                                                                    </div>
+                                                                ) : (
+                                                                    <p className={`ml-13 text-base leading-relaxed ${
+                                                                        isOwnComment ? 'text-gray-800' : 'text-gray-700'
+                                                                    }`}>
+                                                                        {comment.content}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
                                             </div>
                                         )}
                                     </CardContent>
                                 </Card>
                             </div>
                         </div>
-                    </div>
 
                     {/* Sidebar */}
                     <div className="lg:col-span-2 space-y-6">

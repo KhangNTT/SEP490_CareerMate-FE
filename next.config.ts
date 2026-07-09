@@ -9,15 +9,12 @@ const nextConfig = {
   outputFileTracingRoot: __dirname,
 
   // ========================================
-  // 🚀 PERFORMANCE OPTIMIZATIONS
+  // � PERFORMANCE OPTIMIZATIONS
   // ========================================
 
-  // Temporarily ignore TypeScript and ESLint errors during build
+  // Temporarily ignore TypeScript errors during build
   typescript: {
     ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
   },
 
   // Enable compiler optimizations
@@ -55,6 +52,18 @@ const nextConfig = {
         port: "",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "ui-avatars.com",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "storage.googleapis.com",
+        port: "",
+        pathname: "/**",
+      },
     ],
     // Image optimization settings
     formats: ["image/webp", "image/avif"],
@@ -78,11 +87,12 @@ const nextConfig = {
       // ❗DO NOT add @sparticuz/chromium or puppeteer-core here
       // They need to be external for serverless environments
     ],
-    // ========================================
-    // ✅ FIX: Mark packages as external for serverless
-    // ========================================
-    serverComponentsExternalPackages: ['@sparticuz/chromium', 'puppeteer-core'],
   },
+
+  // ========================================
+  // ✅ FIX: Mark packages as external for serverless (moved from experimental)
+  // ========================================
+  serverExternalPackages: ['@sparticuz/chromium', 'puppeteer-core'],
 
   // ========================================
   // ✅ FIX: Force include chromium binary files in Lambda
@@ -91,6 +101,7 @@ const nextConfig = {
     '/api/export-pdf': ['./node_modules/@sparticuz/chromium/bin/**'],
     '/api/export-pdf/job': ['./node_modules/@sparticuz/chromium/bin/**'],
     '/api/export-pdf/job/[jobId]': ['./node_modules/@sparticuz/chromium/bin/**'],
+    '/api/export-pdf-v2': ['./node_modules/@sparticuz/chromium/bin/**'],
     '/candidate/cv/api/export-pdf': ['./node_modules/@sparticuz/chromium/bin/**'],
   },
 

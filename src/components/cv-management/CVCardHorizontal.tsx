@@ -1,6 +1,7 @@
 import { CV } from "@/services/cvService";
 import { useState, memo, useCallback } from "react";
 import toast from "react-hot-toast";
+import { FileText } from "lucide-react";
 
 interface CVCardHorizontalProps {
   cv: CV;
@@ -105,20 +106,11 @@ export const CVCardHorizontal = ({
               <p className="text-[10px] text-gray-500">Processing...</p>
             </div>
           ) : (
-            <svg
-              className="w-12 h-12 text-gray-400 group-hover:text-[#3a4660] transition-colors"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
-            </svg>
+            // Use FileText icon for Upload and Draft CVs
+            <FileText 
+              className="w-12 h-12 text-gray-400 group-hover:text-[#3a4660] transition-colors" 
+              strokeWidth={1.5}
+            />
           )}
         </div>
 
@@ -129,7 +121,7 @@ export const CVCardHorizontal = ({
             <span className={`px-2 py-0.5 text-xs font-medium rounded-md ${source.color}`}>
               {source.label}
             </span>
-            <span className="px-2 py-0.5 text-xs font-medium rounded-md bg-gray-100 text-gray-700 flex items-center gap-1">
+            {/* <span className="px-2 py-0.5 text-xs font-medium rounded-md bg-gray-100 text-gray-700 flex items-center gap-1">
               {cv.privacy === "private" ? (
                 <>
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -155,10 +147,10 @@ export const CVCardHorizontal = ({
                   <span>Public</span>
                 </>
               )}
-            </span>
+            </span> */}
           </div>
 
-          {/* Middle Row: CV Name & Default Badge */}
+          {/* Middle Row: CV Name */}
           <div className="flex items-center gap-2">
             <h3
               className="font-semibold text-sm text-gray-900 truncate cursor-pointer hover:text-[#3a4660] transition-colors"
@@ -167,11 +159,6 @@ export const CVCardHorizontal = ({
             >
               {cv.name}
             </h3>
-            {isDefault && (
-              <span className="flex-shrink-0 px-2 py-0.5 bg-[#3a4660] text-white text-xs font-semibold rounded-full">
-                Default
-              </span>
-            )}
           </div>
 
           {/* Bottom Row: Date, Size & Actions */}
@@ -192,12 +179,23 @@ export const CVCardHorizontal = ({
                   year: "numeric"
                 })}
               </span>
-              {cv.fileSize && (
+              {isDefault && (
+                <>
+                  {/* <span className="text-gray-300">•</span> */}
+                  <span className="inline-flex items-center gap-0.5 text-gray-600 font-medium">
+                    {/* <svg className="w-3 h-3 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                    <span>Default</span> */}
+                  </span>
+                </>
+              )}
+              {/* {cv.fileSize && (
                 <>
                   <span className="text-gray-300">•</span>
                   <span>{cv.fileSize}</span>
                 </>
-              )}
+              )} */}
             </div>
 
             {/* Syncing Status Banner */}

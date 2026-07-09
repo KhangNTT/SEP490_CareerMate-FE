@@ -18,9 +18,21 @@ export interface SkillCreateResponse {
 }
 
 // Get all skills (no pagination - returns full list)
+// Uses type=all to get all skills regardless of type for admin management
 export const getSkillList = async (): Promise<SkillListResponse> => {
-  const response = await api.get('/api/jdskill');
-  return response.data;
+  try {
+    // Fetch all skills using type=all
+    const response = await api.get('/api/jdskill?type=all');
+    
+    return {
+      code: 200,
+      message: 'success',
+      result: response.data.result || []
+    };
+  } catch (error) {
+    console.error('Error fetching skill list:', error);
+    throw error;
+  }
 };
 
 // Create a new skill using query parameter

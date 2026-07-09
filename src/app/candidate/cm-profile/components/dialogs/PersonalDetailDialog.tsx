@@ -87,7 +87,7 @@ export default function PersonalDetailDialog({
                 toast.error('Unable to get candidate ID. Please try again later.');
                 return;
             }
-            
+
             // Upload returns both storagePath and downloadUrl
             // We use downloadUrl for immediate display, but could store storagePath for future
             const result = await uploadAvatar(candidateId.toString(), file);
@@ -121,7 +121,7 @@ export default function PersonalDetailDialog({
                     <DialogTitle>Personal Details</DialogTitle>
                 </DialogHeader>
 
-                <div className="space-y-4">
+                <div className="space-y-3">
                     {/* Avatar Upload Section */}
                     <div className="flex items-center gap-6 pb-4 border-b border-gray-200">
                         <div className="relative">

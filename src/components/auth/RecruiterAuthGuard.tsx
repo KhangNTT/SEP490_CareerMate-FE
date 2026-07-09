@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, Briefcase, AlertTriangle, ArrowLeft } from "lucide-react";
 import { useAuthStore } from "@/store/use-auth-store";
@@ -19,62 +19,34 @@ export default function RecruiterAuthGuard({
   redirectIfGuest = "/sign-in",
   redirectIfNotRecruiter = "/",
 }: RecruiterAuthGuardProps) {
-  // ✅ ALWAYS call ALL hooks at the top - unconditionally
+  // ✅ CRITICAL: ALL HOOKS MUST BE CALLED AT THE TOP - UNCONDITIONALLY
+  // This is REQUIRED by React's Rules of Hooks
   const hasHydrated = useAuthHydration();
   const router = useRouter();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isLoading = useAuthStore((s) => s.isLoading);
   const role = useAuthStore((s) => s.role);
   const accessToken = useAuthStore((s) => s.accessToken);
+  const [mounted, setMounted] = useState(false);
 
-  // Now check localStorage (after hooks)
-  const storedToken =
-    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-
-  // Decode role from JWT instead of reading from localStorage
-  const tokenRole = storedToken ? getRoleFromToken(storedToken) : null;
-  const hasRecruiterAccess = canAccessRecruiter(tokenRole);
-
-  // ⚠️ SECURITY: Don't log token values
-  if (DEBUG.ADMIN_GUARD) {
-    safeLog.authState("🔍 [RecruiterAuthGuard] Initial check", {
-      hasToken: !!storedToken,
-      role: tokenRole,
-      hasRecruiterAccess,
-    });
-  }
-
-  // If we have valid token and recruiter role in JWT, render immediately
-  // This prevents the flash of "no permission" screen
-  if (storedToken && hasRecruiterAccess) {
-    if (DEBUG.ADMIN_GUARD) {
-      safeLog.authState(
-        "✅ [RecruiterAuthGuard] Has stored recruiter credentials - rendering children immediately",
-        {}
-      );
-    }
-    return <>{children}</>;
-  }
-
-  const hasRecruiterRole = canAccessRecruiter(role);
-
-  // 3) Điều hướng sau khi đã hydrate + hết loading
+  // Set mounted state
   useEffect(() => {
-    if (!hasHydrated || isLoading) {
+    setMounted(true);
+  }, []);
+
+  // ✅ useEffect MUST be called before any return statements
+  useEffect(() => {
+    if (!mounted || !hasHydrated || isLoading) {
       console.debug("🔍 Recruiter Guard: Still loading or not hydrated yet");
       return;
     }
 
-    // Additional check from localStorage to avoid race condition
-    const storedToken =
-      typeof window !== "undefined"
-        ? localStorage.getItem("access_token")
-        : null;
-
-    // Get role from token instead of localStorage (security)
+    // Check localStorage after mount (client-side only)
+    const storedToken = localStorage.getItem("access_token");
     const currentTokenRole = storedToken ? getRoleFromToken(storedToken) : null;
+    const hasRecruiterRole = canAccessRecruiter(role);
 
-    // Debug gọn
+    // Debug
     console.debug("🔍 Recruiter Guard Check", {
       isAuthenticated,
       role,
@@ -124,16 +96,47 @@ export default function RecruiterAuthGuard({
       console.debug("✅ Recruiter Guard: Access granted - user is recruiter or admin");
     }
   }, [
+    mounted,
     hasHydrated,
     isLoading,
     isAuthenticated,
-    hasRecruiterRole,
-    accessToken,
     role,
+    accessToken,
     router,
     redirectIfGuest,
     redirectIfNotRecruiter,
   ]);
+
+  // ✅ NOW we can safely check conditions and return early (after all hooks)
+  // Now check localStorage (after hooks)
+  const storedToken =
+    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+
+  // Decode role from JWT instead of reading from localStorage
+  const tokenRole = storedToken ? getRoleFromToken(storedToken) : null;
+  const hasRecruiterAccess = canAccessRecruiter(tokenRole);
+  const hasRecruiterRole = canAccessRecruiter(role);
+
+  // ⚠️ SECURITY: Don't log token values
+  if (DEBUG.ADMIN_GUARD) {
+    safeLog.authState("🔍 [RecruiterAuthGuard] Initial check", {
+      hasToken: !!storedToken,
+      role: tokenRole,
+      hasRecruiterAccess,
+    });
+  }
+
+  // If we have valid token and recruiter role in JWT, render immediately
+  // This prevents the flash of "no permission" screen
+  if (storedToken && hasRecruiterAccess) {
+    if (DEBUG.ADMIN_GUARD) {
+      safeLog.authState(
+        "✅ [RecruiterAuthGuard] Has stored recruiter credentials - rendering children immediately",
+        {}
+      );
+    }
+    return <>{children}</>;
+  }
 
   // 4) UI trạng thái
   if (!hasHydrated || isLoading) {
@@ -148,11 +151,8 @@ export default function RecruiterAuthGuard({
     );
   }
 
-  // Re-check after hydration with updated state
-  // Decode role from token again if needed
-  const currentTokenRole = storedToken ? getRoleFromToken(storedToken) : null;
-  const hasAccessFromToken = canAccessRecruiter(currentTokenRole);
-  const hasAccess = hasRecruiterRole || hasAccessFromToken;
+  // Compute access
+  const hasAccess = hasRecruiterRole || hasRecruiterAccess;
 
   if (DEBUG.ADMIN_GUARD) {
     safeLog.authState("🔍 [RecruiterAuthGuard] Render check", {
@@ -162,7 +162,7 @@ export default function RecruiterAuthGuard({
       role,
       hasRecruiterRole,
       hasToken: !!accessToken,
-      tokenRole: currentTokenRole,
+      tokenRole,
       hasAccess,
     });
   }
@@ -175,8 +175,7 @@ export default function RecruiterAuthGuard({
     return <>{children}</>;
   }
 
-  // ===== LOADING UI =====
-  // If we're still waiting for things to settle, show spinner
+  // If we're still waiting for authentication state
   if (!isAuthenticated || isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
@@ -232,7 +231,7 @@ export default function RecruiterAuthGuard({
                   <strong>Role (Store):</strong> {role || "(none)"}
                 </p>
                 <p>
-                  <strong>Role (Token):</strong> {currentTokenRole || "(none)"}{" "}
+                  <strong>Role (Token):</strong> {tokenRole || "(none)"}{" "}
                   {hasAccess ? "✅ Has Access" : "❌ No Access"}
                 </p>
                 <p>
@@ -247,7 +246,7 @@ export default function RecruiterAuthGuard({
     );
   }
 
-  // Show loading while state is syncing
+  // Default loading state while redirecting
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="text-center">
